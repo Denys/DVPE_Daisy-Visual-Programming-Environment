@@ -1,0 +1,163 @@
+{
+  "version": "2.4.0-hotfix",
+  "codename": "ORION-HOTFIX",
+  "releaseDate": "2026-01-01",
+  "baselineType": "hotfix",
+  "previousVersion": "2.3.0-nova-hotfix",
+  
+  "metadata": {
+    "description": "Platform foundation and critical bug fixes baseline",
+    "status": "stable",
+    "maintainer": "DK and Lumina",
+    "organization": "Electronic Systems Architects (ESA)"
+  },
+  
+  "criticalFixes": [
+    {
+      "id": "FIX-001",
+      "title": "Drag & Drop Event Handler Race Condition",
+      "severity": "critical",
+      "component": "Canvas.tsx",
+      "file": "dvpe_CLD/src/components/Canvas/Canvas.tsx",
+      "description": "Removed competing drop handlers from Canvas wrapper to prevent event interception",
+      "reportReference": ".agent/reports/drag_drop_root_cause_fix_2025-12-30.md",
+      "mustPreserve": true
+    },
+    {
+      "id": "FIX-002",
+      "title": "Premature Drag Termination",
+      "severity": "critical",
+      "component": "DragOverlay.tsx",
+      "file": "dvpe_CLD/src/components/Canvas/DragOverlay.tsx",
+      "description": "Removed window dragend listener to prevent race condition",
+      "reportReference": ".agent/reports/drag_termination_bug_analysis_2025-12-30.md",
+      "mustPreserve": true
+    }
+  ],
+  
+  "dependencies": {
+    "dvpe": {
+      "path": "dvpe/",
+      "platform": "web",
+      "nodeVersion": ">=18.0.0",
+      "production": {
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+        "reactflow": "^11.11.4",
+        "tailwindcss": "^4.1.18",
+        "zustand": "^5.0.9",
+        "uuid": "^13.0.0",
+        "lucide-react": "^0.561.0"
+      },
+      "development": {
+        "vite": "^7.2.4",
+        "typescript": "~5.9.3",
+        "vitest": "^4.0.15",
+        "eslint": "^9.39.1"
+      }
+    },
+    "dvpe_CLD": {
+      "path": "dvpe_CLD/",
+      "platform": "tauri-desktop",
+      "nodeVersion": ">=16.0.0",
+      "rustVersion": ">=1.70.0",
+      "production": {
+        "@tauri-apps/api": "^1.6.0",
+        "@xyflow/react": "^12.3.6",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "zustand": "^5.0.2",
+        "framer-motion": "^11.15.0",
+        "immer": "^10.0.3",
+        "lucide-react": "^0.468.0",
+        "clsx": "^2.1.1",
+        "tailwind-merge": "^3.4.0"
+      },
+      "development": {
+        "@tauri-apps/cli": "^1.5.11",
+        "vite": "^6.0.3",
+        "typescript": "^5.7.2",
+        "tailwindcss": "^3.4.17",
+        "vitest": "^4.0.15"
+      }
+    }
+  },
+  
+  "systemPrompt": {
+    "version": "2.3",
+    "codename": "NOVA-HOTFIX",
+    "file": "ANTYGRAVITY_SP_V2.3_NOVA.md",
+    "features": [
+      "File Operation Timeout Pathway",
+      "Python Backend Domain with uv",
+      "Virtual environment protocol",
+      "Claude Opus 4.5 optimization"
+    ]
+  },
+  
+  "directories": {
+    "webFrontend": "dvpe/",
+    "tauriApp": "dvpe_CLD/",
+    "documentation": "Daisy_Documentation/",
+    "embeddedCode": "Daisy-Field-code/",
+    "agentData": ".agent/"
+  },
+  
+  "compatibility": {
+    "browsers": {
+      "chrome": "supported",
+      "firefox": "development-only",
+      "safari": "untested"
+    },
+    "platforms": {
+      "windows": "primary",
+      "macos": "supported",
+      "linux": "supported"
+    }
+  },
+  
+  "verification": {
+    "checklist": [
+      "npm install in dvpe/",
+      "npm install in dvpe_CLD/",
+      "Drag & drop functionality test",
+      "Block rendering verification",
+      "Code generation output validation",
+      "Patch save/load test"
+    ],
+    "testCommands": {
+      "dvpe": "cd dvpe && npm run test",
+      "dvpe_CLD": "cd dvpe_CLD && npm run test"
+    }
+  },
+  
+  "changelog": {
+    "added": [
+      "CHANGELOG.md for project-wide change tracking",
+      "Version manifest for machine-readable release info",
+      "Baseline verification checklist"
+    ],
+    "changed": [],
+    "fixed": [
+      "Drag & drop race condition in Canvas component",
+      "Premature drag termination in DragOverlay"
+    ],
+    "deprecated": [],
+    "removed": [
+      "Competing drop handlers from Canvas wrapper",
+      "Window dragend listener from DragOverlay"
+    ],
+    "security": []
+  },
+  
+  "upgradeNotes": {
+    "fromVersion": "2.3.0-nova-hotfix",
+    "breakingChanges": false,
+    "migrationRequired": false,
+    "notes": [
+      "No breaking changes - direct upgrade supported",
+      "Verify drag/drop handlers are not re-added in custom code",
+      "Check for any custom Canvas wrapper modifications"
+    ]
+  }
+}

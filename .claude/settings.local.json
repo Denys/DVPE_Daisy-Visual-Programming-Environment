@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(du:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && ls -la \"\"{}\"\"')",
+      "Bash(git diff-index:*)",
+      "Bash(wc:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(if [ -d \"dvpe_CLD/src-tauri\" ])",
+      "Bash(then mv dvpe_CLD/src-tauri archive_out/tauri_backend/src-tauri)",
+      "Bash(else echo \"src-tauri not found\")",
+      "Bash(fi)",
+      "Bash(if [ -d \"Daisy_Documentation\" ])",
+      "Bash(then mv Daisy_Documentation archive_out/)",
+      "Bash(else echo \"Daisy_Documentation not found\")",
+      "Bash(if [ -f \"dvpe_CLD/README.md\" ])",
+      "Bash(then mv dvpe_CLD/README.md archive_out/documentation/)",
+      "Bash(else echo \"dvpe_CLD/README.md not found\")",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

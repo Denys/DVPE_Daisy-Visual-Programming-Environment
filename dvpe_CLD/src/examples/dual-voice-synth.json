@@ -1,0 +1,130 @@
+{
+  "version": "1.0.0",
+  "patch": {
+    "metadata": {
+      "name": "Dual Voice Subtractive Synth",
+      "author": "DVPE Testing",
+      "description": "Two-voice synthesizer for validation benchmark - Phase 4 reference patch",
+      "created": "2025-12-27T00:00:00.000Z",
+      "modified": "2025-12-27T00:00:00.000Z",
+      "version": "1.0.0",
+      "targetHardware": "field",
+      "sampleRate": 48000,
+      "blockSize": 48
+    },
+    "blocks": [
+      {
+        "id": "key_1",
+        "definitionId": "key",
+        "position": { "x": 100, "y": 100 },
+        "parameterValues": { "note": 60, "velocity": 0.8 },
+        "label": "Voice 1 Key"
+      },
+      {
+        "id": "osc_1",
+        "definitionId": "oscillator",
+        "position": { "x": 300, "y": 100 },
+        "parameterValues": { "freq": 440, "amp": 0.8, "waveform": "WAVE_POLYBLEP_SAW", "pw": 0.5 },
+        "label": "Oscillator 1"
+      },
+      {
+        "id": "adsr_1",
+        "definitionId": "adsr",
+        "position": { "x": 300, "y": 250 },
+        "parameterValues": { "attack": 0.01, "decay": 0.1, "sustain": 0.7, "release": 0.3 },
+        "label": "ADSR 1"
+      },
+      {
+        "id": "filter_1",
+        "definitionId": "moog_ladder",
+        "position": { "x": 500, "y": 100 },
+        "parameterValues": { "freq": 2000, "res": 0.3 },
+        "label": "Filter 1"
+      },
+      {
+        "id": "vca_1",
+        "definitionId": "vca",
+        "position": { "x": 700, "y": 100 },
+        "parameterValues": { "gain": 1.0 },
+        "label": "VCA 1"
+      },
+      {
+        "id": "key_2",
+        "definitionId": "key",
+        "position": { "x": 100, "y": 400 },
+        "parameterValues": { "note": 64, "velocity": 0.8 },
+        "label": "Voice 2 Key"
+      },
+      {
+        "id": "osc_2",
+        "definitionId": "oscillator",
+        "position": { "x": 300, "y": 400 },
+        "parameterValues": { "freq": 554.37, "amp": 0.8, "waveform": "WAVE_POLYBLEP_SAW", "pw": 0.5 },
+        "label": "Oscillator 2"
+      },
+      {
+        "id": "adsr_2",
+        "definitionId": "adsr",
+        "position": { "x": 300, "y": 550 },
+        "parameterValues": { "attack": 0.01, "decay": 0.1, "sustain": 0.7, "release": 0.3 },
+        "label": "ADSR 2"
+      },
+      {
+        "id": "filter_2",
+        "definitionId": "moog_ladder",
+        "position": { "x": 500, "y": 400 },
+        "parameterValues": { "freq": 2000, "res": 0.3 },
+        "label": "Filter 2"
+      },
+      {
+        "id": "vca_2",
+        "definitionId": "vca",
+        "position": { "x": 700, "y": 400 },
+        "parameterValues": { "gain": 1.0 },
+        "label": "VCA 2"
+      },
+      {
+        "id": "mixer_1",
+        "definitionId": "mixer",
+        "position": { "x": 900, "y": 250 },
+        "parameterValues": { "ch1_level": 0.5, "ch2_level": 0.5, "ch3_level": 0, "ch4_level": 0 },
+        "label": "Main Mixer"
+      },
+      {
+        "id": "output_1",
+        "definitionId": "audio_output",
+        "position": { "x": 1100, "y": 250 },
+        "parameterValues": {},
+        "label": "Audio Output"
+      },
+      {
+        "id": "knob_freq",
+        "definitionId": "knob",
+        "position": { "x": 100, "y": 700 },
+        "parameterValues": { "channel": "0", "min": 0, "max": 1, "curve": "linear" },
+        "label": "Freq Knob"
+      },
+      {
+        "id": "knob_filter",
+        "definitionId": "knob",
+        "position": { "x": 250, "y": 700 },
+        "parameterValues": { "channel": "1", "min": 0, "max": 1, "curve": "logarithmic" },
+        "label": "Filter Knob"
+      }
+    ],
+    "connections": [
+      { "id": "c1", "sourceBlockId": "key_1", "sourcePortId": "gate_out", "targetBlockId": "adsr_1", "targetPortId": "gate", "type": "trigger" },
+      { "id": "c2", "sourceBlockId": "osc_1", "sourcePortId": "out", "targetBlockId": "filter_1", "targetPortId": "in", "type": "audio" },
+      { "id": "c3", "sourceBlockId": "filter_1", "sourcePortId": "out", "targetBlockId": "vca_1", "targetPortId": "audio_in", "type": "audio" },
+      { "id": "c4", "sourceBlockId": "adsr_1", "sourcePortId": "out", "targetBlockId": "vca_1", "targetPortId": "cv_in", "type": "cv" },
+      { "id": "c5", "sourceBlockId": "vca_1", "sourcePortId": "out", "targetBlockId": "mixer_1", "targetPortId": "ch1", "type": "audio" },
+      { "id": "c6", "sourceBlockId": "key_2", "sourcePortId": "gate_out", "targetBlockId": "adsr_2", "targetPortId": "gate", "type": "trigger" },
+      { "id": "c7", "sourceBlockId": "osc_2", "sourcePortId": "out", "targetBlockId": "filter_2", "targetPortId": "in", "type": "audio" },
+      { "id": "c8", "sourceBlockId": "filter_2", "sourcePortId": "out", "targetBlockId": "vca_2", "targetPortId": "audio_in", "type": "audio" },
+      { "id": "c9", "sourceBlockId": "adsr_2", "sourcePortId": "out", "targetBlockId": "vca_2", "targetPortId": "cv_in", "type": "cv" },
+      { "id": "c10", "sourceBlockId": "vca_2", "sourcePortId": "out", "targetBlockId": "mixer_1", "targetPortId": "ch2", "type": "audio" },
+      { "id": "c11", "sourceBlockId": "mixer_1", "sourcePortId": "out", "targetBlockId": "output_1", "targetPortId": "left", "type": "audio" },
+      { "id": "c12", "sourceBlockId": "mixer_1", "sourcePortId": "out", "targetBlockId": "output_1", "targetPortId": "right", "type": "audio" }
+    ]
+  }
+}

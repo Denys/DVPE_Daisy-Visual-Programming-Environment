@@ -1,0 +1,64 @@
+# === Dependencies ===
+node_modules/
+**/node_modules/
+package-lock.json
+
+# === Build Outputs ===
+dist/
+build/
+**/dist/
+**/build/
+*.tsbuildinfo
+
+# === Rust/Tauri (if re-added) ===
+**/target/
+Cargo.lock
+*.exe
+*.pdb
+*.dll
+*.rlib
+*.rmeta
+*.d
+
+# === Vite Cache ===
+**/.vite/
+.vite-temp/
+
+# === IDE & Editor ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-*
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === Environment & Secrets ===
+.env
+.env.*
+credentials.json
+token.json
+
+# === Python (if used) ===
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# === Testing ===
+.coverage
+.pytest_cache/
+htmlcov/
+*.log
+
+# === Temporary ===
+.tmp/
+*.tmp
+*.temp
+
+# === Archives (export folder) ===
+archive_out/
+.git_backup
