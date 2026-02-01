@@ -6,7 +6,6 @@
 import {
     BlockDefinition,
     BlockCategory,
-    BlockCategory,
     BlockColorScheme,
     ParameterType,
     SignalType,

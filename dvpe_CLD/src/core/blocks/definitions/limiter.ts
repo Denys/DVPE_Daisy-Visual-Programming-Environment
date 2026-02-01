@@ -42,7 +42,7 @@ export const LimiterBlock: BlockDefinition = {
                 step: 0.1,
                 curve: ParameterCurve.LINEAR,
             },
-            cvModulatable: false,
+            cvModulatable: true,
             group: 'Main',
             description: 'Input gain before limiting',
         },
@@ -56,6 +56,13 @@ export const LimiterBlock: BlockDefinition = {
             signalType: SignalType.AUDIO,
             direction: PortDirection.INPUT,
             description: 'Audio input',
+        },
+        {
+            id: 'pre_gain_cv',
+            displayName: 'GAIN CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Pre-gain modulation',
         },
         {
             id: 'out',

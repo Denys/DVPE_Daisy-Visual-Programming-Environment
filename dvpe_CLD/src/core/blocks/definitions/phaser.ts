@@ -146,7 +146,7 @@ export const PhaserBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Waves',
 
     // Documentation

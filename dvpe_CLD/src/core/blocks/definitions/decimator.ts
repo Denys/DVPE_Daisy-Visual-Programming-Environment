@@ -98,7 +98,7 @@ export const DecimatorBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Grid3X3',
 
     // Documentation

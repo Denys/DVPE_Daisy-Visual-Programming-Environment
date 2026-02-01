@@ -91,7 +91,7 @@ export const PitchShifterBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'ArrowUpDown',
 
     // Documentation

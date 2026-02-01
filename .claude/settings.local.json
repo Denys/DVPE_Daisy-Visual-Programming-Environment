@@ -18,7 +18,17 @@
       "Bash(then mv dvpe_CLD/README.md archive_out/documentation/)",
       "Bash(else echo \"dvpe_CLD/README.md not found\")",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: DVPE v3.3 - 76 blocks, clean repo\n\nRepository cleaned from build artifacts:\n- Removed node_modules/ from tracking\n- Removed Rust target/ build artifacts\n- Removed Vite cache files\n- Updated .gitignore with comprehensive patterns\n\nArchived:\n- Old AI system prompts \\(v3.0, unified\\) -> archive_out/\n- Daisy_Documentation \\(225MB\\) -> archive_out/\n- Dec 2025 agent reports -> archive_out/\n- Implementation ideas merged -> archive/\nEOF\n\\)\")",
+      "Bash(git count-objects:*)",
+      "Bash(git branch:*)",
+      "Bash(git gc:*)",
+      "Bash(npm test)",
+      "Bash(make clean:*)",
+      "Bash(make)",
+      "Bash(head:*)",
+      "Bash(ls:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

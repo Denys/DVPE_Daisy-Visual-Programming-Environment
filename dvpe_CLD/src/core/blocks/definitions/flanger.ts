@@ -91,9 +91,7 @@ export const FlangerBlock: BlockDefinition = {
                 step: 0.01,
                 curve: ParameterCurve.LINEAR,
             },
-            cvModulatable: false,
-            group: 'Advanced',
-            description: 'Base delay time',
+            cvModulatable: true,
         },
     ],
 
@@ -126,6 +124,13 @@ export const FlangerBlock: BlockDefinition = {
             signalType: SignalType.CV,
             direction: PortDirection.INPUT,
             description: 'Feedback modulation input',
+        },
+        {
+            id: 'delay_cv',
+            displayName: 'DLY CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Delay modulation input',
         },
         {
             id: 'out',

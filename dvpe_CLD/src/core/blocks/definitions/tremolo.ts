@@ -74,6 +74,7 @@ export const TremoloBlock: BlockDefinition = {
                 { value: 1, label: 'Triangle', cppValue: 'Oscillator::WAVE_TRI' },
                 { value: 2, label: 'Square', cppValue: 'Oscillator::WAVE_SQUARE' },
             ],
+            cvModulatable: true,
             group: 'Main',
             description: 'LFO waveform shape',
         },
@@ -103,6 +104,13 @@ export const TremoloBlock: BlockDefinition = {
             description: 'Depth modulation',
         },
         {
+            id: 'waveform_cv',
+            displayName: 'WAVE CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Waveform selection modulation',
+        },
+        {
             id: 'out',
             displayName: 'OUT',
             signalType: SignalType.AUDIO,
@@ -113,7 +121,7 @@ export const TremoloBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Activity',
 
     // Documentation

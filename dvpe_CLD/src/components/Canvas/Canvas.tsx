@@ -29,9 +29,10 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { motion } from 'framer-motion';
 
 import { usePatchStore, useUIStore } from '@/stores';
+// import { BlockInstance } from '@/types'; // Unused
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import BlockNode, { BlockNodeData } from './BlockNode';
-import CommentNode, { CommentNodeData } from './CommentNode';
+import CommentNode from './CommentNode'; // CommentNodeData unused
 import ConnectionEdge, { ConnectionEdgeData } from './ConnectionEdge';
 import AlignmentToolbar from './AlignmentToolbar';
 import { DragOverlay } from './DragOverlay';

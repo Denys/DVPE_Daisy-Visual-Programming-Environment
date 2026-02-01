@@ -39,6 +39,13 @@ export const BypassBlock: BlockDefinition = {
             description: 'Input signal',
         },
         {
+            id: 'ctrl',
+            displayName: 'CTRL',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Control input (> 0.5 passes signal)',
+        },
+        {
             id: 'out',
             displayName: 'OUT',
             signalType: SignalType.AUDIO,
@@ -52,15 +59,13 @@ export const BypassBlock: BlockDefinition = {
     icon: 'ArrowRight',
 
     // Documentation
-    description: 'Pass-through utility block',
+    description: 'Pass-through utility / Mute',
     documentation: `
-Simply passes the input directly to output.
+Passes input availability based on Control signal.
 
-out = in
+If CTRL > 0.5 (or unconnected): out = in
+If CTRL <= 0.5: out = 0
 
-Use for:
-- Signal routing clarity
-- Creating named nodes
-- Placeholder for future processing
+Acts as a mute/gate or simple switch.
   `.trim(),
 };

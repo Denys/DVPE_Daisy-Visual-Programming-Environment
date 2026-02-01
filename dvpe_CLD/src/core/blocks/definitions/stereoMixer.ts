@@ -167,7 +167,7 @@ export const StereoMixerBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.UTILITY,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Sliders',
 
     // Documentation

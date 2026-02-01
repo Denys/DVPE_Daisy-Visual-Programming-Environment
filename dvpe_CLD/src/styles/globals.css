@@ -12,44 +12,62 @@
    ============================================================================ */
 
 @layer base {
+
   /* CSS Variables for the design system */
   :root {
     /* Surface colors */
-    --color-surface-primary: 15 15 17; /* #0F0F11 */
-    --color-surface-secondary: 23 23 26; /* #17171A */
-    --color-surface-tertiary: 32 32 36; /* #202024 */
+    --color-surface-primary: 15 15 17;
+    /* #0F0F11 */
+    --color-surface-secondary: 23 23 26;
+    /* #17171A */
+    --color-surface-tertiary: 32 32 36;
+    /* #202024 */
 
     /* Text colors */
-    --color-text-primary: 250 250 250; /* #FAFAFA */
-    --color-text-secondary: 200 200 203; /* #C8C8CB */
-    --color-text-tertiary: 140 140 145; /* #8C8C91 */
+    --color-text-primary: 250 250 250;
+    /* #FAFAFA */
+    --color-text-secondary: 200 200 203;
+    /* #C8C8CB */
+    --color-text-tertiary: 140 140 145;
+    /* #8C8C91 */
 
     /* Border color */
-    --color-border: 45 45 49; /* #2D2D31 */
+    --color-border: 45 45 49;
+    /* #2D2D31 */
 
     /* Signal type colors (as defined in tailwind.config.js) */
     /* Audio - Cyan */
-    --color-audio-primary: 34 211 238; /* #22D3EE */
+    --color-audio-primary: 34 211 238;
+    /* #22D3EE */
     --color-audio-wire: 34 211 238;
-    --color-audio-block-bg: 14 74 92; /* #0E4A5C */
+    --color-audio-block-bg: 14 74 92;
+    /* #0E4A5C */
 
     /* CV - Yellow */
-    --color-cv-primary: 250 204 21; /* #FACC15 */
+    --color-cv-primary: 250 204 21;
+    /* #FACC15 */
     --color-cv-wire: 250 204 21;
-    --color-cv-block-bg: 66 32 6; /* #422006 */
+    --color-cv-block-bg: 66 32 6;
+    /* #422006 */
 
     /* Trigger - Orange */
-    --color-trigger-primary: 251 146 60; /* #FB923C */
+    --color-trigger-primary: 251 146 60;
+    /* #FB923C */
     --color-trigger-wire: 251 146 60;
-    --color-trigger-block-bg: 67 20 7; /* #431407 */
+    --color-trigger-block-bg: 67 20 7;
+    /* #431407 */
 
     /* User - Green */
-    --color-user-primary: 74 222 128; /* #4ADE80 */
-    --color-user-block-bg: 20 60 34; /* #143C22 */
+    --color-user-primary: 74 222 128;
+    /* #4ADE80 */
+    --color-user-block-bg: 20 60 34;
+    /* #143C22 */
 
     /* Logic - Violet */
-    --color-logic-primary: 167 139 250; /* #A78BFA */
-    --color-logic-block-bg: 46 35 74; /* #2E234A */
+    --color-logic-primary: 167 139 250;
+    /* #A78BFA */
+    --color-logic-block-bg: 46 35 74;
+    /* #2E234A */
   }
 
   /* Dark mode (default) */
@@ -132,6 +150,7 @@
    ============================================================================ */
 
 @layer components {
+
   /* Custom scrollbar for specific elements */
   .custom-scrollbar {
     @apply scrollbar-thin scrollbar-track-surface-primary scrollbar-thumb-surface-tertiary;
@@ -197,6 +216,7 @@
    ============================================================================ */
 
 @layer utilities {
+
   /* Text balance for better typography */
   .text-balance {
     text-wrap: balance;
@@ -204,6 +224,7 @@
 
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -253,6 +274,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -262,6 +284,7 @@
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -271,16 +294,19 @@
   from {
     transform: translateX(100%);
   }
+
   to {
     transform: translateX(0);
   }
 }
 
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -291,6 +317,7 @@
    ============================================================================ */
 
 @media print {
+
   /* Hide UI elements when printing */
   .no-print {
     display: none !important;

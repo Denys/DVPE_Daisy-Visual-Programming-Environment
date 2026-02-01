@@ -106,6 +106,71 @@ import {
   CVOutputBlock,
   GateOutputBlock,
   LEDOutputBlock,
+  // Phase 12: New Features
+  SliderBlock,
+  SwitchBlock,
+  AbsBlock,
+  ExpBlock,
+  Pow2Block,
+  DcSourceBlock,
+  MetroBlock,
+  StepSequencerBlock,
+  // DAFX Integration: Phase 1
+  TubeBlock,
+  WahWahBlock,
+  ToneStackBlock,
+  LowShelvingBlock,
+  HighShelvingBlock,
+  PeakFilterBlock,
+  NoiseGateBlock,
+  // DAFX Integration: Phase 2
+  VibratoBlock,
+  RingModulatorBlock,
+  FdnReverbBlock,
+  StereoPanBlock,
+  // DAFX Integration: Phase 3
+  UniversalCombBlock,
+  LpIirCombBlock,
+  PhaseVocoderPitchBlock,
+  // DAFX Integration: Phase 4
+  CompressorExpanderBlock,
+  SolaTimeStretchBlock,
+  CrosstalkCancellerBlock,
+  RobotizationBlock,
+  WhisperizationBlock,
+  YinPitchBlock,
+  // Phase 12+: Arpeggiator
+  ArpeggiatorBlock,
+  // Synthesis Blocks (DaisySP Gap Fill)
+  FormantOscillatorBlock,
+  VosimOscillatorBlock,
+  VariableShapeOscillatorBlock,
+  HarmonicOscillatorBlock,
+  OscillatorBankBlock,
+  VariableSawOscillatorBlock,
+  ZOscillatorBlock,
+  // Remaining DaisySP Blocks
+  PhasorBlock,
+  SampleHoldBlock,
+  ClockedNoiseBlock,
+  LooperBlock,
+
+  // Phase 13.1: Utility Blocks
+  ModuloBlock, SignBlock, MinBlock, MaxBlock, ClampBlock, NegateBlock,
+  PowBlock, SqrtBlock, ReciprocalBlock, LogBlock,
+  EqualsBlock, NotEqualsBlock, GreaterBlock, LessBlock,
+  LogicAndBlock, LogicOrBlock, LogicNotBlock, LogicXorBlock, SelectBlock,
+  ScaleBlock, OffsetBlock, RangeMapBlock, QuantizeBlock,
+  DerivativeBlock, IntegralBlock, ToggleBlock, CounterBlock,
+  SRLatchBlock, DLatchBlock, EdgeRiseBlock, EdgeFallBlock, SchmittTriggerBlock, RingBufferBlock,
+  SinBlock, CosBlock, TanBlock, Atan2Block, LerpBlock,
+  DbToLinearBlock, LinearToDbBlock, FreqToMidiBlock, MidiToFreqBlock, CentsToRatioBlock,
+  EnvelopeFollowerBlock,
+  ZeroCrossingBlock, WavetableReadBlock, WavetableWriteBlock,
+  MidSideEncodeBlock, MidSideDecodeBlock, GateLengthBlock,
+  SplitterBlock, MergerBlock,
+  WindowHannBlock, WindowHammingBlock, WindowBlackmanBlock, OverlapAddBlock,
+
 } from './definitions';
 
 // ============================================================================
@@ -118,7 +183,7 @@ import {
 const blockDefinitions = new Map<string, BlockDefinition>();
 
 /**
- * Register all blocks (Essential 8 + 12 ported + 9 Phase 1 + 11 Phase 2 + 10 Phase 3 + 20 Phase 4 + 6 Phase 5 = 76 total)
+ * Register all blocks (Essential 8 + 12 ported + 9 Phase 1 + 11 Phase 2 + 10 Phase 3 + 20 Phase 4 + 6 Phase 5 + 7 Synthesis + 4 Remaining = 99 total)
  */
 function registerAllBlocks(): void {
   const allBlocks: BlockDefinition[] = [
@@ -212,6 +277,72 @@ function registerAllBlocks(): void {
     CVOutputBlock,
     GateOutputBlock,
     LEDOutputBlock,
+    // Phase 12: New Features
+    SliderBlock,
+    SwitchBlock,
+    AbsBlock,
+    ExpBlock,
+    Pow2Block,
+    Pow2Block,
+    DcSourceBlock,
+    MetroBlock,
+    StepSequencerBlock,
+    // DAFX Integration: Phase 1
+    TubeBlock,
+    WahWahBlock,
+    ToneStackBlock,
+    LowShelvingBlock,
+    HighShelvingBlock,
+    PeakFilterBlock,
+    NoiseGateBlock,
+    // DAFX Integration: Phase 2
+    VibratoBlock,
+    RingModulatorBlock,
+    FdnReverbBlock,
+    StereoPanBlock,
+    // DAFX Integration: Phase 3
+    UniversalCombBlock,
+    LpIirCombBlock,
+    PhaseVocoderPitchBlock,
+    // DAFX Integration: Phase 4
+    CompressorExpanderBlock,
+    SolaTimeStretchBlock,
+    CrosstalkCancellerBlock,
+    RobotizationBlock,
+    WhisperizationBlock,
+    YinPitchBlock,
+    EnvelopeFollowerBlock,
+    // Phase 12+: Arpeggiator
+    ArpeggiatorBlock,
+    // Synthesis Blocks (DaisySP Gap Fill)
+    FormantOscillatorBlock,
+    VosimOscillatorBlock,
+    VariableShapeOscillatorBlock,
+    HarmonicOscillatorBlock,
+    OscillatorBankBlock,
+    VariableSawOscillatorBlock,
+    ZOscillatorBlock,
+    // Remaining DaisySP Blocks
+    PhasorBlock,
+    SampleHoldBlock,
+    ClockedNoiseBlock,
+    LooperBlock,
+
+    // Phase 13.1: Utility Blocks
+    ModuloBlock, SignBlock, MinBlock, MaxBlock, ClampBlock, NegateBlock,
+    PowBlock, SqrtBlock, ReciprocalBlock, LogBlock,
+    EqualsBlock, NotEqualsBlock, GreaterBlock, LessBlock,
+    LogicAndBlock, LogicOrBlock, LogicNotBlock, LogicXorBlock, SelectBlock,
+    ScaleBlock, OffsetBlock, RangeMapBlock, QuantizeBlock,
+    DerivativeBlock, IntegralBlock, ToggleBlock, CounterBlock,
+    SRLatchBlock, DLatchBlock, EdgeRiseBlock, EdgeFallBlock, SchmittTriggerBlock, RingBufferBlock,
+    SinBlock, CosBlock, TanBlock, Atan2Block, LerpBlock,
+    DbToLinearBlock, LinearToDbBlock, FreqToMidiBlock, MidiToFreqBlock, CentsToRatioBlock,
+    EnvelopeFollowerBlock,
+    ZeroCrossingBlock, WavetableReadBlock, WavetableWriteBlock,
+    MidSideEncodeBlock, MidSideDecodeBlock, GateLengthBlock,
+    SplitterBlock, MergerBlock,
+    WindowHannBlock, WindowHammingBlock, WindowBlackmanBlock, OverlapAddBlock,
   ];
 
   for (const block of allBlocks) {
@@ -513,6 +644,7 @@ export const BlockRegistry = {
   getCategories: getAvailableCategories,
   register: registerBlock,
   unregister: unregisterBlock,
+  has: (id: string) => blockDefinitions.has(id),
   createInstance: createBlockInstance,
   getPort: getPortDefinition,
   getInputPorts,

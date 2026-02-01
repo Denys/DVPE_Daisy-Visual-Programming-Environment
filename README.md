@@ -8,10 +8,14 @@ A visual block-based programming environment for creating audio patches on [Elec
 
 ## Features
 
-- **50 Audio Blocks**: Oscillators, filters, effects, drums, physical modeling, math utilities
+- **50+ Audio Blocks**: Oscillators, filters, effects, drums, physical modeling, math utilities
 - **Visual Patch Design**: Drag, connect, and configure blocks on an interactive canvas
 - **Real-time Code Generation**: Export DaisySP-compatible C++ code
 - **Daisy Field Target**: Optimized for Daisy Field hardware with knob/key/CV mappings
+- **🆕 Block Designer**: Create custom blocks—the core architectural element of DVPE
+  - **Utility Library**: 40+ primitives (math, logic, routing, state machines)
+  - **Hierarchical Blocks**: Encapsulate block groups into reusable components
+  - **Hybrid Code Modules**: Embed TypeScript/C++ for optimization-critical routines
 
 ---
 
@@ -113,8 +117,7 @@ DVPE_Daisy-Visual-Programming-Environment/
 │   │   ├── codegen/             # C++ code generator
 │   │   └── store/               # Zustand state management
 │   └── public/                  # Static assets
-├── Daisy_Documentation/         # Reference docs
-└── .agent/                      # Development workflows
+└── LICENSE                      # License file
 ```
 
 ---

@@ -74,7 +74,7 @@ export const SoftClipBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'TrendingUp',
 
     // Documentation

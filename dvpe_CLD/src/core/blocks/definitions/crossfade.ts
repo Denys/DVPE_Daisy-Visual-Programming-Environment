@@ -82,7 +82,7 @@ export const CrossFadeBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.UTILITY,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'ArrowLeftRight',
 
     // Documentation

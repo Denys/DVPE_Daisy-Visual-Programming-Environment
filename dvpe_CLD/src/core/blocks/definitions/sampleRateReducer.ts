@@ -76,7 +76,7 @@ export const SampleRateReducerBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Stairs',
 
     // Documentation

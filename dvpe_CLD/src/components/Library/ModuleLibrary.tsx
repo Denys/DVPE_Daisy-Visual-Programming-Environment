@@ -11,6 +11,7 @@ import * as Icons from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
+import { useCustomBlockStore } from '@/stores/customBlockStore';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import { BlockCategory, BlockColorScheme } from '@/types';
 
@@ -208,6 +209,9 @@ const ModuleLibrary: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const panels = useUIStore((state) => state.panels);
 
+  // Use custom blocks to trigger re-render and registry update
+  const customBlocks = useCustomBlockStore((state) => state.customBlocks);
+
   // Get all blocks grouped by category
   const blocksByCategory = useMemo(() => {
     const categories = BlockRegistry.getCategories();
@@ -218,7 +222,7 @@ const ModuleLibrary: React.FC = () => {
     }
 
     return grouped;
-  }, []);
+  }, [customBlocks]);
 
   // Filter blocks by search query
   const filteredBlocks = useMemo(() => {

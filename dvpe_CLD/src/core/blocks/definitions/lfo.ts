@@ -78,6 +78,7 @@ export const LfoBlock: BlockDefinition = {
             ],
             group: 'Main',
             description: 'LFO waveform shape',
+            cvModulatable: true,
         },
     ],
 
@@ -97,6 +98,13 @@ export const LfoBlock: BlockDefinition = {
             signalType: SignalType.CV,
             direction: PortDirection.INPUT,
             description: 'Rate modulation input',
+        },
+        {
+            id: 'waveform_cv',
+            displayName: 'WAVE CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Waveform selection modulation',
         },
         {
             id: 'out',

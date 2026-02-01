@@ -81,7 +81,7 @@ export const PanBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.UTILITY,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'MoveHorizontal',
 
     // Documentation

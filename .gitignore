@@ -61,4 +61,31 @@ htmlcov/
 
 # === Archives (export folder) ===
 archive_out/
-.git_backup
+
+# === Project Exclusions (Documentation, References, Agent Data) ===
+Books/
+daisy_documentation/
+DaisyExamples/
+directives/
+docs/
+PLANNING/
+project_description/
+prompts/
+_agentic_promts/
+_block_diagrams/
+_block_diagrams_code/
+_daisy_reference_code/
+ai_system_prompts/
+archive/
+code_to_dvpe_gaps/
+Implementation ideas explanations/
+prototypes/
+scripts/
+execution/
+*.txt
+
+# Explicit markdown files in root
+*.md
+!README.md
+!LICENSE
+!github_upload_plan.md

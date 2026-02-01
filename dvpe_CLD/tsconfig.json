@@ -57,5 +57,9 @@
     {
       "path": "./tsconfig.node.json"
     }
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts"
   ]
 }

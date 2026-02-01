@@ -1,0 +1,940 @@
+/**
+ * BlockUIDesigner CSS
+ * Phase 13.2: Visual UI Builder styling
+ * 
+ * Color scheme: DVPE neon aesthetic
+ * - Primary: #58a6ff (blue)
+ * - Secondary: #f0883e (orange)
+ * - Accent: #a371f7 (purple)
+ * - Success: #3fb950 (green)
+ * - Danger: #f85149 (red)
+ */
+
+/* ============================================
+   Main Container
+   ============================================ */
+.block-ui-designer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 600px;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ============================================
+   Toolbar
+   ============================================ */
+.designer-toolbar {
+  height: 44px;
+  background: linear-gradient(180deg, #1c2128 0%, #161b22 100%);
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.tool-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tool-button:hover:not(:disabled) {
+  background: rgba(88, 166, 255, 0.1);
+  color: #58a6ff;
+}
+
+.tool-button.active {
+  background: rgba(88, 166, 255, 0.2);
+  color: #58a6ff;
+}
+
+.tool-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tool-button.danger:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.1);
+  color: #f85149;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: #30363d;
+  margin: 0 4px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.zoom-level {
+  font-size: 12px;
+  font-weight: 500;
+  color: #8b949e;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* ============================================
+   Main Layout
+   ============================================ */
+.designer-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ============================================
+   Element Library Panel (Left)
+   ============================================ */
+.element-library-panel {
+  width: 200px;
+  background: #161b22;
+  border-right: 1px solid #30363d;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #30363d;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c9d1d9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.element-categories {
+  padding: 8px;
+}
+
+.element-category {
+  margin-bottom: 12px;
+}
+
+.category-name {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+}
+
+.element-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.element-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #8b949e;
+  cursor: grab;
+  transition: all 0.15s ease;
+}
+
+.element-item:hover {
+  background: rgba(88, 166, 255, 0.1);
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
+.element-item:active {
+  cursor: grabbing;
+}
+
+/* ============================================
+   Design Canvas (Center)
+   ============================================ */
+.design-canvas {
+  flex: 1;
+  background: #0d1117;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-content {
+  transform-origin: center center;
+  transition: transform 0.15s ease;
+}
+
+.canvas-block-preview {
+  position: relative;
+}
+
+.block-frame {
+  width: 240px;
+  height: 160px;
+  background: linear-gradient(135deg, #1c2128 0%, #161b22 100%);
+  border: 2px dashed #30363d;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 20px rgba(88, 166, 255, 0.05),
+    inset 0 0 40px rgba(0, 0, 0, 0.3);
+}
+
+.block-placeholder {
+  font-size: 12px;
+  color: #484f58;
+  user-select: none;
+}
+
+.canvas-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(88, 166, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88, 166, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ============================================
+   Inspector Panel (Right)
+   ============================================ */
+.inspector-panel {
+  width: 280px;
+  background: #161b22;
+  border-left: 1px solid #30363d;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.inspector-content {
+  padding: 12px;
+}
+
+.inspector-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: #484f58;
+  font-size: 12px;
+}
+
+.inspector-section {
+  margin-bottom: 16px;
+}
+
+.section-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.property-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.property-row label {
+  flex: 0 0 60px;
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.property-row input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 12px;
+}
+
+.property-row input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.property-row input:read-only {
+  background: rgba(255, 255, 255, 0.02);
+  color: #8b949e;
+}
+
+/* ============================================
+   Status Bar
+   ============================================ */
+.designer-status-bar {
+  height: 26px;
+  background: linear-gradient(180deg, #161b22 0%, #1c2128 100%);
+  border-top: 1px solid #30363d;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-label {
+  color: #484f58;
+}
+
+.status-value {
+  color: #8b949e;
+}
+
+.status-separator {
+  color: #30363d;
+}
+
+.status-spacer {
+  flex: 1;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+.element-library-panel::-webkit-scrollbar,
+.inspector-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.element-library-panel::-webkit-scrollbar-track,
+.inspector-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.element-library-panel::-webkit-scrollbar-thumb,
+.inspector-panel::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+.element-library-panel::-webkit-scrollbar-thumb:hover,
+.inspector-panel::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* ============================================
+   Day 2: Library Panel Enhancements
+   ============================================ */
+.library-search {
+  padding: 8px 12px;
+  border-bottom: 1px solid #30363d;
+}
+
+.search-input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 12px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.search-input::placeholder {
+  color: #484f58;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.category-header:hover {
+  color: #c9d1d9;
+}
+
+.category-chevron {
+  margin-right: 4px;
+  transition: transform 0.2s ease;
+}
+
+.category-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.category-count {
+  margin-left: auto;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* ============================================
+   Day 2: Element Thumbnails
+   ============================================ */
+.element-thumbnail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  cursor: grab;
+  transition: all 0.15s ease;
+}
+
+.element-thumbnail:hover {
+  background: rgba(88, 166, 255, 0.08);
+  border-color: rgba(88, 166, 255, 0.4);
+  box-shadow: 0 0 8px rgba(88, 166, 255, 0.1);
+}
+
+.element-thumbnail:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+.thumbnail-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #58a6ff;
+}
+
+.thumbnail-name {
+  font-size: 10px;
+  color: #8b949e;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ============================================
+   Day 2: Canvas Drag States
+   ============================================ */
+.design-canvas.drag-over {
+  background: rgba(88, 166, 255, 0.02);
+}
+
+.design-canvas.drag-over .block-frame {
+  border-color: #58a6ff;
+  border-style: solid;
+  box-shadow:
+    0 0 20px rgba(88, 166, 255, 0.15),
+    inset 0 0 40px rgba(88, 166, 255, 0.05);
+}
+
+.drop-indicator {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border: 2px dashed #58a6ff;
+  border-radius: 4px;
+  background: rgba(88, 166, 255, 0.1);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+/* ============================================
+   Day 2: Draggable Elements on Canvas
+   ============================================ */
+.draggable-element {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  cursor: move;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.draggable-element:hover {
+  border-color: #484f58;
+}
+
+.draggable-element.selected {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
+}
+
+.draggable-element.dragging {
+  opacity: 0.8;
+  cursor: grabbing;
+}
+
+.element-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.element-icon {
+  color: #58a6ff;
+}
+
+.element-label {
+  font-size: 10px;
+  color: #8b949e;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================
+   Day 2: Transform Handles
+   ============================================ */
+.transform-handles {
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+}
+
+.handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #58a6ff;
+  border: 1px solid #0d1117;
+  border-radius: 2px;
+  pointer-events: auto;
+}
+
+.handle-nw {
+  top: 0;
+  left: 0;
+  cursor: nw-resize;
+  transform: translate(-50%, -50%);
+}
+
+.handle-n {
+  top: 0;
+  left: 50%;
+  cursor: n-resize;
+  transform: translate(-50%, -50%);
+}
+
+.handle-ne {
+  top: 0;
+  right: 0;
+  cursor: ne-resize;
+  transform: translate(50%, -50%);
+}
+
+.handle-e {
+  top: 50%;
+  right: 0;
+  cursor: e-resize;
+  transform: translate(50%, -50%);
+}
+
+.handle-se {
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+  transform: translate(50%, 50%);
+}
+
+.handle-s {
+  bottom: 0;
+  left: 50%;
+  cursor: s-resize;
+  transform: translate(-50%, 50%);
+}
+
+.handle-sw {
+  bottom: 0;
+  left: 0;
+  cursor: sw-resize;
+  transform: translate(-50%, 50%);
+}
+
+.handle-w {
+  top: 50%;
+  left: 0;
+  cursor: w-resize;
+  transform: translate(-50%, -50%);
+}
+
+.handle-rotate {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: #a371f7;
+  border: 1px solid #0d1117;
+  border-radius: 50%;
+  cursor: grab;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.handle:hover {
+  background: #79c0ff;
+}
+
+.handle-rotate:hover {
+  background: #c297ff;
+}
+
+/* ============================================
+   Day 3: Inspector Panel Enhancements
+   ============================================ */
+.inspector-type-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid #30363d;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.type-badge {
+  padding: 2px 8px;
+  background: rgba(88, 166, 255, 0.15);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #58a6ff;
+  text-transform: uppercase;
+}
+
+.element-name {
+  font-size: 12px;
+  color: #c9d1d9;
+  font-weight: 500;
+}
+
+.inspector-multi-select {
+  padding: 16px;
+  text-align: center;
+}
+
+.multi-select-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(163, 113, 247, 0.15);
+  border: 1px solid rgba(163, 113, 247, 0.3);
+  border-radius: 6px;
+  color: #a371f7;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.multi-select-hint {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #484f58;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: #8b949e;
+}
+
+.section-header .section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.property-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.property-row.full-width {
+  grid-column: 1 / -1;
+}
+
+.property-row .unit {
+  color: #484f58;
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.property-row select {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.property-row select:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #c9d1d9;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #58a6ff;
+}
+
+.property-empty {
+  grid-column: 1 / -1;
+  padding: 12px;
+  text-align: center;
+  color: #484f58;
+  font-size: 11px;
+}
+
+/* ============================================
+   Day 3: Binding Editor
+   ============================================ */
+.binding-unbound,
+.binding-bound {
+  padding: 8px 0;
+}
+
+.binding-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px;
+  text-align: center;
+}
+
+.binding-empty .empty-icon {
+  color: #484f58;
+  margin-bottom: 4px;
+}
+
+.binding-empty span {
+  font-size: 11px;
+  color: #484f58;
+}
+
+.binding-empty .empty-hint {
+  font-size: 10px;
+  color: #30363d;
+}
+
+.binding-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selector-label {
+  font-size: 11px;
+  color: #8b949e;
+}
+
+.parameter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.parameter-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.parameter-option:hover {
+  background: rgba(88, 166, 255, 0.08);
+  border-color: rgba(88, 166, 255, 0.4);
+}
+
+.param-block {
+  font-size: 10px;
+  color: #484f58;
+}
+
+.param-name {
+  font-size: 12px;
+  color: #c9d1d9;
+}
+
+.binding-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.target-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.target-block {
+  font-size: 10px;
+  color: #3fb950;
+}
+
+.target-param {
+  font-size: 12px;
+  color: #c9d1d9;
+  font-weight: 500;
+}
+
+.unbind-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.unbind-button:hover {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: rgba(248, 81, 73, 0.3);
+  color: #f85149;
+}
+
+.binding-mapping {
+  margin-bottom: 8px;
+}
+
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 6px 0;
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.advanced-toggle:hover {
+  color: #c9d1d9;
+}
+
+.advanced-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.advanced-toggle svg.expanded {
+  transform: rotate(180deg);
+}
+
+.binding-advanced {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #30363d;
+}

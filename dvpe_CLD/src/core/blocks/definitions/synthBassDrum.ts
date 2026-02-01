@@ -83,11 +83,18 @@ export const SynthBassDrumBlock: BlockDefinition = {
         {
             id: 'dirty',
             displayName: 'Dirty',
-            type: ParameterType.BOOL,
+            type: ParameterType.FLOAT,
             cppSetter: 'SetDirtiness',
-            defaultValue: false,
+            defaultValue: 0.0,
+            range: {
+                min: 0.0,
+                max: 1.0,
+                step: 0.01,
+                curve: ParameterCurve.LINEAR,
+            },
+            cvModulatable: true,
             group: 'Main',
-            description: 'Adds harmonic distortion',
+            description: 'Adds harmonic distortion (0 = clean, 1 = dirty)',
         },
         {
             id: 'fm_envelope_amount',
@@ -191,6 +198,13 @@ export const SynthBassDrumBlock: BlockDefinition = {
             signalType: SignalType.CV,
             direction: PortDirection.INPUT,
             description: 'Accent modulation input',
+        },
+        {
+            id: 'dirty_cv',
+            displayName: 'DIRTY CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Dirtiness modulation input',
         },
         {
             id: 'out',

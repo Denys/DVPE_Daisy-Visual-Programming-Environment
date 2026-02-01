@@ -16,7 +16,7 @@ export const DcBlockBlock: BlockDefinition = {
     id: 'dcblock',
     className: 'daisysp::DcBlock',
     displayName: 'DC BLOCK',
-    category: BlockCategory.UTILITY,
+    category: BlockCategory.FILTERS,
 
     // C++ Code Generation
     headerFile: 'daisysp.h',

@@ -74,7 +74,7 @@ export const BitcrushBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Binary',
 
     // Documentation

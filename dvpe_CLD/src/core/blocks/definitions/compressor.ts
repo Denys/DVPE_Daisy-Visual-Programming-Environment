@@ -118,11 +118,18 @@ export const CompressorBlock: BlockDefinition = {
     {
       id: 'auto_makeup',
       displayName: 'Auto Makeup',
-      type: ParameterType.BOOL,
+      type: ParameterType.FLOAT,
       cppSetter: 'AutoMakeup',
-      defaultValue: false,
+      defaultValue: 0.0,
+      range: {
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        curve: ParameterCurve.LINEAR,
+      },
+      cvModulatable: true,
       group: 'Output',
-      description: 'Automatically calculate makeup gain from ratio',
+      description: 'Auto makeup gain (0 = off, 1 = full auto)',
     },
   ],
 
@@ -176,6 +183,13 @@ export const CompressorBlock: BlockDefinition = {
       signalType: SignalType.CV,
       direction: PortDirection.INPUT,
       description: 'Release time CV modulation',
+    },
+    {
+      id: 'auto_makeup_cv',
+      displayName: 'A-MAKE CV',
+      signalType: SignalType.CV,
+      direction: PortDirection.INPUT,
+      description: 'Auto makeup modulation input',
     },
     {
       id: 'out',

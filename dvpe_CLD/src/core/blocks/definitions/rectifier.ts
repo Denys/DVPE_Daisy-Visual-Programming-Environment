@@ -63,7 +63,7 @@ export const RectifierBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Minus',
 
     // Documentation

@@ -58,7 +58,7 @@ export const AutowahBlock: BlockDefinition = {
                 step: 0.01,
                 curve: ParameterCurve.LINEAR,
             },
-            cvModulatable: false,
+            cvModulatable: true,
             group: 'Main',
             description: 'Dry/wet mix (1.0 = fully wet)',
         },
@@ -74,7 +74,7 @@ export const AutowahBlock: BlockDefinition = {
                 step: 0.01,
                 curve: ParameterCurve.LINEAR,
             },
-            cvModulatable: false,
+            cvModulatable: true,
             group: 'Main',
             description: 'Output level',
         },
@@ -97,6 +97,20 @@ export const AutowahBlock: BlockDefinition = {
             description: 'Wah position modulation',
         },
         {
+            id: 'dry_wet_cv',
+            displayName: 'MIX CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Mix modulation',
+        },
+        {
+            id: 'level_cv',
+            displayName: 'LEVEL CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Level modulation',
+        },
+        {
             id: 'out',
             displayName: 'OUT',
             signalType: SignalType.AUDIO,
@@ -107,7 +121,7 @@ export const AutowahBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'AudioWaveform',
 
     // Documentation

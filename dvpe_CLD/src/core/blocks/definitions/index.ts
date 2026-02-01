@@ -106,3 +106,63 @@ export { CVInputBlock } from './cvInput';
 export { CVOutputBlock } from './cvOutput';
 export { GateOutputBlock } from './gateOutput';
 export { LEDOutputBlock } from './ledOutput';
+
+// === Phase 12: New Features ===
+export { SliderBlock } from './slider';
+export { SwitchBlock } from './switch';
+export { AbsBlock } from './abs';
+export { ExpBlock } from './exp';
+export { Pow2Block } from './pow2';
+export { DcSourceBlock } from './dcSource';
+export { MetroBlock } from './metro';
+export { StepSequencerBlock } from './stepSequencer';
+
+// === DAFX Integration: Phase 1 ===
+export { TubeBlock } from './tube';
+export { WahWahBlock } from './wahwah';
+export { ToneStackBlock } from './toneStack';
+export { LowShelvingBlock } from './lowShelving';
+export { HighShelvingBlock } from './highShelving';
+export { PeakFilterBlock } from './peakFilter';
+export { NoiseGateBlock } from './noiseGate';
+
+// === DAFX Integration: Phase 2 ===
+export { VibratoBlock } from './vibrato';
+export { RingModulatorBlock } from './ringModulator';
+export { FdnReverbBlock } from './fdnReverb';
+export { StereoPanBlock } from './stereoPan';
+
+// === DAFX Integration: Phase 3 ===
+export { UniversalCombBlock } from './universalComb';
+export { LpIirCombBlock } from './lpIirComb';
+export { PhaseVocoderPitchBlock } from './phaseVocoderPitch';
+
+// === DAFX Integration: Phase 4 ===
+export { compressorExpander as CompressorExpanderBlock } from './compressorExpander';
+export { solaTimeStretch as SolaTimeStretchBlock } from './solaTimeStretch';
+export { crosstalkCanceller as CrosstalkCancellerBlock } from './crosstalkCanceller';
+export { robotization as RobotizationBlock } from './robotization';
+export { whisperization as WhisperizationBlock } from './whisperization';
+export { yinPitch as YinPitchBlock } from './yinPitch';
+
+
+// === DAFX Integration: Phase 12 (New) ===
+export { ArpeggiatorBlock } from './arpeggiator';
+
+// === Synthesis Blocks (DaisySP Gap Fill) ===
+export { FormantOscillatorBlock } from './formantOscillator';
+export { VosimOscillatorBlock } from './vosimOscillator';
+export { VariableShapeOscillatorBlock } from './variableShapeOscillator';
+export { HarmonicOscillatorBlock } from './harmonicOscillator';
+export { OscillatorBankBlock } from './oscillatorBank';
+export { VariableSawOscillatorBlock } from './variableSawOscillator';
+export { ZOscillatorBlock } from './zOscillator';
+
+// === Remaining DaisySP Blocks ===
+export { PhasorBlock } from './phasor';
+export { SampleHoldBlock } from './sampleHold';
+export { ClockedNoiseBlock } from './clockedNoise';
+export { LooperBlock } from './looper';
+
+// === Phase 13.1: Utility Blocks ===
+export * from './utility';

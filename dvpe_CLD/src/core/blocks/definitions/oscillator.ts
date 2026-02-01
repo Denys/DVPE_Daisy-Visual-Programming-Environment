@@ -82,6 +82,7 @@ export const OscillatorBlock: BlockDefinition = {
       ],
       group: 'Main',
       description: 'Waveform shape (use PolyBLEP variants for anti-aliased output)',
+      cvModulatable: true,
     },
     {
       id: 'pw',
@@ -109,6 +110,13 @@ export const OscillatorBlock: BlockDefinition = {
       signalType: SignalType.CV,
       direction: PortDirection.INPUT,
       description: 'Frequency modulation input',
+    },
+    {
+      id: 'waveform_cv',
+      displayName: 'WAVE CV',
+      signalType: SignalType.CV,
+      direction: PortDirection.INPUT,
+      description: 'Waveform selection modulation',
     },
     {
       id: 'amp_cv',

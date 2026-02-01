@@ -17,6 +17,7 @@ import {
   SignalType,
   CommentNode,
 } from '@/types';
+import { HardwareConfiguration, DEFAULT_HARDWARE_CONFIG } from '@/types/hardware';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 
 // ============================================================================
@@ -26,6 +27,7 @@ import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 interface HistoryEntry {
   blocks: BlockInstance[];
   connections: Connection[];
+  hardwareConfig: HardwareConfiguration;
   description: string;
 }
 
@@ -35,6 +37,7 @@ interface PatchState {
   connections: Connection[];
   comments: CommentNode[];
   metadata: ProjectMetadata;
+  hardwareConfig: HardwareConfiguration;
 
   // History for undo/redo
   history: HistoryEntry[];
@@ -104,6 +107,7 @@ interface PatchActions {
   loadPatch: (patch: PatchGraph) => void;
   getPatch: () => PatchGraph;
   setMetadata: (metadata: Partial<ProjectMetadata>) => void;
+  setHardwareConfig: (config: Partial<HardwareConfiguration>) => void;
   markClean: () => void;
 
   // Utility
@@ -134,6 +138,7 @@ const initialState: PatchState = {
   connections: [],
   comments: [],
   metadata: createDefaultMetadata(),
+  hardwareConfig: DEFAULT_HARDWARE_CONFIG,
   history: [],
   historyIndex: -1,
   maxHistoryLength: 50,
@@ -159,6 +164,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           newHistory.push({
             blocks: JSON.parse(JSON.stringify(state.blocks)),
             connections: JSON.parse(JSON.stringify(state.connections)),
+            hardwareConfig: JSON.parse(JSON.stringify(state.hardwareConfig)),
             description,
           });
 
@@ -364,6 +370,20 @@ export const usePatchStore = create<PatchState & PatchActions>()(
 
           set((state) => {
             state.connections.push(connection);
+
+            // AUTO-ENABLE CV PORT: If target port is a *_cv port, enable it on the target block
+            if (targetPortId.endsWith('_cv')) {
+              const paramId = targetPortId.replace(/_cv$/, '');
+              const block = state.blocks.find((b) => b.id === targetBlockId);
+              if (block) {
+                if (!block.enabledCvPorts) {
+                  block.enabledCvPorts = [];
+                }
+                if (!block.enabledCvPorts.includes(paramId)) {
+                  block.enabledCvPorts.push(paramId);
+                }
+              }
+            }
           });
 
           saveHistory('Add connection');
@@ -690,6 +710,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           set((state) => {
             state.blocks = JSON.parse(JSON.stringify(previousState.blocks));
             state.connections = JSON.parse(JSON.stringify(previousState.connections));
+            state.hardwareConfig = JSON.parse(JSON.stringify(previousState.hardwareConfig));
             state.historyIndex = historyIndex - 1;
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
@@ -704,6 +725,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           set((state) => {
             state.blocks = JSON.parse(JSON.stringify(nextState.blocks));
             state.connections = JSON.parse(JSON.stringify(nextState.connections));
+            state.hardwareConfig = JSON.parse(JSON.stringify(nextState.hardwareConfig));
             state.historyIndex = historyIndex + 1;
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
@@ -720,6 +742,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             state.blocks = [];
             state.connections = [];
             state.metadata = createDefaultMetadata();
+            state.hardwareConfig = DEFAULT_HARDWARE_CONFIG;
             state.history = [];
             state.historyIndex = -1;
             state.selectedBlockIds = [];
@@ -733,6 +756,31 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             state.blocks = patch.blocks;
             state.connections = patch.connections;
             state.metadata = patch.metadata;
+            // Load hardware config or default if missing (backward compatibility)
+            state.hardwareConfig = patch.hardwareConfig || DEFAULT_HARDWARE_CONFIG;
+
+            // Sync platform from metadata if missing in hardwareConfig (migration)
+            if (!patch.hardwareConfig && patch.metadata.targetHardware) {
+              // @ts-ignore - casting string to PlatformType
+              state.hardwareConfig.platform = patch.metadata.targetHardware as any;
+            }
+
+            // AUTO-ENABLE CV PORTS: Infer enabledCvPorts from existing connections
+            for (const conn of state.connections) {
+              if (conn.targetPortId.endsWith('_cv')) {
+                const paramId = conn.targetPortId.replace(/_cv$/, '');
+                const block = state.blocks.find((b) => b.id === conn.targetBlockId);
+                if (block) {
+                  if (!block.enabledCvPorts) {
+                    block.enabledCvPorts = [];
+                  }
+                  if (!block.enabledCvPorts.includes(paramId)) {
+                    block.enabledCvPorts.push(paramId);
+                  }
+                }
+              }
+            }
+
             state.history = [];
             state.historyIndex = -1;
             state.selectedBlockIds = [];
@@ -748,6 +796,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           metadata: get().metadata,
           blocks: get().blocks,
           connections: get().connections,
+          hardwareConfig: get().hardwareConfig,
         }),
 
         setMetadata: (metadata) => {
@@ -755,6 +804,22 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             state.metadata = { ...state.metadata, ...metadata };
             state.isDirty = true;
           });
+        },
+
+        setHardwareConfig: (config) => {
+          set((state) => {
+            state.hardwareConfig = { ...state.hardwareConfig, ...config };
+
+            // Sync metadata for backward compatibility if platform changes
+            if (config.platform) {
+              // @ts-ignore - Valid cast as PlatformType is compatible with targetHardware string union
+              state.metadata.targetHardware = config.platform;
+            }
+
+            state.isDirty = true;
+          });
+
+          saveHistory('Update hardware config');
         },
 
         markClean: () => {
@@ -795,6 +860,7 @@ export const selectMetadata = (state: PatchState) => state.metadata;
 export const selectSelectedBlockIds = (state: PatchState) => state.selectedBlockIds;
 export const selectSelectedConnectionIds = (state: PatchState) => state.selectedConnectionIds;
 export const selectIsDirty = (state: PatchState) => state.isDirty;
+export const selectHardwareConfig = (state: PatchState) => state.hardwareConfig;
 
 export const selectSelectedBlocks = (state: PatchState) =>
   state.blocks.filter((b) => state.selectedBlockIds.includes(b.id));

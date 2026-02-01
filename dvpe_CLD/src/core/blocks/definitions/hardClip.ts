@@ -74,7 +74,7 @@ export const HardClipBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Square',
 
     // Documentation

@@ -74,7 +74,7 @@ export const DistortionBlock: BlockDefinition = {
                 step: 0.01,
                 curve: ParameterCurve.LINEAR,
             },
-            cvModulatable: false,
+            cvModulatable: true,
             group: 'Main',
             description: 'Output level',
         },
@@ -104,6 +104,13 @@ export const DistortionBlock: BlockDefinition = {
             description: 'Tone modulation',
         },
         {
+            id: 'level_cv',
+            displayName: 'LEVEL CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+            description: 'Level modulation',
+        },
+        {
             id: 'out',
             displayName: 'OUT',
             signalType: SignalType.AUDIO,
@@ -113,7 +120,7 @@ export const DistortionBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.FX,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Flame',
 
     // Documentation

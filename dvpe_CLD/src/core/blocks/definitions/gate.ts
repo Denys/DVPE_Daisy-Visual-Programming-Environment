@@ -74,7 +74,7 @@ export const GateBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.DYNAMICS,
+    colorScheme: BlockColorScheme.LOGIC,
     icon: 'DoorClosed',
 
     // Documentation

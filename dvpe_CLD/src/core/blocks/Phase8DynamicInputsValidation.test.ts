@@ -172,7 +172,45 @@ describe('Phase 8.2 Dynamic Inputs Visual Update', () => {
         });
     });
 
-    // ... DEMUX section skipped (unchanged) ...
+    // ========================================================================
+    // TASK 8.2.3: DEMUX Block Dynamic Outputs
+    // ========================================================================
+    describe('8.2.3 DEMUX Block Dynamic Outputs', () => {
+        it('DEMUX block should have outputCount ENUM parameter', () => {
+            const definition = BlockRegistry.get('demux');
+            expect(definition).toBeDefined();
+
+            const outputCountParam = definition?.parameters.find(p => p.id === 'outputCount');
+            expect(outputCountParam).toBeDefined();
+            expect(outputCountParam?.type).toBe(ParameterType.ENUM);
+            expect(outputCountParam?.enumValues).toHaveLength(3);
+            expect(outputCountParam?.enumValues?.map(e => e.value)).toEqual(['2', '3', '4']);
+        });
+
+        it('DEMUX block should have 4 output ports defined', () => {
+            const outputPorts = getOutputPorts('demux');
+            expect(outputPorts).toHaveLength(4);
+            expect(outputPorts.map(p => p.id)).toEqual(['out0', 'out1', 'out2', 'out3']);
+        });
+
+        it('DEMUX block with outputCount=2 should show only 2 output ports', () => {
+            const visiblePorts = getVisibleOutputPorts('demux', 2);
+            expect(visiblePorts).toHaveLength(2);
+            expect(visiblePorts.map(p => p.id)).toEqual(['out0', 'out1']);
+        });
+
+        it('DEMUX block with outputCount=3 should show only 3 output ports', () => {
+            const visiblePorts = getVisibleOutputPorts('demux', 3);
+            expect(visiblePorts).toHaveLength(3);
+            expect(visiblePorts.map(p => p.id)).toEqual(['out0', 'out1', 'out2']);
+        });
+
+        it('DEMUX block with outputCount=4 should show all 4 output ports', () => {
+            const visiblePorts = getVisibleOutputPorts('demux', 4);
+            expect(visiblePorts).toHaveLength(4);
+            expect(visiblePorts.map(p => p.id)).toEqual(['out0', 'out1', 'out2', 'out3']);
+        });
+    });
 
     // ========================================================================
     // TASK 8.2.4: MIXER Block Dynamic Inputs

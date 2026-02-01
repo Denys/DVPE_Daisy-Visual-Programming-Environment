@@ -88,7 +88,7 @@ export const BalanceBlock: BlockDefinition = {
     ],
 
     // Visual
-    colorScheme: BlockColorScheme.UTILITY,
+    colorScheme: BlockColorScheme.AUDIO,
     icon: 'Scale',
 
     // Documentation

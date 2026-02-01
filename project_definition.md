@@ -1,8 +1,8 @@
 # DVPE Project Definition
 
-**Daisy Visual Programming Environment**  
-**Created**: 2026-01-11  
-**Last Updated**: 2026-01-11
+**Daisy Visual Programming Environment**
+**Created**: 2026-01-11
+**Last Updated**: 2026-01-23
 
 ---
 
@@ -38,14 +38,15 @@ Create a **visual block programming environment** for the **Electrosmith Daisy**
 
 ### In Scope
 1. **Visual Block Diagram Composer** (✅ Phase 0-2 Complete)
-2. **Comprehensive Block Library** (✅ Phase 1-5 Complete)
+2. **Comprehensive Block Library** (✅ Phase 1-5 Complete, 108 blocks)
 3. **Code Generation Engine** (✅ Phase 3 Complete)
-4. **Architecture Window** (⏳ Phase 10 - Active)
-   - Hardware platform selection (Seed, Patch, Field, Pod)
+4. **Architecture Window** (✅ Phase 10 - Complete)
+   - Hardware platform selection (Seed, Field, Pod)
    - Pin mapping
-5. **Custom Block Designer** (⏳ Phase 11 - Planned)
-   - Custom visual interfaces
-   - Compound blocks
+5. **Custom Block Designer** (🚀 Phase 13 - **ESSENTIAL CORE**)
+   - Utility block library (40+ primitives)
+   - Hierarchical block creation
+   - Hybrid code modules
 
 ### Out of Scope
 - Real-time audio processing in the browser
@@ -56,15 +57,17 @@ Create a **visual block programming environment** for the **Electrosmith Daisy**
 ## 📊 General Plan (Stages & Phases)
 
 ### Stage 1: Foundation (Completed ✅)
-- **Phase 0-9**: 76 Blocks, Code Gen, UI Basics, Validation
+- **Phase 0-9**: 108 Blocks, Code Gen, UI Basics, Validation
 
-### Stage 2: Hardware Integration (Active 🚀)
-- **Phase 10**: Architecture Window (~20h)
-- **Phase 11**: Block Diagram Designer (~30h)
-- **Phase 12**: New Blocks (Slider, Switch, etc.)
+### Stage 2: Hardware Integration (Complete ✅)
+- **Phase 10**: Architecture Window ✅ Complete
+- **Phase 11**: New Blocks ✅ Complete (Slider, Switch, Math blocks)
 
-### Stage 3: Deployment (Planned ⏳)
-- **Phase 13**: Production Build & Documentation
+### Stage 3: Core Extension (Active 🚀)
+- **Phase 13**: Block Designer 🚀 **ACTIVE CORE** (Utility Library, Hierarchical Blocks)
+
+### Stage 4: Deployment
+- **Phase 12**: Production Build & Documentation ⏳ Pending
 
 ---
 
@@ -73,15 +76,21 @@ Create a **visual block programming environment** for the **Electrosmith Daisy**
 The DVPE project is **considered complete** when:
 
 1. **Architecture Window** allows full hardware configuration.
-2. **Block Designer** allows creation of custom UI blocks.
+2. **Block Designer** is a first-class core feature enabling:
+   - Creation of algorithmic blocks via utility primitives or embedded code
+   - Creation of hierarchical blocks via encapsulation
+   - Utility library sufficient to build any DSP algorithm visually
 3. **End-to-End** flow (Design -> Generate -> Flash) works for all target platforms.
 4. **Documentation** is sufficient for a new user to build a synth.
 
 ---
 
-## compass Navigation
+## Compass Navigation
 
-- **detailed plan** → `planning_documents/DVPE-IMPLEMENTATION-PLAN-v3.3.md`
-- **current status** → `CHECKPOINT.md`
-- **completion tracker** → `completion_monitor.md`
+> **Note**: All planning files consolidated into `PLANNING/` folder (2026-01-23)
+
+- **detailed plan** → `PLANNING/MASTER_PLAN.md`
+- **current status** → `PLANNING/CHECKPOINT.md`
+- **completion tracker** → `PLANNING/completion_monitor.md`
+- **planning directive** → `PLANNING/PROJECT_PLANNING_DIRECTIVE.md`
 - **bug log** → `dvpe_bugs.md`

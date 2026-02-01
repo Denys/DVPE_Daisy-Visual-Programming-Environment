@@ -16,9 +16,11 @@ import {
     AlignVerticalJustifyEnd,
     AlignHorizontalSpaceAround,
     AlignVerticalSpaceAround,
+    Box,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePatchStore } from '@/stores';
+import { CreateBlockDialog } from '@/components/BlockDesigner/CreateBlockDialog';
 
 // ============================================================================
 // TOOLBAR BUTTON COMPONENT
@@ -60,6 +62,9 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
 
 const AlignmentToolbar: React.FC = () => {
     const selectedBlockIds = usePatchStore((state) => state.selectedBlockIds);
+    const blocks = usePatchStore((state) => state.blocks);
+    const connections = usePatchStore((state) => state.connections);
+
     const alignBlocksLeft = usePatchStore((state) => state.alignBlocksLeft);
     const alignBlocksRight = usePatchStore((state) => state.alignBlocksRight);
     const alignBlocksCenterH = usePatchStore((state) => state.alignBlocksCenterH);
@@ -69,92 +74,123 @@ const AlignmentToolbar: React.FC = () => {
     const distributeBlocksH = usePatchStore((state) => state.distributeBlocksH);
     const distributeBlocksV = usePatchStore((state) => state.distributeBlocksV);
 
+    const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+
     const showToolbar = selectedBlockIds.length >= 2;
     const canDistribute = selectedBlockIds.length >= 3;
+    const canGrup = selectedBlockIds.length >= 1; // Technically can group 1, but usually >1
+
+    // Prepare patch object for dialog
+    const currentPatch = React.useMemo(() => ({
+        blocks,
+        connections
+    }), [blocks, connections]);
 
     return (
-        <AnimatePresence>
-            {showToolbar && (
-                <Panel position="top-center" className="mt-2">
-                    <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className={cn(
-                            'flex items-center gap-1 px-2 py-1.5',
-                            'bg-surface-secondary/95 backdrop-blur-sm rounded-lg',
-                            'border border-border shadow-lg'
-                        )}
-                    >
-                        {/* Horizontal Alignment */}
-                        <div className="flex items-center gap-0.5">
-                            <ToolbarButton
-                                icon={<AlignHorizontalJustifyStart className="w-4 h-4" />}
-                                label="Align Left"
-                                onClick={alignBlocksLeft}
-                            />
-                            <ToolbarButton
-                                icon={<AlignHorizontalJustifyCenter className="w-4 h-4" />}
-                                label="Align Center Horizontal"
-                                onClick={alignBlocksCenterH}
-                            />
-                            <ToolbarButton
-                                icon={<AlignHorizontalJustifyEnd className="w-4 h-4" />}
-                                label="Align Right"
-                                onClick={alignBlocksRight}
-                            />
-                        </div>
+        <>
+            <AnimatePresence>
+                {showToolbar && (
+                    <Panel position="top-center" className="mt-2">
+                        <motion.div
+                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className={cn(
+                                'flex items-center gap-1 px-2 py-1.5',
+                                'bg-surface-secondary/95 backdrop-blur-sm rounded-lg',
+                                'border border-border shadow-lg'
+                            )}
+                        >
+                            {/* Horizontal Alignment */}
+                            <div className="flex items-center gap-0.5">
+                                <ToolbarButton
+                                    icon={<AlignHorizontalJustifyStart className="w-4 h-4" />}
+                                    label="Align Left"
+                                    onClick={alignBlocksLeft}
+                                />
+                                <ToolbarButton
+                                    icon={<AlignHorizontalJustifyCenter className="w-4 h-4" />}
+                                    label="Align Center Horizontal"
+                                    onClick={alignBlocksCenterH}
+                                />
+                                <ToolbarButton
+                                    icon={<AlignHorizontalJustifyEnd className="w-4 h-4" />}
+                                    label="Align Right"
+                                    onClick={alignBlocksRight}
+                                />
+                            </div>
 
-                        {/* Divider */}
-                        <div className="w-px h-5 bg-border mx-1" />
+                            {/* Divider */}
+                            <div className="w-px h-5 bg-border mx-1" />
 
-                        {/* Vertical Alignment */}
-                        <div className="flex items-center gap-0.5">
-                            <ToolbarButton
-                                icon={<AlignVerticalJustifyStart className="w-4 h-4" />}
-                                label="Align Top"
-                                onClick={alignBlocksTop}
-                            />
-                            <ToolbarButton
-                                icon={<AlignVerticalJustifyCenter className="w-4 h-4" />}
-                                label="Align Center Vertical"
-                                onClick={alignBlocksCenterV}
-                            />
-                            <ToolbarButton
-                                icon={<AlignVerticalJustifyEnd className="w-4 h-4" />}
-                                label="Align Bottom"
-                                onClick={alignBlocksBottom}
-                            />
-                        </div>
+                            {/* Vertical Alignment */}
+                            <div className="flex items-center gap-0.5">
+                                <ToolbarButton
+                                    icon={<AlignVerticalJustifyStart className="w-4 h-4" />}
+                                    label="Align Top"
+                                    onClick={alignBlocksTop}
+                                />
+                                <ToolbarButton
+                                    icon={<AlignVerticalJustifyCenter className="w-4 h-4" />}
+                                    label="Align Center Vertical"
+                                    onClick={alignBlocksCenterV}
+                                />
+                                <ToolbarButton
+                                    icon={<AlignVerticalJustifyEnd className="w-4 h-4" />}
+                                    label="Align Bottom"
+                                    onClick={alignBlocksBottom}
+                                />
+                            </div>
 
-                        {/* Divider */}
-                        <div className="w-px h-5 bg-border mx-1" />
+                            {/* Divider */}
+                            <div className="w-px h-5 bg-border mx-1" />
 
-                        {/* Distribution */}
-                        <div className="flex items-center gap-0.5">
-                            <ToolbarButton
-                                icon={<AlignHorizontalSpaceAround className="w-4 h-4" />}
-                                label="Distribute Horizontally"
-                                onClick={distributeBlocksH}
-                                disabled={!canDistribute}
-                            />
-                            <ToolbarButton
-                                icon={<AlignVerticalSpaceAround className="w-4 h-4" />}
-                                label="Distribute Vertically"
-                                onClick={distributeBlocksV}
-                                disabled={!canDistribute}
-                            />
-                        </div>
+                            {/* Distribution */}
+                            <div className="flex items-center gap-0.5">
+                                <ToolbarButton
+                                    icon={<AlignHorizontalSpaceAround className="w-4 h-4" />}
+                                    label="Distribute Horizontally"
+                                    onClick={distributeBlocksH}
+                                    disabled={!canDistribute}
+                                />
+                                <ToolbarButton
+                                    icon={<AlignVerticalSpaceAround className="w-4 h-4" />}
+                                    label="Distribute Vertically"
+                                    onClick={distributeBlocksV}
+                                    disabled={!canDistribute}
+                                />
+                            </div>
 
-                        {/* Selection count badge */}
-                        <div className="ml-1 px-1.5 py-0.5 bg-accent-primary/20 rounded text-[10px] text-accent-primary font-medium">
-                            {selectedBlockIds.length}
-                        </div>
-                    </motion.div>
-                </Panel>
-            )}
-        </AnimatePresence>
+                            {/* Divider */}
+                            <div className="w-px h-5 bg-border mx-1" />
+
+                            {/* Grouping / creation */}
+                            <div className="flex items-center gap-0.5">
+                                <ToolbarButton
+                                    icon={<Box className="w-4 h-4" />}
+                                    label="Create Custom Block"
+                                    onClick={() => setShowCreateDialog(true)}
+                                    disabled={!canGrup}
+                                />
+                            </div>
+
+                            {/* Selection count badge */}
+                            <div className="ml-1 px-1.5 py-0.5 bg-accent-primary/20 rounded text-[10px] text-accent-primary font-medium">
+                                {selectedBlockIds.length}
+                            </div>
+                        </motion.div>
+                    </Panel>
+                )}
+            </AnimatePresence>
+
+            <CreateBlockDialog
+                isOpen={showCreateDialog}
+                onClose={() => setShowCreateDialog(false)}
+                currentPatch={currentPatch}
+                selectedBlockIds={selectedBlockIds}
+            />
+        </>
     );
 };
 

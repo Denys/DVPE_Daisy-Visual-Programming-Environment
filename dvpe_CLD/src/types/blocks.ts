@@ -4,6 +4,12 @@
  */
 
 // ============================================================================
+// IMPORTS
+// ============================================================================
+
+import { HardwareConfiguration } from './hardware';
+
+// ============================================================================
 // ENUMERATIONS
 // ============================================================================
 
@@ -64,6 +70,7 @@ export enum BlockCategory {
   PHYSICAL_MODELING = 'Physical Modeling',
   DRUMS = 'Drums',
   MATH = 'Math',
+  CUSTOM = 'Custom',
 }
 
 /**
@@ -88,6 +95,8 @@ export enum BlockColorScheme {
   DYNAMICS = 'dynamics',
   /** Utility blocks (gray) */
   UTILITY = 'utility',
+  /** Mixing and panners (light blue/cyan) */
+  MIXING = 'mixing',
 }
 
 // ============================================================================
@@ -131,7 +140,9 @@ export interface ParameterDefinition {
   /** Parameter data type */
   type: ParameterType;
   /** C++ setter method name (e.g., 'SetFreq') */
-  cppSetter: string;
+  cppSetter?: string;
+  /** Index for setter method (e.g. SetSingleAmp(val, index)) */
+  cppSetterIndex?: number;
   /** C++ getter method name (optional) */
   cppGetter?: string;
   /** Default value */
@@ -180,17 +191,26 @@ export interface BlockDefinition {
 
   // === C++ Code Generation ===
   /** Header file to include (e.g., 'daisysp.h') */
-  headerFile: string;
+  headerFile?: string;
   /** C++ namespace (e.g., 'daisysp') */
   namespace?: string;
   /** Initialization method name (e.g., 'Init') */
-  initMethod: string;
+  initMethod?: string;
   /** Parameters for Init() (e.g., ['sample_rate']) */
-  initParams: string[];
+  initParams?: string[];
   /** Main processing method name (e.g., 'Process') */
-  processMethod: string;
+  processMethod?: string;
   /** Return type of Process() */
   processReturnType?: 'float' | 'void' | 'bool';
+  /** Parameters passed to Process() (e.g., ['trigger', 'input']) */
+  processParams?: string[];
+
+  /** Inline C++ process implementation template (for arithmetic/math/utility) */
+  cppInlineProcess?: string;
+  /** C++ State Variables (for inline blocks with state) */
+  cppStateVars?: Array<{ type: string; name: string; init: string; }>;
+  /** Complex C++ process template (for custom logic) */
+  cppProcessTemplate?: string;
 
   // === Configuration ===
   /** Parameter definitions */
@@ -323,7 +343,10 @@ export interface PatchGraph {
   /** All block instances */
   blocks: BlockInstance[];
   /** All connections */
+  /** All connections */
   connections: Connection[];
+  /** Hardware configuration */
+  hardwareConfig?: HardwareConfiguration;
 }
 
 /**
