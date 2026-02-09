@@ -144,11 +144,28 @@ const CanvasInner: React.FC = () => {
       // Handle selection changes
       const selectionChanges = changes.filter((c) => c.type === 'select');
       if (selectionChanges.length > 0) {
-        const selectedIds = selectionChanges
-          .filter((c) => 'selected' in c && (c as { selected: boolean }).selected)
-          .map((c) => (c as { id: string }).id);
-        if (selectedIds.length > 0) {
-          selectBlocks(selectedIds);
+        // Use getState to avoid dependency on selectedBlockIds causing re-creation of callback
+        const currentSelected = new Set(usePatchStore.getState().selectedBlockIds);
+        let hasChanges = false;
+
+        selectionChanges.forEach((c) => {
+          if (c.type === 'select') {
+            if (c.selected) {
+              if (!currentSelected.has(c.id)) {
+                currentSelected.add(c.id);
+                hasChanges = true;
+              }
+            } else {
+              if (currentSelected.has(c.id)) {
+                currentSelected.delete(c.id);
+                hasChanges = true;
+              }
+            }
+          }
+        });
+
+        if (hasChanges) {
+          selectBlocks(Array.from(currentSelected), true);
         }
       }
 
@@ -341,7 +358,7 @@ const CanvasInner: React.FC = () => {
         selectionOnDrag={true}
         selectionKeyCode="Control"
         selectNodesOnDrag={false}
-        multiSelectionKeyCode="Shift"
+        multiSelectionKeyCode="Control"
         deleteKeyCode={null} // We handle delete ourselves
         fitView
         fitViewOptions={{

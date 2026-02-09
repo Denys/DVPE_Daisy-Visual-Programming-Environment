@@ -339,56 +339,7 @@ ports: [
 
 ---
 
-1. Oscillator and LFO blocks have a `waveform_cv` input port defined, but external connections to this port do not affect waveform selection in generated code.
-2. Encoder block's `value` output cannot dynamically control oscillator waveform at runtime.
-3. In DVPE canvas, encoder appears disconnected from oscillator and LED when meant to control waveform.
-
-**User Report** (with screenshot):
-> "oscillator (and lfo) still dont have external port for waveform selection, so encoder results disconnected from oscillator and from LED1"
-
-**Root Cause**:
-1. The `waveform` parameter is an ENUM type, not FLOAT
-2. Code generator does not implement CV modulation for ENUM parameters
-3. `waveform_cv` port exists but generates no runtime code to map CV (0.0-1.0) to waveform enum values
-
-**Current State** (oscillator.ts):
-```typescript
-// Parameter exists with cvModulatable:
-{
-    id: 'waveform',
-    type: ParameterType.ENUM,
-    cvModulatable: true,  // ← Port shows in GUI
-    enumValues: ['WAVE_SIN', 'WAVE_TRI', 'WAVE_SAW', ...],
-}
-
-// Port exists:
-{
-    id: 'waveform_cv',
-    displayName: 'WAVE CV',
-    signalType: SignalType.CV,
-    direction: PortDirection.INPUT,
-}
-```
-
-**Missing Implementation** (CodeGenerator.ts):
-```typescript
-// Need to add in oscillator processing:
-if (hasConnection('waveform_cv')) {
-    // Map CV 0.0-1.0 to waveform enum index
-    int waveform_index = (int)(waveform_cv * NUM_WAVEFORMS);
-    osc.SetWaveform(waveform_index);
-}
-```
-
-**Required Changes**:
-1. `CodeGenerator.ts`: Add ENUM CV modulation support
-2. Map CV 0.0-1.0 → integer index → enum value
-3. Apply to both `oscillator` and `lfo` blocks
-4. Update documentation to show CV-to-waveform mapping
-
-**Related Issues**:
-- Encoder `value` port connection to oscillator `waveform_cv` is valid but generates no effect
-- LED output cannot reflect current waveform without this fix
+> **Note (2026-02-09 audit)**: The above [RESOLVED] Bug #011 entry claims the fix was applied on 2026-01-20. A duplicate orphaned analysis (removed during cleanup) suggested the fix was incomplete. **Verification needed**: Test that connecting an encoder's value output to an oscillator's `waveform_cv` port produces valid C++ with `SetWaveform()` mapping. If it does not generate runtime code, Bug #011 should be reopened.
 
 ---
 
