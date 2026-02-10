@@ -7,7 +7,83 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CodeGenerator } from '@/codegen/CodeGenerator';
-import { BlockInstance, Connection } from '@/types';
+import { BlockInstance, Connection, BlockCategory, BlockColorScheme, ParameterType, ParameterCurve, SignalType, PortDirection } from '@/types';
+import { BlockRegistry } from '@/core/blocks/BlockRegistry';
+import { CustomBlockDefinition } from '@/types/customBlock';
+
+const createCustomOscVcaDefinition = (): CustomBlockDefinition => ({
+    id: 'custom_osc_vca_test',
+    className: 'Custom_custom_osc_vca_test',
+    displayName: 'CUSTOM OSC VCA',
+    category: BlockCategory.CUSTOM,
+    description: 'Test custom block for flattening',
+    colorScheme: BlockColorScheme.USER,
+    icon: 'Box',
+    headerFile: '',
+    initMethod: '',
+    initParams: [],
+    processMethod: '',
+    parameters: [
+        {
+            id: 'osc_1_freq',
+            displayName: 'Osc Freq',
+            type: ParameterType.FLOAT,
+            defaultValue: 440,
+            range: { min: 20, max: 20000, step: 1, curve: ParameterCurve.LOGARITHMIC },
+            cvModulatable: false,
+        },
+        {
+            id: 'vca_1_gain',
+            displayName: 'VCA Gain',
+            type: ParameterType.FLOAT,
+            defaultValue: 1.0,
+            range: { min: 0, max: 1, step: 0.01, curve: ParameterCurve.LINEAR },
+            cvModulatable: false,
+        },
+    ],
+    ports: [
+        {
+            id: 'vca_1_cv',
+            displayName: 'CV',
+            signalType: SignalType.CV,
+            direction: PortDirection.INPUT,
+        },
+        {
+            id: 'vca_1_out',
+            displayName: 'OUT',
+            signalType: SignalType.AUDIO,
+            direction: PortDirection.OUTPUT,
+        },
+    ],
+    isCustom: true,
+    internalPatch: {
+        metadata: {
+            name: 'Internal Osc VCA',
+            author: 'test',
+            created: new Date().toISOString(),
+            modified: new Date().toISOString(),
+            version: '1.0.0',
+            targetHardware: 'seed',
+            sampleRate: 48000,
+            blockSize: 48,
+        },
+        blocks: [
+            createBlock('osc_1', 'oscillator', { freq: 220, amp: 0.8, waveform: 'WAVE_POLYBLEP_SAW' }),
+            createBlock('vca_1', 'vca', { gain: 1.0 }),
+        ],
+        connections: [
+            createConnection('ic1', 'osc_1', 'out', 'vca_1', 'in', 'audio'),
+        ],
+    },
+    exposedPorts: {
+        vca_1_cv: { blockId: 'vca_1', portId: 'cv' },
+        vca_1_out: { blockId: 'vca_1', portId: 'out' },
+    },
+    exposedParameters: {
+        osc_1_freq: { blockId: 'osc_1', parameterId: 'freq' },
+        vca_1_gain: { blockId: 'vca_1', parameterId: 'gain' },
+    },
+});
 
 // ============================================================================
 // TEST FIXTURES
@@ -60,6 +136,125 @@ const createMinimalPatch = () => ({
 // ============================================================================
 
 describe('CodeGenerator', () => {
+    describe('Custom Block Flattening (T-A2)', () => {
+        it('flattens simple custom block (Osc+VCA) to inline code', () => {
+            const customDef = createCustomOscVcaDefinition();
+            BlockRegistry.register(customDef);
+
+            const patch = {
+                blocks: [
+                    createBlock('mod', 'lfo', { freq: 1.0, amp: 0.5 }),
+                    createBlock('custom1', customDef.id, {
+                        osc_1_freq: 330,
+                        vca_1_gain: 0.9,
+                    }),
+                    createBlock('out1', 'audio_output', {}),
+                ],
+                connections: [
+                    createConnection('c1', 'mod', 'out', 'custom1', 'vca_1_cv', 'cv'),
+                    createConnection('c2', 'custom1', 'vca_1_out', 'out1', 'left', 'audio'),
+                ],
+                metadata: {
+                    name: 'Custom Flatten Test',
+                    blockSize: 48,
+                    sampleRate: 48000,
+                },
+            };
+
+            const generator = new CodeGenerator(patch as any);
+            const result = generator.generate();
+
+            expect(result.mainCpp).toContain('custom1__osc_1');
+            expect(result.mainCpp).toContain('custom1__vca_1');
+            expect(result.mainCpp).toContain('sig_custom1_vca_1_out = sig_custom1__vca_1_out;');
+            expect(result.mainCpp).not.toContain('Not implemented yet');
+
+            BlockRegistry.unregister(customDef.id);
+        });
+
+        it('multiple instances get unique variable prefixes', () => {
+            const customDef = createCustomOscVcaDefinition();
+            BlockRegistry.register(customDef);
+
+            const patch = {
+                blocks: [
+                    createBlock('customA', customDef.id, { osc_1_freq: 220, vca_1_gain: 0.7 }),
+                    createBlock('customB', customDef.id, { osc_1_freq: 440, vca_1_gain: 0.8 }),
+                    createBlock('out1', 'audio_output', {}),
+                ],
+                connections: [
+                    createConnection('c1', 'customA', 'vca_1_out', 'out1', 'left', 'audio'),
+                    createConnection('c2', 'customB', 'vca_1_out', 'out1', 'right', 'audio'),
+                ],
+                metadata: { name: 'Multi Custom', blockSize: 48, sampleRate: 48000 },
+            };
+
+            const generator = new CodeGenerator(patch as any);
+            const result = generator.generate();
+
+            expect(result.mainCpp).toContain('customA__osc_1');
+            expect(result.mainCpp).toContain('customB__osc_1');
+            expect(result.mainCpp).not.toContain('customA__osc_1 = customB__osc_1');
+
+            BlockRegistry.unregister(customDef.id);
+        });
+
+        it('empty custom block generates no processing code', () => {
+            const emptyCustom: CustomBlockDefinition = {
+                ...createCustomOscVcaDefinition(),
+                id: 'custom_empty_test',
+                displayName: 'CUSTOM EMPTY',
+                internalPatch: {
+                    metadata: {
+                        name: 'Empty internal',
+                        author: 'test',
+                        created: new Date().toISOString(),
+                        modified: new Date().toISOString(),
+                        version: '1.0.0',
+                        targetHardware: 'seed',
+                        sampleRate: 48000,
+                        blockSize: 48,
+                    },
+                    blocks: [],
+                    connections: [],
+                },
+                ports: [
+                    {
+                        id: 'vca_1_out',
+                        displayName: 'OUT',
+                        signalType: SignalType.AUDIO,
+                        direction: PortDirection.OUTPUT,
+                    },
+                ],
+                exposedPorts: {
+                    vca_1_out: { blockId: 'vca_1', portId: 'out' },
+                },
+                parameters: [],
+                exposedParameters: {},
+            };
+            BlockRegistry.register(emptyCustom);
+
+            const patch = {
+                blocks: [
+                    createBlock('empty1', emptyCustom.id, {}),
+                    createBlock('out1', 'audio_output', {}),
+                ],
+                connections: [
+                    createConnection('c1', 'empty1', 'vca_1_out', 'out1', 'left', 'audio'),
+                ],
+                metadata: { name: 'Empty Custom', blockSize: 48, sampleRate: 48000 },
+            };
+
+            const generator = new CodeGenerator(patch as any);
+            const result = generator.generate();
+
+            expect(result.mainCpp).not.toContain('empty1__');
+            expect(result.mainCpp).toContain('int main(void)');
+
+            BlockRegistry.unregister(emptyCustom.id);
+        });
+    });
+
     describe('generate()', () => {
         it('should generate valid code for minimal patch', () => {
             const patch = createMinimalPatch();

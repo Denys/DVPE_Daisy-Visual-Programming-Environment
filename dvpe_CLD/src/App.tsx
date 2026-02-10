@@ -13,8 +13,11 @@ import { cn } from '@/lib/utils';
 import { useUIStore, usePatchStore } from '@/stores';
 import { useBlockDesignerStore } from '@/stores/blockDesignerStore';
 import Canvas from '@/components/Canvas/Canvas';
+import { CustomBlockInternalsModal } from '@/components/Canvas/CustomBlockInternalsModal';
+import { ShortcutsModal } from '@/components/Help/ShortcutsModal';
 import ModuleLibrary from '@/components/Library/ModuleLibrary';
 import Inspector from '@/components/Inspector/Inspector';
+import { HelpMenu } from '@/components/TopBar/HelpMenu';
 import { ArchitectureWindow } from '@/components/architecture/ArchitectureWindow';
 import { BlockUIDesigner } from '@/components/BlockDesigner/BlockUIDesigner';
 
@@ -29,6 +32,7 @@ interface TitleBarProps {
   handleOpen: () => void;
   handleSave: () => void;
   handleExport: () => void;
+  handleOpenShortcuts: () => void;
 }
 
 const TitleBar: React.FC<TitleBarProps> = ({
@@ -38,6 +42,7 @@ const TitleBar: React.FC<TitleBarProps> = ({
   handleOpen,
   handleSave,
   handleExport,
+  handleOpenShortcuts,
 }) => {
   const openModal = useUIStore((state) => state.openModal);
 
@@ -102,6 +107,9 @@ const TitleBar: React.FC<TitleBarProps> = ({
         </button>
         {/* Input handled by parent App component */}
       </div>
+
+      {/* Hardware button */}
+      <HelpMenu onOpenShortcuts={handleOpenShortcuts} />
 
       {/* Hardware button */}
       <button
@@ -186,6 +194,8 @@ const App: React.FC = () => {
   const theme = useUIStore((state) => state.theme);
   const panels = useUIStore((state) => state.panels);
   const activeModal = useUIStore((state) => state.activeModal);
+  const openModal = useUIStore((state) => state.openModal);
+  const closeModal = useUIStore((state) => state.closeModal);
 
   // Patch Store state
   const isDirty = usePatchStore((state) => state.isDirty);
@@ -662,6 +672,7 @@ const App: React.FC = () => {
         handleOpen={handleOpen}
         handleSave={handleSave}
         handleExport={handleExport}
+        handleOpenShortcuts={() => openModal('shortcuts')}
       />
 
       {/* Main Content with Resizable Panels */}
@@ -708,6 +719,8 @@ const App: React.FC = () => {
 
       {/* Modals */}
       {activeModal === 'architecture' && <ArchitectureWindow />}
+      <CustomBlockInternalsModal />
+      <ShortcutsModal isOpen={activeModal === 'shortcuts'} onClose={closeModal} />
 
       {/* UI Designer Modal */}
       {showUIDesigner && (

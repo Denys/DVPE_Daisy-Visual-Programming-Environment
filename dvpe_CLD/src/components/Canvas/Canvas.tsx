@@ -36,6 +36,7 @@ import CommentNode from './CommentNode'; // CommentNodeData unused
 import ConnectionEdge, { ConnectionEdgeData } from './ConnectionEdge';
 import AlignmentToolbar from './AlignmentToolbar';
 import { DragOverlay } from './DragOverlay';
+import { resolveNodeDoubleClickAction } from './doubleClickActions';
 
 // ============================================================================
 // NODE TYPES REGISTRATION
@@ -83,6 +84,7 @@ const CanvasInner: React.FC = () => {
   const snapToGrid = useUIStore((state) => state.snapToGrid);
   const panels = useUIStore((state) => state.panels);
   const inspectBlock = useUIStore((state) => state.inspectBlock);
+  const openModal = useUIStore((state) => state.openModal);
   const draggingBlockId = useUIStore((state) => state.draggingBlockId);
   const setDraggingBlock = useUIStore((state) => state.setDraggingBlock);
 
@@ -266,10 +268,24 @@ const CanvasInner: React.FC = () => {
 
   // Handle node double-click to open inspector
   const onNodeDoubleClick = useCallback(
-    (_: React.MouseEvent, node: FlowNode<BlockNodeData>) => {
+    (event: React.MouseEvent, node: FlowNode<BlockNodeData>) => {
+      // Preserve existing behavior exactly: double-click always inspects block
       inspectBlock(node.id);
+
+      // Additional behavior: Ctrl/Cmd + double-click on custom block opens internals inspector modal
+      const block = blocks.find((item) => item.id === node.id);
+      const definition = block ? BlockRegistry.get(block.definitionId) : undefined;
+      const action = resolveNodeDoubleClickAction({
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        definition,
+      });
+
+      if (action === 'inspect-custom-internals') {
+        openModal('custom-block-internals', { blockId: node.id });
+      }
     },
-    [inspectBlock]
+    [inspectBlock, blocks, openModal]
   );
 
   // Keyboard shortcuts
@@ -446,6 +462,9 @@ const CanvasInner: React.FC = () => {
             </span>
             <span>
               <kbd className="px-1 py-0.5 bg-surface-primary rounded">Double-click</kbd> Inspect
+            </span>
+            <span className="ml-3">
+              <kbd className="px-1 py-0.5 bg-surface-primary rounded">Ctrl+Double-click</kbd> Custom internals
             </span>
           </motion.div>
         </Panel>

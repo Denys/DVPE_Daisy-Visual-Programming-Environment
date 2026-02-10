@@ -15,6 +15,7 @@ import {
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import { GraphAnalyzer, ProcessingOrder } from '@/core/graph/GraphAnalyzer';
 import { HardwareMappingAnalyzer, HardwareMapping } from './analyzers/HardwareMappingAnalyzer';
+import { CustomBlockDefinition } from '@/types/customBlock';
 
 // ============================================================================
 // TYPES
@@ -40,6 +41,13 @@ export interface GeneratedCode {
     warnings: string[];
 }
 
+interface GenerationContext {
+    patch: Pick<PatchGraph, 'blocks' | 'connections'>;
+    blockDefs: Map<string, BlockDefinition>;
+    instancePrefix: string;
+    inputOverrides: Map<string, string>; // key: `${targetBlockId}:${targetPortId}`
+}
+
 // ============================================================================
 // CODE GENERATOR
 // ============================================================================
@@ -49,6 +57,7 @@ export class CodeGenerator {
     private blockDefs: Map<string, BlockDefinition>;
     private processingOrder: ProcessingOrder;
     private hardwareMapping: HardwareMapping;
+    private generationContextStack: GenerationContext[] = [];
 
     constructor(patch: PatchGraph) {
         this.patch = patch;
@@ -300,6 +309,14 @@ private:
             const def = this.blockDefs.get(block.definitionId);
             if (!def) return;
 
+            const instanceName = this.getInstanceName(block);
+
+            // Phase 13.3: custom blocks are flattened into internal modules
+            if (this.isCustomBlockDefinition(def)) {
+                this.generateCustomDeclarations(instanceName, def, lines);
+                return;
+            }
+
             // Phase 13: Inline blocks (no class instance)
             if (def.cppInlineProcess) {
                 // Generate state variables
@@ -312,29 +329,14 @@ private:
             }
 
             // Skip I/O blocks without DSP class and inline math blocks
-            const skipBlocks = [
-                'audio_output', 'audio_input', 'knob', 'key', 'encoder', 'gate_trigger_in', 'slider', 'switch',
-                // Inline math/utility blocks (no DaisySP class)
-                'vca', 'mixer', 'add', 'multiply', 'subtract', 'divide',
-                'gain', 'bypass', 'sample_delay', 'cv_to_freq', 'mux', 'demux', 'linear_vca',
-                'dust', // Inline random impulse generator
-                'abs', 'exp', 'pow2', 'dc_source', // Phase 12
-                // Phase 4 inline blocks
-                'pan', 'balance', 'softclip', 'hardclip', 'rectifier', 'slew', 'smooth', 'gate',
-                'bitcrush', 'distortion', 'stereo_mixer', 'pitch_shifter',
-                // Phase 5: Hardware I/O
-                'midi_note', 'midi_cc', 'cv_input', 'cv_output', 'gate_output', 'led_output'
-            ];
-            if (skipBlocks.includes(def.id)) {
+            if (this.shouldSkipDeclaration(def.id)) {
                 // Special case: Switch needs state variable for latch
                 if (def.id === 'switch') {
-                    const instanceName = this.getInstanceName(block);
                     lines.push(`bool latch_${instanceName} = false;`);
                 }
                 return;
             }
 
-            const instanceName = this.getInstanceName(block);
             const className = def.className.replace('daisysp::', '');
 
             lines.push(`${className} ${instanceName};`);
@@ -350,25 +352,15 @@ private:
 
             const instanceName = this.getInstanceName(block);
 
-            // Audio outputs
-            def.ports
-                .filter(p => p.signalType === SignalType.AUDIO && p.direction === PortDirection.OUTPUT)
-                .forEach(port => {
-                    lines.push(`float sig_${instanceName}_${port.id} = 0.0f;`);
-                });
+            // Phase 13.3: include flattened internal signal variables
+            if (this.isCustomBlockDefinition(def)) {
+                this.generateCustomSignalDeclarations(instanceName, def, lines);
+            }
 
-            // CV outputs
             def.ports
-                .filter(p => p.signalType === SignalType.CV && p.direction === PortDirection.OUTPUT)
+                .filter(p => p.direction === PortDirection.OUTPUT)
                 .forEach(port => {
-                    lines.push(`float cv_${instanceName}_${port.id} = 0.0f;`);
-                });
-
-            // Gate/Trigger outputs
-            def.ports
-                .filter(p => p.signalType === SignalType.TRIGGER && p.direction === PortDirection.OUTPUT)
-                .forEach(port => {
-                    lines.push(`bool gate_${instanceName}_${port.id} = false;`);
+                    this.appendSignalDeclaration(lines, port.signalType, instanceName, port.id);
                 });
         });
 
@@ -557,13 +549,13 @@ private:
 
     private generateBlockProcessing(block: BlockInstance, def: BlockDefinition): string[] {
         const lines: string[] = [];
-        const instanceName = this.getInstanceName(block);
 
-        // Custom Block Handling (Phase 11.2)
-        if ((def as any).isCustom) {
-            lines.push(`// Custom Block: ${def.displayName} (Not implemented yet)`);
-            return lines;
+        // Custom Block Handling (Phase 13.3 - flattening)
+        if (this.isCustomBlockDefinition(def)) {
+            return this.generateCustomBlockProcessing(block, def);
         }
+
+        const instanceName = this.getInstanceName(block);
 
         // Phase 13: Inline Processing (Arithmetic, Math, Utility)
         if (def.cppInlineProcess) {
@@ -1697,13 +1689,214 @@ private:
     // HELPER METHODS
     // ===========================================================================
 
+    private isCustomBlockDefinition(def: BlockDefinition): def is CustomBlockDefinition {
+        return (def as CustomBlockDefinition).isCustom === true;
+    }
+
+    private getCurrentContext(): GenerationContext | undefined {
+        return this.generationContextStack[this.generationContextStack.length - 1];
+    }
+
+    private getActivePatch(): Pick<PatchGraph, 'blocks' | 'connections'> {
+        return this.getCurrentContext()?.patch || this.patch;
+    }
+
+    private getActiveBlockDefs(): Map<string, BlockDefinition> {
+        return this.getCurrentContext()?.blockDefs || this.blockDefs;
+    }
+
+    private withGenerationContext<T>(context: GenerationContext, callback: () => T): T {
+        this.generationContextStack.push(context);
+        try {
+            return callback();
+        } finally {
+            this.generationContextStack.pop();
+        }
+    }
+
+    private sanitizeIdentifier(raw: string): string {
+        let sanitized = raw
+            .replace(/-/g, '_')
+            .replace(/[^a-zA-Z0-9_]/g, '_');
+
+        if (/^[0-9]/.test(sanitized)) {
+            sanitized = '_' + sanitized;
+        }
+
+        return sanitized;
+    }
+
+    private getSignalPrefix(signalType: SignalType): 'sig' | 'cv' | 'gate' {
+        if (signalType === SignalType.CV) return 'cv';
+        if (signalType === SignalType.TRIGGER) return 'gate';
+        return 'sig';
+    }
+
+    private getSignalVariable(instanceName: string, portId: string, signalType: SignalType): string {
+        const prefix = this.getSignalPrefix(signalType);
+        return `${prefix}_${instanceName}_${portId}`;
+    }
+
+    private getDefaultValueForSignalType(signalType: SignalType): string {
+        return signalType === SignalType.TRIGGER ? 'false' : '0.0f';
+    }
+
+    private createInternalDefsMap(patch: Pick<PatchGraph, 'blocks' | 'connections'>): Map<string, BlockDefinition> {
+        const defs = new Map<string, BlockDefinition>();
+        patch.blocks.forEach(block => {
+            const def = BlockRegistry.get(block.definitionId);
+            if (def) {
+                defs.set(block.definitionId, def);
+            }
+        });
+        return defs;
+    }
+
+    private makeOverrideConnection(blockId: string, portId: string): Connection {
+        return {
+            id: `__override__${blockId}:${portId}`,
+            sourceBlockId: '__override__',
+            sourcePortId: `${blockId}:${portId}`,
+            targetBlockId: blockId,
+            targetPortId: portId,
+            type: 'audio',
+        };
+    }
+
+    private buildCustomInputOverrides(customBlock: BlockInstance, customDef: CustomBlockDefinition): Map<string, string> {
+        const overrides = new Map<string, string>();
+
+        customDef.ports
+            .filter(port => port.direction === PortDirection.INPUT)
+            .forEach(port => {
+                const mapping = customDef.exposedPorts[port.id];
+                if (!mapping) return;
+
+                const conn = this.getInputConnection(customBlock.id, port.id);
+                const value = conn
+                    ? this.getSourceVariable(conn)
+                    : this.getDefaultValueForSignalType(port.signalType);
+
+                overrides.set(`${mapping.blockId}:${mapping.portId}`, value);
+            });
+
+        return overrides;
+    }
+
+    private buildCustomParameterOverrides(customBlock: BlockInstance, customDef: CustomBlockDefinition): Map<string, Record<string, number | boolean | string>> {
+        const overrides = new Map<string, Record<string, number | boolean | string>>();
+
+        Object.entries(customDef.exposedParameters).forEach(([exposedId, mapping]) => {
+            if (!(exposedId in customBlock.parameterValues)) return;
+
+            const blockOverrides = overrides.get(mapping.blockId) || {};
+            blockOverrides[mapping.parameterId] = customBlock.parameterValues[exposedId];
+            overrides.set(mapping.blockId, blockOverrides);
+        });
+
+        return overrides;
+    }
+
+    private getCustomInternalSourceVariable(
+        instancePrefix: string,
+        internalPatch: Pick<PatchGraph, 'blocks' | 'connections'>,
+        internalDefs: Map<string, BlockDefinition>,
+        blockId: string,
+        portId: string
+    ): string {
+        const sourceBlock = internalPatch.blocks.find(b => b.id === blockId);
+        if (!sourceBlock) return '0.0f';
+
+        const sourceDef = internalDefs.get(sourceBlock.definitionId);
+        if (!sourceDef) return '0.0f';
+
+        const sourcePort = sourceDef.ports.find(p => p.id === portId);
+        const signalType = sourcePort?.signalType || SignalType.AUDIO;
+        const internalName = `${instancePrefix}__${this.sanitizeIdentifier(blockId)}`;
+        return this.getSignalVariable(internalName, portId, signalType);
+    }
+
+    private generateCustomBlockProcessing(block: BlockInstance, customDef: CustomBlockDefinition): string[] {
+        const depth = this.generationContextStack.length;
+        if (depth >= 3) {
+            return [`// [WARNING] Custom block nesting depth limit reached for ${customDef.displayName}`];
+        }
+
+        const internalPatch = customDef.internalPatch;
+        if (!internalPatch?.blocks?.length) {
+            return [];
+        }
+
+        const internalDefs = this.createInternalDefsMap(internalPatch);
+        const internalOrder = GraphAnalyzer.getProcessingOrder(
+            internalPatch.blocks,
+            internalPatch.connections,
+            internalDefs
+        );
+
+        const instanceName = this.getInstanceName(block);
+        const inputOverrides = this.buildCustomInputOverrides(block, customDef);
+        const parameterOverrides = this.buildCustomParameterOverrides(block, customDef);
+
+        const lines = this.withGenerationContext(
+            {
+                patch: internalPatch,
+                blockDefs: internalDefs,
+                instancePrefix: instanceName,
+                inputOverrides,
+            },
+            () => {
+                const nestedLines: string[] = [];
+
+                internalOrder.blocks.forEach(internalBlockId => {
+                    const internalBlock = internalPatch.blocks.find(b => b.id === internalBlockId);
+                    if (!internalBlock) return;
+
+                    const internalDef = internalDefs.get(internalBlock.definitionId);
+                    if (!internalDef) return;
+
+                    const overrides = parameterOverrides.get(internalBlock.id);
+                    const effectiveBlock: BlockInstance = overrides
+                        ? {
+                            ...internalBlock,
+                            parameterValues: { ...internalBlock.parameterValues, ...overrides },
+                        }
+                        : internalBlock;
+
+                    nestedLines.push(...this.generateBlockProcessing(effectiveBlock, internalDef));
+                });
+
+                return nestedLines;
+            }
+        );
+
+        customDef.ports
+            .filter(port => port.direction === PortDirection.OUTPUT)
+            .forEach(port => {
+                const mapping = customDef.exposedPorts[port.id];
+                if (!mapping) return;
+
+                const sourceVar = this.getCustomInternalSourceVariable(
+                    instanceName,
+                    internalPatch,
+                    internalDefs,
+                    mapping.blockId,
+                    mapping.portId
+                );
+                const targetVar = this.getSignalVariable(instanceName, port.id, port.signalType);
+                lines.push(`${targetVar} = ${sourceVar};`);
+            });
+
+        return lines;
+    }
+
     private getInputValue(block: BlockInstance, inputId: string): string {
         const conn = this.getInputConnection(block.id, inputId);
         return conn ? this.getSourceVariable(conn) : '0.0f';
     }
 
     private writeParameterSetters(block: BlockInstance, instanceName: string, lines: string[], excludeParams: string[] = []): void {
-        const def = this.blockDefs.get(block.definitionId);
+        const def = this.getActiveBlockDefs().get(block.definitionId);
         if (!def) return;
 
         def.parameters.forEach(param => {
@@ -1947,87 +2140,12 @@ private:
             const def = this.blockDefs.get(block.definitionId);
             if (!def) return;
 
-            // Phase 13: Skip inline blocks (no class to init)
-            if (def.cppInlineProcess) return;
-
-            // Skip I/O blocks and inline math blocks
-            const skipBlocks = [
-                'audio_output', 'audio_input', 'knob', 'key', 'encoder', 'gate_trigger_in', 'slider', 'switch',
-                // Inline math/utility blocks (no DaisySP class)
-                'vca', 'mixer', 'add', 'multiply', 'subtract', 'divide',
-                'gain', 'bypass', 'sample_delay', 'cv_to_freq', 'mux', 'demux', 'linear_vca',
-                'abs', 'exp', 'pow2', 'dc_source',
-                // Phase 5: Hardware I/O
-                'midi_note', 'midi_cc', 'cv_input', 'cv_output', 'gate_output', 'led_output'
-            ];
-            if (skipBlocks.includes(def.id)) {
+            if (this.isCustomBlockDefinition(def)) {
+                this.generateCustomBlockInitialization(this.getInstanceName(block), block, def, lines);
                 return;
             }
 
-            const instanceName = this.getInstanceName(block);
-
-            // Special init handling for specific blocks
-            if (def.id === 'whitenoise') {
-                // WhiteNoise.Init() takes no arguments
-                lines.push(`    ${instanceName}.Init();`);
-            } else if (def.id === 'adsr') {
-                // ADSR needs special SetTime handling with segment parameter
-                lines.push(`    ${instanceName}.Init(sr);`);
-                const attack = block.parameterValues['attack'] ?? 0.01;
-                const decay = block.parameterValues['decay'] ?? 0.1;
-                const sustain = block.parameterValues['sustain'] ?? 0.7;
-                const release = block.parameterValues['release'] ?? 0.3;
-                lines.push(`    ${instanceName}.SetTime(ADSR_SEG_ATTACK, ${this.formatFloat(attack)});`);
-                lines.push(`    ${instanceName}.SetTime(ADSR_SEG_DECAY, ${this.formatFloat(decay)});`);
-                lines.push(`    ${instanceName}.SetSustainLevel(${this.formatFloat(sustain)});`);
-                lines.push(`    ${instanceName}.SetTime(ADSR_SEG_RELEASE, ${this.formatFloat(release)});`);
-            } else if (def.id === 'decimator') {
-                lines.push(`    ${instanceName}.Init();`);
-            } else if (def.id === 'delay' || def.id === 'delay_line') {
-                lines.push(`    ${instanceName}.Init();`);
-            } else if (def.id === 'onepole') {
-                lines.push(`    ${instanceName}.Init();`);
-            } else if (def.id === 'ad_env') {
-                // AdEnv needs special SetTime handling with ADENV_SEG_* constants
-                lines.push(`    ${instanceName}.Init(sr);`);
-                const attack = block.parameterValues['attack'] ?? 0.01;
-                const decay = block.parameterValues['decay'] ?? 0.5;
-                const curve = block.parameterValues['curve'] ?? 0.0;
-                lines.push(`    ${instanceName}.SetTime(ADENV_SEG_ATTACK, ${this.formatFloat(attack)});`);
-                lines.push(`    ${instanceName}.SetTime(ADENV_SEG_DECAY, ${this.formatFloat(decay)});`);
-                lines.push(`    ${instanceName}.SetCurve(${this.formatFloat(curve)});`);
-            } else {
-                // Standard Init with sample rate
-                lines.push(`    ${instanceName}.Init(sr);`);
-
-                // Set default parameters (skip for ADSR/AdEnv as we handle it specially)
-                def.parameters.forEach(param => {
-                    const value = block.parameterValues[param.id] ?? param.defaultValue;
-                    // Skip SetTime for ADSR as we handled it above
-                    if (def.id === 'adsr' && param.cppSetter === 'SetTime') return;
-
-                    if (param.cppSetter && value !== undefined) {
-                        if (param.type === 'enum' && param.enumValues) {
-                            const enumVal = param.enumValues.find(e => e.value === value);
-                            if (enumVal?.cppValue) {
-                                if (param.cppSetterIndex !== undefined) {
-                                    lines.push(`    ${instanceName}.${param.cppSetter}(${enumVal.cppValue}, ${param.cppSetterIndex});`);
-                                } else {
-                                    lines.push(`    ${instanceName}.${param.cppSetter}(${enumVal.cppValue});`);
-                                }
-                            }
-                        } else {
-                            // Numeric or Boolean
-                            const valStr = typeof value === 'boolean' ? String(value) : this.formatFloat(value as number);
-                            if (param.cppSetterIndex !== undefined) {
-                                lines.push(`    ${instanceName}.${param.cppSetter}(${valStr}, ${param.cppSetterIndex});`);
-                            } else {
-                                lines.push(`    ${instanceName}.${param.cppSetter}(${valStr});`);
-                            }
-                        }
-                    }
-                });
-            }
+            this.appendBlockInitialization(block, def, lines);
         });
 
         lines.push('');
@@ -2093,34 +2211,252 @@ include $(SYSTEM_FILES_DIR)/Makefile
     // HELPERS
     // ===========================================================================
 
-    private getInstanceName(block: BlockInstance): string {
-        // Use the block ID as the basis, sanitizing to valid C++ identifier
-        // 1. Replace hyphens with underscores
-        // 2. Replace any other non-alphanumeric chars with underscores
-        // 3. Prefix with underscore if starts with a number
-        let sanitized = block.id
-            .replace(/-/g, '_')
-            .replace(/[^a-zA-Z0-9_]/g, '_');
+    private shouldSkipDeclaration(defId: string): boolean {
+        const skipBlocks = [
+            'audio_output', 'audio_input', 'knob', 'key', 'encoder', 'gate_trigger_in', 'slider', 'switch',
+            'vca', 'mixer', 'add', 'multiply', 'subtract', 'divide',
+            'gain', 'bypass', 'sample_delay', 'cv_to_freq', 'mux', 'demux', 'linear_vca', 'linearvca',
+            'dust',
+            'abs', 'exp', 'pow2', 'dc_source',
+            'pan', 'balance', 'softclip', 'hardclip', 'rectifier', 'slew', 'smooth', 'gate',
+            'bitcrush', 'distortion', 'stereo_mixer', 'pitch_shifter',
+            'midi_note', 'midi_cc', 'cv_input', 'cv_output', 'gate_output', 'led_output'
+        ];
+        return skipBlocks.includes(defId);
+    }
 
-        // C++ identifiers cannot start with a number
-        if (/^[0-9]/.test(sanitized)) {
-            sanitized = '_' + sanitized;
+    private shouldSkipInitialization(defId: string): boolean {
+        const skipBlocks = [
+            'audio_output', 'audio_input', 'knob', 'key', 'encoder', 'gate_trigger_in', 'slider', 'switch',
+            'vca', 'mixer', 'add', 'multiply', 'subtract', 'divide',
+            'gain', 'bypass', 'sample_delay', 'cv_to_freq', 'mux', 'demux', 'linear_vca', 'linearvca',
+            'abs', 'exp', 'pow2', 'dc_source',
+            'midi_note', 'midi_cc', 'cv_input', 'cv_output', 'gate_output', 'led_output'
+        ];
+        return skipBlocks.includes(defId);
+    }
+
+    private appendSignalDeclaration(lines: string[], signalType: SignalType, instanceName: string, portId: string): void {
+        if (signalType === SignalType.TRIGGER) {
+            lines.push(`bool gate_${instanceName}_${portId} = false;`);
+        } else if (signalType === SignalType.CV) {
+            lines.push(`float cv_${instanceName}_${portId} = 0.0f;`);
+        } else {
+            lines.push(`float sig_${instanceName}_${portId} = 0.0f;`);
+        }
+    }
+
+    private generateCustomDeclarations(instancePrefix: string, customDef: CustomBlockDefinition, lines: string[], depth = 0): void {
+        if (depth >= 3 || !customDef.internalPatch?.blocks?.length) return;
+
+        const internalDefs = this.createInternalDefsMap(customDef.internalPatch);
+
+        customDef.internalPatch.blocks.forEach(internalBlock => {
+            const internalDef = internalDefs.get(internalBlock.definitionId);
+            if (!internalDef) return;
+
+            const runtimeName = `${instancePrefix}__${this.sanitizeIdentifier(internalBlock.id)}`;
+
+            if (this.isCustomBlockDefinition(internalDef)) {
+                this.generateCustomDeclarations(runtimeName, internalDef, lines, depth + 1);
+                return;
+            }
+
+            if (internalDef.cppInlineProcess) {
+                if (internalDef.cppStateVars) {
+                    internalDef.cppStateVars.forEach(v => {
+                        lines.push(`${v.type} state_${runtimeName}_${v.name} = ${v.init};`);
+                    });
+                }
+                return;
+            }
+
+            if (this.shouldSkipDeclaration(internalDef.id)) {
+                if (internalDef.id === 'switch') {
+                    lines.push(`bool latch_${runtimeName} = false;`);
+                }
+                return;
+            }
+
+            const className = internalDef.className.replace('daisysp::', '');
+            lines.push(`${className} ${runtimeName};`);
+        });
+    }
+
+    private generateCustomSignalDeclarations(instancePrefix: string, customDef: CustomBlockDefinition, lines: string[], depth = 0): void {
+        if (depth >= 3 || !customDef.internalPatch?.blocks?.length) return;
+
+        const internalDefs = this.createInternalDefsMap(customDef.internalPatch);
+
+        customDef.internalPatch.blocks.forEach(internalBlock => {
+            const internalDef = internalDefs.get(internalBlock.definitionId);
+            if (!internalDef) return;
+
+            const runtimeName = `${instancePrefix}__${this.sanitizeIdentifier(internalBlock.id)}`;
+
+            internalDef.ports
+                .filter(p => p.direction === PortDirection.OUTPUT)
+                .forEach(port => {
+                    this.appendSignalDeclaration(lines, port.signalType, runtimeName, port.id);
+                });
+
+            if (this.isCustomBlockDefinition(internalDef)) {
+                this.generateCustomSignalDeclarations(runtimeName, internalDef, lines, depth + 1);
+            }
+        });
+    }
+
+    private appendBlockInitialization(block: BlockInstance, def: BlockDefinition, lines: string[]): void {
+        // Phase 13: Skip inline blocks (no class to init)
+        if (def.cppInlineProcess) return;
+
+        if (this.shouldSkipInitialization(def.id)) {
+            return;
         }
 
-        return sanitized;
+        const instanceName = this.getInstanceName(block);
+
+        // Special init handling for specific blocks
+        if (def.id === 'whitenoise') {
+            // WhiteNoise.Init() takes no arguments
+            lines.push(`    ${instanceName}.Init();`);
+        } else if (def.id === 'adsr') {
+            // ADSR needs special SetTime handling with segment parameter
+            lines.push(`    ${instanceName}.Init(sr);`);
+            const attack = block.parameterValues['attack'] ?? 0.01;
+            const decay = block.parameterValues['decay'] ?? 0.1;
+            const sustain = block.parameterValues['sustain'] ?? 0.7;
+            const release = block.parameterValues['release'] ?? 0.3;
+            lines.push(`    ${instanceName}.SetTime(ADSR_SEG_ATTACK, ${this.formatFloat(attack)});`);
+            lines.push(`    ${instanceName}.SetTime(ADSR_SEG_DECAY, ${this.formatFloat(decay)});`);
+            lines.push(`    ${instanceName}.SetSustainLevel(${this.formatFloat(sustain)});`);
+            lines.push(`    ${instanceName}.SetTime(ADSR_SEG_RELEASE, ${this.formatFloat(release)});`);
+        } else if (def.id === 'decimator') {
+            lines.push(`    ${instanceName}.Init();`);
+        } else if (def.id === 'delay' || def.id === 'delay_line') {
+            lines.push(`    ${instanceName}.Init();`);
+        } else if (def.id === 'onepole') {
+            lines.push(`    ${instanceName}.Init();`);
+        } else if (def.id === 'ad_env') {
+            // AdEnv needs special SetTime handling with ADENV_SEG_* constants
+            lines.push(`    ${instanceName}.Init(sr);`);
+            const attack = block.parameterValues['attack'] ?? 0.01;
+            const decay = block.parameterValues['decay'] ?? 0.5;
+            const curve = block.parameterValues['curve'] ?? 0.0;
+            lines.push(`    ${instanceName}.SetTime(ADENV_SEG_ATTACK, ${this.formatFloat(attack)});`);
+            lines.push(`    ${instanceName}.SetTime(ADENV_SEG_DECAY, ${this.formatFloat(decay)});`);
+            lines.push(`    ${instanceName}.SetCurve(${this.formatFloat(curve)});`);
+        } else {
+            // Standard Init with sample rate
+            lines.push(`    ${instanceName}.Init(sr);`);
+
+            // Set default parameters (skip for ADSR/AdEnv as we handle it specially)
+            def.parameters.forEach(param => {
+                const value = block.parameterValues[param.id] ?? param.defaultValue;
+                // Skip SetTime for ADSR as we handled it above
+                if (def.id === 'adsr' && param.cppSetter === 'SetTime') return;
+
+                if (param.cppSetter && value !== undefined) {
+                    if (param.type === 'enum' && param.enumValues) {
+                        const enumVal = param.enumValues.find(e => e.value === value);
+                        if (enumVal?.cppValue) {
+                            if (param.cppSetterIndex !== undefined) {
+                                lines.push(`    ${instanceName}.${param.cppSetter}(${enumVal.cppValue}, ${param.cppSetterIndex});`);
+                            } else {
+                                lines.push(`    ${instanceName}.${param.cppSetter}(${enumVal.cppValue});`);
+                            }
+                        }
+                    } else {
+                        // Numeric or Boolean
+                        const valStr = typeof value === 'boolean' ? String(value) : this.formatFloat(value as number);
+                        if (param.cppSetterIndex !== undefined) {
+                            lines.push(`    ${instanceName}.${param.cppSetter}(${valStr}, ${param.cppSetterIndex});`);
+                        } else {
+                            lines.push(`    ${instanceName}.${param.cppSetter}(${valStr});`);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    private generateCustomBlockInitialization(instancePrefix: string, customBlock: BlockInstance, customDef: CustomBlockDefinition, lines: string[], depth = 0): void {
+        if (depth >= 3 || !customDef.internalPatch?.blocks?.length) return;
+
+        const internalPatch = customDef.internalPatch;
+        const internalDefs = this.createInternalDefsMap(internalPatch);
+        const internalOrder = GraphAnalyzer.getProcessingOrder(
+            internalPatch.blocks,
+            internalPatch.connections,
+            internalDefs
+        );
+
+        const parameterOverrides = this.buildCustomParameterOverrides(customBlock, customDef);
+
+        internalOrder.blocks.forEach(internalBlockId => {
+            const internalBlock = internalPatch.blocks.find(b => b.id === internalBlockId);
+            if (!internalBlock) return;
+
+            const internalDef = internalDefs.get(internalBlock.definitionId);
+            if (!internalDef) return;
+
+            const overrides = parameterOverrides.get(internalBlock.id);
+            const runtimeBlock: BlockInstance = {
+                ...internalBlock,
+                id: `${instancePrefix}__${this.sanitizeIdentifier(internalBlock.id)}`,
+                parameterValues: overrides
+                    ? { ...internalBlock.parameterValues, ...overrides }
+                    : internalBlock.parameterValues,
+            };
+
+            if (this.isCustomBlockDefinition(internalDef)) {
+                this.generateCustomBlockInitialization(runtimeBlock.id, runtimeBlock, internalDef, lines, depth + 1);
+                return;
+            }
+
+            this.appendBlockInitialization(runtimeBlock, internalDef, lines);
+        });
+    }
+
+    private getInstanceName(block: BlockInstance): string {
+        const context = this.getCurrentContext();
+        const sanitized = this.sanitizeIdentifier(block.id);
+
+        if (!context) {
+            return sanitized;
+        }
+
+        return `${context.instancePrefix}__${sanitized}`;
     }
 
     private getInputConnection(blockId: string, portId: string): Connection | undefined {
-        return this.patch.connections.find(
+        const context = this.getCurrentContext();
+        if (context) {
+            const override = context.inputOverrides.get(`${blockId}:${portId}`);
+            if (override !== undefined) {
+                return this.makeOverrideConnection(blockId, portId);
+            }
+        }
+
+        return this.getActivePatch().connections.find(
             c => c.targetBlockId === blockId && c.targetPortId === portId
         );
     }
 
     private getSourceVariable(conn: Connection): string {
-        const sourceBlock = this.patch.blocks.find(b => b.id === conn.sourceBlockId);
+        const context = this.getCurrentContext();
+
+        if (conn.sourceBlockId === '__override__') {
+            return context?.inputOverrides.get(conn.sourcePortId) || '0.0f';
+        }
+
+        const activePatch = this.getActivePatch();
+        const activeDefs = this.getActiveBlockDefs();
+
+        const sourceBlock = activePatch.blocks.find(b => b.id === conn.sourceBlockId);
         if (!sourceBlock) return '0.0f';
 
-        const sourceDef = this.blockDefs.get(sourceBlock.definitionId);
+        const sourceDef = activeDefs.get(sourceBlock.definitionId);
         if (!sourceDef) return '0.0f';
 
         const sourceInstanceName = this.getInstanceName(sourceBlock);
