@@ -1693,6 +1693,13 @@ private:
         return (def as CustomBlockDefinition).isCustom === true;
     }
 
+    /**
+     * Check if a custom block is a code module (has custom C++ code)
+     */
+    private isCodeModule(def: CustomBlockDefinition): boolean {
+        return def.codeModule !== undefined && def.codeModule.cppCode.trim() !== '';
+    }
+
     private getCurrentContext(): GenerationContext | undefined {
         return this.generationContextStack[this.generationContextStack.length - 1];
     }
@@ -1820,6 +1827,11 @@ private:
         const depth = this.generationContextStack.length;
         if (depth >= 3) {
             return [`// [WARNING] Custom block nesting depth limit reached for ${customDef.displayName}`];
+        }
+
+        // Phase 13.4: Handle code modules (hybrid custom code)
+        if (this.isCodeModule(customDef)) {
+            return this.generateCodeModuleProcessing(block, customDef);
         }
 
         const internalPatch = customDef.internalPatch;
@@ -2559,7 +2571,7 @@ include $(SYSTEM_FILES_DIR)/Makefile
         return [readCode];
     }
 
-    private generateCVOutputCode(block: BlockInstance, name: string): string[] {
+    private generateCVOutputCode(block: BlockInstance, _name: string): string[] {
         const channel = Number(block.parameterValues['channel'] ?? 0);
         const inConn = this.getInputConnection(block.id, 'in');
         const inVar = inConn ? this.getSourceVariable(inConn) : '0.0f';
@@ -2574,7 +2586,7 @@ include $(SYSTEM_FILES_DIR)/Makefile
         ];
     }
 
-    private generateGateOutputCode(block: BlockInstance, name: string): string[] {
+    private generateGateOutputCode(block: BlockInstance, _name: string): string[] {
         const pin = Number(block.parameterValues['pin'] ?? 0);
         const gateConn = this.getInputConnection(block.id, 'gate');
         const gateVar = gateConn ? this.getSourceVariable(gateConn) : '0.0f';
@@ -2591,7 +2603,7 @@ include $(SYSTEM_FILES_DIR)/Makefile
         ];
     }
 
-    private generateLEDOutputCode(block: BlockInstance, name: string): string[] {
+    private generateLEDOutputCode(block: BlockInstance, _name: string): string[] {
         const pin = Number(block.parameterValues['pin'] ?? 0);
         // const pwm = block.parameterValues['pwm'] === true; // Unused
         const brightConn = this.getInputConnection(block.id, 'brightness');
@@ -2725,6 +2737,91 @@ include $(SYSTEM_FILES_DIR)/Makefile
         this.writeParameterSetters(block, instanceName, lines);
         const inputVar = this.getInputValue(block, 'in');
         lines.push(`cv_${instanceName}_env = ${instanceName}.Process(${inputVar});`);
+        return lines;
+    }
+
+    // ===========================================================================
+    // PHASE 13.4: CODE MODULE GENERATOR
+    // ===========================================================================
+
+    /**
+     * Generate processing code for a code module custom block.
+     * Injects user's C++ code verbatim with port variable mappings.
+     */
+    private generateCodeModuleProcessing(block: BlockInstance, customDef: CustomBlockDefinition): string[] {
+        const codeModule = customDef.codeModule!;
+        const instanceName = this.getInstanceName(block);
+        const lines: string[] = [];
+
+        // Add comment
+        lines.push(`// Code Module: ${customDef.displayName}`);
+
+        // Create input variable mappings (portId -> sourceVariable)
+        const inputMappings = new Map<string, string>();
+        codeModule.portBindings
+            .filter(p => p.direction === PortDirection.INPUT)
+            .forEach(port => {
+                const conn = this.getInputConnection(block.id, port.id);
+                const sourceVar = conn
+                    ? this.getSourceVariable(conn)
+                    : this.getDefaultValueForSignalType(port.signalType);
+                inputMappings.set(port.id, sourceVar);
+            });
+
+        // Wrap user code in a scoped block with variable mappings
+        lines.push('{');
+
+        // Declare local variables for inputs (to avoid collisions and provide clean names)
+        codeModule.portBindings
+            .filter(p => p.direction === PortDirection.INPUT)
+            .forEach(port => {
+                const type = port.signalType === SignalType.TRIGGER ? 'bool' :
+                    port.signalType === SignalType.CV ? 'float' : 'float';
+                const sourceVar = inputMappings.get(port.id)!;
+                lines.push(`    ${type} ${port.id} = ${sourceVar};`);
+            });
+
+        // Declare output variables
+        codeModule.portBindings
+            .filter(p => p.direction === PortDirection.OUTPUT)
+            .forEach(port => {
+                const type = port.signalType === SignalType.TRIGGER ? 'bool' :
+                    port.signalType === SignalType.CV ? 'float' : 'float';
+                const defaultValue = port.signalType === SignalType.TRIGGER ? 'false' : '0.0f';
+                lines.push(`    ${type} ${port.id} = ${defaultValue};`);
+            });
+
+        // State variables (if any)
+        if (codeModule.stateVariables && codeModule.stateVariables.length > 0) {
+            lines.push('    // State variables');
+            codeModule.stateVariables.forEach(state => {
+                const prefixedName = `state_${instanceName}_${state.name}`;
+                lines.push(`    ${state.type}& ${state.name} = ${prefixedName};`);
+            });
+        }
+
+        // Inject user code (indented)
+        const userCodeLines = codeModule.cppCode.split('\n');
+        userCodeLines.forEach(line => {
+            // Only indent non-empty lines
+            if (line.trim()) {
+                lines.push('    ' + line);
+            } else {
+                lines.push('');
+            }
+        });
+
+        // Assign outputs to external signal variables
+        codeModule.portBindings
+            .filter(p => p.direction === PortDirection.OUTPUT)
+            .forEach(port => {
+                const targetVar = this.getSignalVariable(instanceName, port.id, port.signalType);
+                lines.push(`    ${targetVar} = ${port.id};`);
+            });
+
+        // Close the scoped block
+        lines.push('}');
+
         return lines;
     }
 

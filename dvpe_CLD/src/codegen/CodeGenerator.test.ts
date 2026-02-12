@@ -253,6 +253,211 @@ describe('CodeGenerator', () => {
 
             BlockRegistry.unregister(emptyCustom.id);
         });
+
+        // ============================================================================
+        // A2 Additional Tests (Phase 13.3)
+        // ============================================================================
+
+        it('routes external CV input into custom block internal port', () => {
+            const customDef = createCustomOscVcaDefinition();
+            BlockRegistry.register(customDef);
+
+            const patch = {
+                blocks: [
+                    createBlock('lfo1', 'lfo', { freq: 2.0, amp: 1.0 }),
+                    createBlock('custom1', customDef.id, { osc_1_freq: 440, vca_1_gain: 1.0 }),
+                    createBlock('out1', 'audio_output', {}),
+                ],
+                connections: [
+                    // LFO → custom block's exposed CV port
+                    createConnection('c1', 'lfo1', 'out', 'custom1', 'vca_1_cv', 'cv'),
+                    createConnection('c2', 'custom1', 'vca_1_out', 'out1', 'left', 'audio'),
+                ],
+                metadata: { name: 'CV Routing Test', blockSize: 48, sampleRate: 48000 },
+            };
+
+            const generator = new CodeGenerator(patch as any);
+            const result = generator.generate();
+
+            // The CV signal from LFO should reach the internal VCA's cv port
+            expect(result.mainCpp).toContain('custom1__vca_1');
+            expect(result.mainCpp).toContain('lfo1');
+            // Should not contain any "Not implemented" fallbacks
+            expect(result.mainCpp).not.toContain('Not implemented yet');
+            expect(result.errors).toHaveLength(0);
+
+            BlockRegistry.unregister(customDef.id);
+        });
+
+        it('propagates exposed parameter values to inner block initialization', () => {
+            const customDef = createCustomOscVcaDefinition();
+            BlockRegistry.register(customDef);
+
+            const patch = {
+                blocks: [
+                    createBlock('custom1', customDef.id, {
+                        osc_1_freq: 880,   // Override default 440
+                        vca_1_gain: 0.5,   // Override default 1.0
+                    }),
+                    createBlock('out1', 'audio_output', {}),
+                ],
+                connections: [
+                    createConnection('c1', 'custom1', 'vca_1_out', 'out1', 'left', 'audio'),
+                ],
+                metadata: { name: 'Param Override Test', blockSize: 48, sampleRate: 48000 },
+            };
+
+            const generator = new CodeGenerator(patch as any);
+            const result = generator.generate();
+
+            // The overridden frequency should appear in the generated code
+            expect(result.mainCpp).toContain('880');
+            // The overridden gain should appear
+            expect(result.mainCpp).toContain('0.5');
+            expect(result.errors).toHaveLength(0);
+
+            BlockRegistry.unregister(customDef.id);
+        });
+
+        it('flattens nested custom blocks up to depth limit', () => {
+            // Create inner custom block
+            const innerDef = createCustomOscVcaDefinition();
+            BlockRegistry.register(innerDef);
+
+            // Create outer custom block that contains an instance of the inner
+            const outerDef: CustomBlockDefinition = {
+                ...createCustomOscVcaDefinition(),
+                id: 'custom_outer_test',
+                displayName: 'OUTER CUSTOM',
+                className: 'Custom_outer_test',
+                internalPatch: {
+                    metadata: {
+                        name: 'Outer Internal',
+                        author: 'test',
+                        created: new Date().toISOString(),
+                        modified: new Date().toISOString(),
+                        version: '1.0.0',
+                        targetHardware: 'seed',
+                        sampleRate: 48000,
+                        blockSize: 48,
+                    },
+                    blocks: [
+                        createBlock('inner1', innerDef.id, { osc_1_freq: 330, vca_1_gain: 0.7 }),
+                    ],
+                    connections: [],
+                },
+                exposedPorts: {
+                    vca_1_out: { blockId: 'inner1', portId: 'vca_1_out' },
+                },
+            };
+            BlockRegistry.register(outerDef);
+
+            const patch = {
+                blocks: [
+                    createBlock('outer1', outerDef.id, {}),
+                    createBlock('out1', 'audio_output', {}),
+                ],
+                connections: [
+                    createConnection('c1', 'outer1', 'vca_1_out', 'out1', 'left', 'audio'),
+                ],
+                metadata: { name: 'Nested Custom Test', blockSize: 48, sampleRate: 48000 },
+            };
+
+            const generator = new CodeGenerator(patch as any);
+            const result = generator.generate();
+
+            // Should contain nested prefixes
+            expect(result.mainCpp).toContain('outer1__inner1');
+            expect(result.mainCpp).toContain('int main(void)');
+            expect(result.errors).toHaveLength(0);
+
+            BlockRegistry.unregister(outerDef.id);
+            BlockRegistry.unregister(innerDef.id);
+        });
+
+        it('generates code module processing for hybrid custom block', () => {
+            const codeModuleDef: CustomBlockDefinition = {
+                ...createCustomOscVcaDefinition(),
+                id: 'custom_code_module_test',
+                displayName: 'CODE MODULE',
+                className: 'Custom_code_module_test',
+                internalPatch: undefined as any,
+                codeModule: {
+                    cppCode: 'out_main = in_signal * 2.0f;',
+                    portBindings: [
+                        { portId: 'in_signal', direction: 'input' as any, cppVariable: 'in_signal', signalType: 'audio' as any },
+                        { portId: 'out_main', direction: 'output' as any, cppVariable: 'out_main', signalType: 'audio' as any },
+                    ],
+                },
+                ports: [
+                    {
+                        id: 'in_signal',
+                        displayName: 'Signal In',
+                        signalType: SignalType.AUDIO,
+                        direction: PortDirection.INPUT,
+                    },
+                    {
+                        id: 'out_main',
+                        displayName: 'Main Out',
+                        signalType: SignalType.AUDIO,
+                        direction: PortDirection.OUTPUT,
+                    },
+                ],
+                exposedPorts: {},
+                parameters: [],
+                exposedParameters: {},
+            };
+            BlockRegistry.register(codeModuleDef);
+
+            const patch = {
+                blocks: [
+                    createBlock('osc1', 'oscillator', { freq: 440 }),
+                    createBlock('cm1', codeModuleDef.id, {}),
+                    createBlock('out1', 'audio_output', {}),
+                ],
+                connections: [
+                    createConnection('c1', 'osc1', 'out', 'cm1', 'in_signal', 'audio'),
+                    createConnection('c2', 'cm1', 'out_main', 'out1', 'left', 'audio'),
+                ],
+                metadata: { name: 'Code Module Test', blockSize: 48, sampleRate: 48000 },
+            };
+
+            const generator = new CodeGenerator(patch as any);
+            const result = generator.generate();
+
+            // Should contain the user's C++ code snippet
+            expect(result.mainCpp).toContain('Code Module: CODE MODULE');
+            expect(result.mainCpp).toContain('in_signal');
+            expect(result.mainCpp).toContain('out_main');
+            expect(result.errors).toHaveLength(0);
+
+            BlockRegistry.unregister(codeModuleDef.id);
+        });
+
+        it('generates DSP declarations for internal blocks of custom block', () => {
+            const customDef = createCustomOscVcaDefinition();
+            BlockRegistry.register(customDef);
+
+            const patch = {
+                blocks: [
+                    createBlock('custom1', customDef.id, {}),
+                    createBlock('out1', 'audio_output', {}),
+                ],
+                connections: [
+                    createConnection('c1', 'custom1', 'vca_1_out', 'out1', 'left', 'audio'),
+                ],
+                metadata: { name: 'Declaration Test', blockSize: 48, sampleRate: 48000 },
+            };
+
+            const generator = new CodeGenerator(patch as any);
+            const result = generator.generate();
+
+            // Internal blocks should have declarations with prefixed names
+            expect(result.mainCpp).toContain('Oscillator custom1__osc_1');
+            expect(result.mainCpp).toContain('int main(void)');
+
+            BlockRegistry.unregister(customDef.id);
+        });
     });
 
     describe('generate()', () => {

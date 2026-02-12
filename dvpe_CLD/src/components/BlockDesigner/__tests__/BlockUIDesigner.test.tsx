@@ -6,15 +6,15 @@ import * as storeModule from '@/stores/blockDesignerStore';
 // Mock the store hook
 vi.mock('@/stores/blockDesignerStore', () => ({
     useBlockDesignerStore: vi.fn(),
-    selectElements: (state: any) => state.elements,
-    selectSelectedIds: (state: any) => state.selectedIds,
-    selectSelectedElements: (state: any) => [], // Return empty for test unless needed
-    selectView: (state: any) => state.view,
-    selectMode: (state: any) => state.mode,
-    selectPlacingElementType: (state: any) => state.placingElementType,
-    selectCanUndo: (state: any) => false,
-    selectCanRedo: (state: any) => false,
-    selectClipboard: (state: any) => null,
+    selectElements: (_state: any) => _state.elements,
+    selectSelectedIds: (_state: any) => _state.selectedIds,
+    selectSelectedElements: (_state: any) => [], // Return empty for test unless needed
+    selectView: (_state: any) => _state.view,
+    selectMode: (_state: any) => _state.mode,
+    selectPlacingElementType: (_state: any) => _state.placingElementType,
+    selectCanUndo: (_state: any) => false,
+    selectCanRedo: (_state: any) => false,
+    selectClipboard: (_state: any) => null,
 }));
 
 describe('BlockUIDesigner Layout', () => {

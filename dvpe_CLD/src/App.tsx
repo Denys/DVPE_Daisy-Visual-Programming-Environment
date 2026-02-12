@@ -12,6 +12,7 @@ import { saveAs } from 'file-saver';
 import { cn } from '@/lib/utils';
 import { useUIStore, usePatchStore } from '@/stores';
 import { useBlockDesignerStore } from '@/stores/blockDesignerStore';
+import { useCustomBlockStore, collectReferencedCustomBlocks } from '@/stores/customBlockStore';
 import Canvas from '@/components/Canvas/Canvas';
 import { CustomBlockInternalsModal } from '@/components/Canvas/CustomBlockInternalsModal';
 import { ShortcutsModal } from '@/components/Help/ShortcutsModal';
@@ -223,7 +224,12 @@ const App: React.FC = () => {
 
   const handleSave = async () => {
     const patch = getPatch();
-    const project = { version: '1.0.0', patch };
+    const allCustomBlocks = useCustomBlockStore.getState().customBlocks;
+    const referencedCustomBlocks = collectReferencedCustomBlocks(patch.blocks, allCustomBlocks);
+    const project: Record<string, unknown> = { version: '1.0.0', patch };
+    if (referencedCustomBlocks.length > 0) {
+      project.customBlocks = referencedCustomBlocks;
+    }
     const json = JSON.stringify(project, null, 2);
     const fileName = `${(metadata.name || 'Untitled_Patch').replace(/[^a-z0-9]/gi, '_')}.dvpe`;
 
@@ -287,6 +293,15 @@ const App: React.FC = () => {
       const data = JSON.parse(json);
       if (!data.patch || !data.patch.blocks) {
         throw new Error('Invalid project file format');
+      }
+      // Register embedded custom blocks BEFORE loading patch
+      if (data.customBlocks && Array.isArray(data.customBlocks)) {
+        const { addCustomBlock } = useCustomBlockStore.getState();
+        for (const customDef of data.customBlocks) {
+          if (customDef.id && customDef.isCustom === true) {
+            addCustomBlock(customDef);
+          }
+        }
       }
       loadPatch(data.patch);
       toast.success('Project loaded successfully');
@@ -453,7 +468,12 @@ const App: React.FC = () => {
                 const { writeTextFile } = await import('@tauri-apps/api/fs');
                 const patch = usePatchStore.getState().getPatch();
                 const metadata = usePatchStore.getState().metadata;
-                const project = { version: '1.0.0', patch };
+                const cbAll = useCustomBlockStore.getState().customBlocks;
+                const cbRefs = collectReferencedCustomBlocks(patch.blocks, cbAll);
+                const project: Record<string, unknown> = { version: '1.0.0', patch };
+                if (cbRefs.length > 0) {
+                  project.customBlocks = cbRefs;
+                }
                 const fileName = `${(metadata.name || 'Untitled_Patch').replace(/[^a-z0-9]/gi, '_')}.dvpe`;
 
                 const filePath = await save({

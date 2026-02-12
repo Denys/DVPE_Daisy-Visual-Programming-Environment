@@ -28,3 +28,7 @@ export { useBlockDesigner } from './hooks';
 export { PresetBrowser, createBuiltInPresets } from './PresetBrowser';
 export { generateUICode, generateCompleteUIFunction } from './UICodeGenerator';
 
+// Phase 13.4: Hybrid Code Modules
+export { CodeModuleEditor, validateCodeModule } from './CodeModuleEditor';
+export { PortBindingEditor, validatePortBinding, validateAllBindings } from './PortBindingEditor';
+

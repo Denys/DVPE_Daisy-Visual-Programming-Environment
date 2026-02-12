@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { HardwareConfiguration } from './hardware';
+import type { CustomBlockDefinition } from './customBlock';
 
 // ============================================================================
 // ENUMERATIONS
@@ -357,6 +358,8 @@ export interface SerializedProject {
   version: string;
   /** The patch data */
   patch: PatchGraph;
+  /** Custom block definitions referenced by this patch (for portability) */
+  customBlocks?: CustomBlockDefinition[];
 }
 
 // ============================================================================

@@ -21,6 +21,11 @@ import {
 import ParameterDial from './ParameterDial';
 import ParameterSelect from './ParameterSelect';
 import ParameterToggle from './ParameterToggle';
+import { CustomBlockDefinition } from '@/types/customBlock';
+
+function isCustomBlock(def: any): def is CustomBlockDefinition {
+  return Boolean(def?.isCustom);
+}
 
 // ============================================================================
 // ERROR BOUNDARY
@@ -213,6 +218,10 @@ const Inspector: React.FC = () => {
     [block]
   );
 
+  // Detect if this is a custom block
+  const isCustomDef = useMemo(() => isCustomBlock(definition), [definition]);
+  const customDef = isCustomDef ? (definition as CustomBlockDefinition) : null;
+
   // Get connections for this block
   const blockConnections = useMemo(() => {
     if (!block) return { inputs: [], outputs: [] };
@@ -320,6 +329,17 @@ const Inspector: React.FC = () => {
                     {definition.category}
                   </span>
                 </div>
+                {isCustomDef && (
+                  <div className="flex items-center gap-1 text-xs text-amber-400">
+                    <Icons.Boxes className="w-3 h-3" />
+                    <span>Custom Block</span>
+                    {customDef?.internalPatch?.blocks && (
+                      <span className="text-text-tertiary ml-1">
+                        ({customDef.internalPatch.blocks.length} inner blocks)
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </Section>
 
@@ -422,6 +442,27 @@ const Inspector: React.FC = () => {
                 </div>
               </Section>
             ))}
+
+            {/* Exposed Parameters Info (custom blocks only) */}
+            {isCustomDef && customDef?.exposedParameters && Object.keys(customDef.exposedParameters).length > 0 && (
+              <Section
+                title="Parameter Mapping"
+                icon={<Icons.Link className="w-4 h-4" />}
+                collapsible
+                defaultOpen={false}
+              >
+                <div className="space-y-1">
+                  {Object.entries(customDef.exposedParameters).map(([exposedId, mapping]) => (
+                    <div key={exposedId} className="flex items-center justify-between py-1 text-xs">
+                      <span className="text-text-primary">{exposedId}</span>
+                      <span className="text-text-tertiary">
+                        → {mapping.blockId}.{mapping.parameterId}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
 
             {/* Ports / Connectivity */}
             <Section

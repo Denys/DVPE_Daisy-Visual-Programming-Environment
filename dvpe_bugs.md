@@ -1,6 +1,6 @@
 # DVPE Implementation Bug Log
 
-**Last Reviewed**: 2026-01-30 (session end, no changes)
+**Last Reviewed**: 2026-02-10 (session save, no changes)
 
 A lessons-learned document for DVPE block development. Check this **before** implementing new blocks.
 
@@ -428,6 +428,30 @@ Multiple compilation and generation errors prevented the `field_string_machine` 
 - Generated C++ code inspection confirms correct API usage.
 
 ---
+
+### [RESOLVED] Bug #016: Custom Blocks Not Persisted in .dvpe Files (T-A5)
+- **Date**: 2026-02-10
+- **Status**: ✅ RESOLVED
+- **Component**: App.tsx (save/load), customBlockStore.ts, types/blocks.ts
+
+**Symptom**: User creates custom blocks, saves patch as `.dvpe`, shares file. Recipient opens file → "Unknown block" errors because custom block definitions only existed in sender's `localStorage`.
+
+**Root Cause**: `handleSave()` constructed `{ version: '1.0.0', patch }` without custom block definitions. `processLoadedPatch()` never looked for or restored custom blocks. Definitions lived exclusively in `localStorage['dvpe-custom-blocks']` (Zustand persist).
+
+**Fix** (4 files):
+1. **`types/blocks.ts`**: Added optional `customBlocks?: CustomBlockDefinition[]` to `SerializedProject`
+2. **`stores/customBlockStore.ts`**: Added `collectReferencedCustomBlocks()` utility — walks patch blocks, collects only referenced custom defs (recursive, depth-limited to 3)
+3. **`App.tsx` save paths** (2 locations — `handleSave()` + Tauri menu `'save'`): Collect referenced custom blocks and embed in project JSON when present
+4. **`App.tsx` load path** (`processLoadedPatch()`): Register embedded custom blocks via `addCustomBlock()` BEFORE calling `loadPatch()`, so `BlockRegistry.get()` finds them immediately
+
+**Backward Compatibility**:
+- Old `.dvpe` files without `customBlocks` → `if` guard skips, loads normally
+- New files opened in old DVPE → unknown `customBlocks` key ignored silently
+
+**Verification**: 750 tests pass (3 pre-existing failures unrelated)
+
+---
+
 ### USER question:
 why you can't read PDFs directly and how to fix it?
 

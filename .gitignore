@@ -27,6 +27,7 @@ Cargo.lock
 # === IDE & Editor ===
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 *.sublime-*
