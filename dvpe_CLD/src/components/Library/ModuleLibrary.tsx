@@ -18,6 +18,7 @@ import { BlockCategory, BlockColorScheme, BlockDefinition } from '@/types';
 import { BlockContextMenu, ContextMenuAction } from './BlockContextMenu';
 import { ImportBlockDialog } from './ImportBlockDialog';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { CustomBlockEditorModal } from '@/components/Canvas/CustomBlockEditorModal';
 
 // ============================================================================
 // CATEGORY STYLING
@@ -259,6 +260,9 @@ const ModuleLibrary: React.FC = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
+  // Custom block editor state
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+
   // Store actions
   const exportBlockToFile = useCustomBlockStore((state) => state.exportBlockToFile);
   const duplicateBlock = useCustomBlockStore((state) => state.duplicateBlock);
@@ -316,9 +320,7 @@ const ModuleLibrary: React.FC = () => {
 
     switch (action) {
       case 'edit':
-        // Placeholder - will open nested editor in future
-        console.log('Edit block:', blockId);
-        alert(`Edit functionality for "${blockName}" coming soon!`);
+        setEditingBlockId(blockId);
         break;
 
       case 'duplicate':
@@ -465,6 +467,12 @@ const ModuleLibrary: React.FC = () => {
           }}
         />
       )}
+
+      {/* Custom Block Nested Editor */}
+      <CustomBlockEditorModal
+        blockDefinitionId={editingBlockId}
+        onClose={() => setEditingBlockId(null)}
+      />
     </>
   );
 };

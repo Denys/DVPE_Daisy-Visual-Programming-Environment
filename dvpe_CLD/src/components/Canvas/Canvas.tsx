@@ -272,7 +272,7 @@ const CanvasInner: React.FC = () => {
       // Preserve existing behavior exactly: double-click always inspects block
       inspectBlock(node.id);
 
-      // Additional behavior: Ctrl/Cmd + double-click on custom block opens internals inspector modal
+      // Additional behavior: Ctrl/Cmd + double-click on custom block opens the nested editor
       const block = blocks.find((item) => item.id === node.id);
       const definition = block ? BlockRegistry.get(block.definitionId) : undefined;
       const action = resolveNodeDoubleClickAction({
@@ -282,7 +282,9 @@ const CanvasInner: React.FC = () => {
       });
 
       if (action === 'inspect-custom-internals') {
-        openModal('custom-block-internals', { blockId: node.id });
+        // Open the full nested editor, keyed by definitionId so the modal can
+        // look up the block in the custom block store directly
+        openModal('custom-block-editor', { blockDefinitionId: block?.definitionId });
       }
     },
     [inspectBlock, blocks, openModal]

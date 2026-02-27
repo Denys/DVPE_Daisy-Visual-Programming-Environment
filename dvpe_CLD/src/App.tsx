@@ -15,6 +15,7 @@ import { useBlockDesignerStore } from '@/stores/blockDesignerStore';
 import { useCustomBlockStore, collectReferencedCustomBlocks } from '@/stores/customBlockStore';
 import Canvas from '@/components/Canvas/Canvas';
 import { CustomBlockInternalsModal } from '@/components/Canvas/CustomBlockInternalsModal';
+import { CustomBlockEditorModal } from '@/components/Canvas/CustomBlockEditorModal';
 import { ShortcutsModal } from '@/components/Help/ShortcutsModal';
 import ModuleLibrary from '@/components/Library/ModuleLibrary';
 import Inspector from '@/components/Inspector/Inspector';
@@ -195,6 +196,7 @@ const App: React.FC = () => {
   const theme = useUIStore((state) => state.theme);
   const panels = useUIStore((state) => state.panels);
   const activeModal = useUIStore((state) => state.activeModal);
+  const modalData = useUIStore((state) => state.modalData);
   const openModal = useUIStore((state) => state.openModal);
   const closeModal = useUIStore((state) => state.closeModal);
 
@@ -740,6 +742,14 @@ const App: React.FC = () => {
       {/* Modals */}
       {activeModal === 'architecture' && <ArchitectureWindow />}
       <CustomBlockInternalsModal />
+      <CustomBlockEditorModal
+        blockDefinitionId={
+          activeModal === 'custom-block-editor'
+            ? ((modalData as { blockDefinitionId?: string })?.blockDefinitionId ?? null)
+            : null
+        }
+        onClose={closeModal}
+      />
       <ShortcutsModal isOpen={activeModal === 'shortcuts'} onClose={closeModal} />
 
       {/* UI Designer Modal */}

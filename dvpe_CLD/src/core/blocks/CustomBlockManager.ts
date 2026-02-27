@@ -31,9 +31,31 @@ export class CustomBlockManager {
         });
 
         // 2. Iterate Blocks to find unconnected ports -> Expose them
+        // Build a friendly label for each block (label > displayName, dedup with #N suffix)
+        const defDisplayNameCount: Record<string, number> = {};
+        const blockFriendlyLabel: Record<string, string> = {};
+        patch.blocks.forEach(block => {
+            const def = BlockRegistry.get(block.definitionId);
+            const baseName = block.label || def?.displayName || block.definitionId;
+            defDisplayNameCount[baseName] = (defDisplayNameCount[baseName] ?? 0) + 1;
+        });
+        const defDisplayNameSeen: Record<string, number> = {};
+        patch.blocks.forEach(block => {
+            const def = BlockRegistry.get(block.definitionId);
+            const baseName = block.label || def?.displayName || block.definitionId;
+            const count = defDisplayNameCount[baseName] ?? 1;
+            if (count > 1) {
+                defDisplayNameSeen[baseName] = (defDisplayNameSeen[baseName] ?? 0) + 1;
+                blockFriendlyLabel[block.id] = `${baseName} #${defDisplayNameSeen[baseName]}`;
+            } else {
+                blockFriendlyLabel[block.id] = baseName;
+            }
+        });
+
         patch.blocks.forEach(block => {
             const def = BlockRegistry.get(block.definitionId);
             if (!def) return;
+            const friendlyLabel = blockFriendlyLabel[block.id] ?? block.id;
 
             // Check Ports
             def.ports.forEach(port => {
@@ -47,7 +69,7 @@ export class CustomBlockManager {
                         ports.push({
                             ...port,
                             id: exposedId,
-                            displayName: `${block.id} ${port.displayName}`
+                            displayName: `${friendlyLabel} ${port.displayName}`
                         });
                     }
                 } else if (port.direction === PortDirection.OUTPUT) {
@@ -58,7 +80,7 @@ export class CustomBlockManager {
                         ports.push({
                             ...port,
                             id: exposedId,
-                            displayName: `${block.id} ${port.displayName}`
+                            displayName: `${friendlyLabel} ${port.displayName}`
                         });
                     }
                 }
@@ -71,7 +93,7 @@ export class CustomBlockManager {
                 parameters.push({
                     ...param,
                     id: exposedId,
-                    displayName: `${block.id} ${param.displayName}`
+                    displayName: `${friendlyLabel} ${param.displayName}`
                 });
             });
         });
