@@ -72,7 +72,6 @@ docs/
 PLANNING/
 project_description/
 prompts/
-_agentic_promts/
 _block_diagrams/
 _block_diagrams_code/
 _daisy_reference_code/
@@ -85,8 +84,13 @@ scripts/
 execution/
 *.txt
 
-# Explicit markdown files in root
-*.md
-!README.md
-!LICENSE
-!github_upload_plan.md
+# Markdown policy
+# Track markdown files by default; ignore generated temp markdown only.
+.tmp/**/*.md
+
+# === Deployment Artifacts (unblock for Phase 12) ===
+!docs/user-guide/
+!docs/user-guide/**
+!_block_diagrams_code/examples/
+!_block_diagrams_code/examples/**
+!CHANGELOG.md
