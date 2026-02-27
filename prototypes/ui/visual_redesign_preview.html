@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DVPE Neon Glass Redesign Preview</title>
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM TOKENS
+       ========================================================================== */
+    :root {
+      /* Core Colors */
+      --bg-void: #08080a;
+      
+      /* Signal Colors (Neon Palette) */
+      --neon-audio: 0, 240, 255;   /* Cyan */
+      --neon-cv: 255, 214, 0;      /* Gold */
+      --neon-trig: 255, 82, 0;     /* OrangeRed */
+      --neon-logic: 184, 0, 255;   /* Violet */
+      --neon-user: 0, 255, 148;    /* Mint */
+
+      /* Glass Material */
+      --glass-surface: rgba(20, 20, 25, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glass-highlight: rgba(255, 255, 255, 0.05);
+      --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--bg-void);
+      font-family: 'Inter', sans-serif;
+      color: #fff;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+    }
+
+    /* Background Grid */
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ==========================================================================
+       BLOCK COMPONENT
+       ========================================================================== */
+    .block {
+      position: absolute;
+      width: 160px;
+      padding-bottom: 12px;
+      border-radius: 16px;
+      
+      /* Glassmorphism Base */
+      background: var(--glass-surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      
+      /* Inner Light */
+      background-image: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 100%);
+      
+      /* Transition */
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    /* Block Header */
+    .block-header {
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.9);
+    }
+
+    /* Diffused Glow (The "Atmosphere" Behind) */
+    .block::before {
+      content: '';
+      position: absolute;
+      inset: -40px;
+      z-index: -1;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--glow-color) 0%, transparent 70%);
+      opacity: 0.4; /* Diffused intensity */
+      filter: blur(20px);
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    /* Neon Border Glow (The "Active" Edge) */
+    .block.audio { --glow-color: rgba(var(--neon-audio), 0.5); --border-color: rgb(var(--neon-audio)); }
+    .block.cv { --glow-color: rgba(var(--neon-cv), 0.5); --border-color: rgb(var(--neon-cv)); }
+    .block.trigger { --glow-color: rgba(var(--neon-trig), 0.5); --border-color: rgb(var(--neon-trig)); }
+    .block.user { --glow-color: rgba(var(--neon-user), 0.5); --border-color: rgb(var(--neon-user)); }
+
+    /* Hover & Selection States */
+    .block:hover {
+      border-color: rgba(var(--border-color), 0.5);
+      box-shadow: 0 0 15px var(--glow-color), 0 0 30px var(--glow-color); /* Double glow */
+      transform: translateY(-2px);
+    }
+
+    .block:hover::before {
+      opacity: 0.7; /* Glow intensifies */
+    }
+
+    /* Ports */
+    .ports-container {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      position: relative;
+    }
+
+    .port {
+      height: 10px;
+      width: 10px;
+      border-radius: 50%;
+      background: var(--bg-void);
+      border: 2px solid rgb(var(--port-color));
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      box-shadow: 0 0 5px rgba(var(--port-color), 0.5);
+      transition: all 0.2s ease;
+    }
+
+    .port:hover {
+      background: rgb(var(--port-color));
+      box-shadow: 0 0 10px rgba(var(--port-color), 0.8);
+      cursor: crosshair;
+    }
+
+    .port.in { left: -6px; }
+    .port.out { right: -6px; }
+
+    /* Parameters (Micro-viz) */
+    .params {
+      padding: 0 12px;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 10px;
+      color: rgba(255,255,255,0.6);
+    }
+    .param-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    /* ==========================================================================
+       CONNECTIONS (SVG)
+       ========================================================================== */
+    .connections-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    path.wire {
+      fill: none;
+      stroke-width: 2px;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 4px var(--wire-glow));
+      animation: dash 1s linear infinite;
+    }
+    
+    /* Gradient Definitions in SVG */
+  </style>
+</head>
+<body>
+
+  <div class="grid-bg"></div>
+
+  <!-- SVG Layer for Wires -->
+  <svg class="connections-layer" width="100%" height="100%">
+    <defs>
+      <linearGradient id="grad-audio" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" style="stop-color:rgb(0, 240, 255);stop-opacity:1" />
+        <stop offset="100%" style="stop-color:rgb(0, 163, 255);stop-opacity:1" />
+      </linearGradient>
+      <linearGradient id="grad-cv" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" style="stop-color:rgb(255, 214, 0);stop-opacity:1" />
+        <stop offset="100%" style="stop-color:rgb(255, 143, 0);stop-opacity:1" />
+      </linearGradient>
+    </defs>
+    
+    <!-- Audio Connection -->
+    <path class="wire" d="M 260 150 C 310 150, 350 250, 400 250" 
+          stroke="url(#grad-audio)" style="--wire-glow: rgba(0, 240, 255, 0.5)"/>
+          
+    <!-- CV Connection -->
+    <path class="wire" d="M 260 350 C 310 350, 350 270, 400 270" 
+          stroke="url(#grad-cv)" style="--wire-glow: rgba(255, 214, 0, 0.5)"/>
+  </svg>
+
+  <!-- Node 1: Oscillator (Audio) -->
+  <div class="block audio" style="top: 100px; left: 100px;">
+    <div class="block-header">
+      <span style="color:rgb(var(--neon-audio))">∿</span> Oscillator
+    </div>
+    <div class="ports-container">
+      <div class="port out" style="--port-color: var(--neon-audio)"></div>
+    </div>
+    <div class="params">
+      <div class="param-row"><span>Freq</span> <span>440 Hz</span></div>
+      <div class="param-row"><span>Wave</span> <span>Saw</span></div>
+    </div>
+  </div>
+
+  <!-- Node 2: LFO (CV) -->
+  <div class="block cv" style="top: 300px; left: 100px;">
+    <div class="block-header">
+      <span style="color:rgb(var(--neon-cv))">⚡</span> LFO
+    </div>
+    <div class="ports-container">
+      <div class="port out" style="--port-color: var(--neon-cv)"></div>
+    </div>
+    <div class="params">
+      <div class="param-row"><span>Rate</span> <span>0.5 Hz</span></div>
+      <div class="param-row"><span>Amp</span> <span>1.0</span></div>
+    </div>
+  </div>
+
+  <!-- Node 3: Filter (Audio) -->
+  <div class="block audio" style="top: 200px; left: 400px;">
+    <div class="block-header">
+      <span style="color:rgb(var(--neon-audio))">⩰</span> Filter
+    </div>
+    <div class="ports-container">
+      <div class="port in" style="top: 30%; --port-color: var(--neon-audio)"></div> <!-- Audio In -->
+      <div class="port in" style="top: 70%; --port-color: var(--neon-cv)"></div>    <!-- CV In -->
+      <div class="port out" style="--port-color: var(--neon-audio)"></div>
+    </div>
+    <div class="params">
+      <div class="param-row"><span>Cutoff</span> <span>1.2k</span></div>
+      <div class="param-row"><span>Res</span> <span>0.4</span></div>
+    </div>
+  </div>
+
+  <!-- Floating Inspector Panel (Glass) -->
+  <div style="
+    position: absolute; right: 20px; top: 20px; bottom: 20px; width: 280px;
+    background: rgba(15, 15, 20, 0.7);
+    backdrop-filter: blur(24px);
+    border-left: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    z-index: 20;">
+    
+    <h3 style="margin-top:0; font-size:12px; letter-spacing:1px; color:rgba(255,255,255,0.5); border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">INSPECTOR</h3>
+    
+    <div style="margin-top:20px;">
+      <label style="font-size:11px; color:rgba(255,255,255,0.7); display:block; margin-bottom:8px;">FREQUENCY</label>
+      <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; position:relative;">
+        <div style="width:60%; height:100%; background:rgb(var(--neon-audio)); border-radius:2px; box-shadow: 0 0 10px rgb(var(--neon-audio));"></div>
+        <div style="width:12px; height:12px; background:white; border-radius:50%; position:absolute; top:-4px; left:60%; box-shadow:0 0 10px white;"></div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
