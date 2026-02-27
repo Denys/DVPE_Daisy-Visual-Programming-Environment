@@ -211,6 +211,7 @@ export const ImportBlockDialog: React.FC<ImportBlockDialogProps> = ({
                     </h2>
                     <button
                         onClick={handleClose}
+                        aria-label="Close"
                         className="p-1 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-tertiary transition-colors"
                     >
                         <X className="w-5 h-5" />

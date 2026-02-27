@@ -54,3 +54,4 @@ export * from './window_hann';
 export * from './window_hamming';
 export * from './window_blackman';
 export * from './overlap_add';
+export * from './fsm_4';

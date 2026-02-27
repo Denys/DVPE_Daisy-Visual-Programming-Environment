@@ -170,6 +170,7 @@ import {
   MidSideEncodeBlock, MidSideDecodeBlock, GateLengthBlock,
   SplitterBlock, MergerBlock,
   WindowHannBlock, WindowHammingBlock, WindowBlackmanBlock, OverlapAddBlock,
+  Fsm4Block,
 
 } from './definitions';
 
@@ -343,6 +344,7 @@ function registerAllBlocks(): void {
     MidSideEncodeBlock, MidSideDecodeBlock, GateLengthBlock,
     SplitterBlock, MergerBlock,
     WindowHannBlock, WindowHammingBlock, WindowBlackmanBlock, OverlapAddBlock,
+    Fsm4Block,
   ];
 
   for (const block of allBlocks) {

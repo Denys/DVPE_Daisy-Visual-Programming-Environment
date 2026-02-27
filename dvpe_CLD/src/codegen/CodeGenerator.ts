@@ -318,7 +318,7 @@ private:
             }
 
             // Phase 13: Inline blocks (no class instance)
-            if (def.cppInlineProcess) {
+            if (def.cppInlineProcess || def.cppProcessTemplate) {
                 // Generate state variables
                 if (def.cppStateVars) {
                     def.cppStateVars.forEach(v => {
@@ -558,7 +558,7 @@ private:
         const instanceName = this.getInstanceName(block);
 
         // Phase 13: Inline Processing (Arithmetic, Math, Utility)
-        if (def.cppInlineProcess) {
+        if (def.cppInlineProcess || def.cppProcessTemplate) {
             return this.generateInlineProcessCode(block, def);
         }
 
@@ -2320,7 +2320,7 @@ include $(SYSTEM_FILES_DIR)/Makefile
 
     private appendBlockInitialization(block: BlockInstance, def: BlockDefinition, lines: string[]): void {
         // Phase 13: Skip inline blocks (no class to init)
-        if (def.cppInlineProcess) return;
+        if (def.cppInlineProcess || def.cppProcessTemplate) return;
 
         if (this.shouldSkipInitialization(def.id)) {
             return;

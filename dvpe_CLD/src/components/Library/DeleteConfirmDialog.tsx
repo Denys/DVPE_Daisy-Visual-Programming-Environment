@@ -49,6 +49,7 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
                     </h2>
                     <button
                         onClick={onCancel}
+                        aria-label="Close"
                         className="p-1 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-tertiary transition-colors"
                     >
                         <X className="w-5 h-5" />

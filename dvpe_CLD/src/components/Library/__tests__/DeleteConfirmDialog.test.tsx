@@ -26,7 +26,7 @@ describe('DeleteConfirmDialog', () => {
     it('should render when open', () => {
         render(<DeleteConfirmDialog {...defaultProps} />);
 
-        expect(screen.getByText('Delete Block')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Delete Block' })).toBeInTheDocument();
         expect(screen.getByText('Test Block')).toBeInTheDocument();
         expect(screen.getByText('(test-block-id)')).toBeInTheDocument();
     });
@@ -41,7 +41,7 @@ describe('DeleteConfirmDialog', () => {
     it('should call onConfirm when Delete Block clicked', () => {
         render(<DeleteConfirmDialog {...defaultProps} />);
 
-        const deleteButton = screen.getByText('Delete Block');
+        const deleteButton = screen.getByRole('button', { name: 'Delete Block' });
         fireEvent.click(deleteButton);
 
         expect(defaultProps.onConfirm).toHaveBeenCalled();
@@ -78,7 +78,7 @@ describe('DeleteConfirmDialog', () => {
     it('should have danger styling on delete button', () => {
         render(<DeleteConfirmDialog {...defaultProps} />);
 
-        const deleteButton = screen.getByText('Delete Block').closest('button');
+        const deleteButton = screen.getByRole('button', { name: 'Delete Block' });
         expect(deleteButton).toHaveClass('bg-red-500');
     });
 });
