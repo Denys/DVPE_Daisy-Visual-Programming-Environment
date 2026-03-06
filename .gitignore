@@ -57,6 +57,7 @@ htmlcov/
 
 # === Temporary ===
 .tmp/
+.worktrees/
 *.tmp
 *.temp
 
