@@ -3,7 +3,7 @@
  * Task A4: Exposed parameter controls in inspector
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { CustomBlockDefinition } from '@/types/customBlock';
 import { BlockCategory, BlockColorScheme, ParameterType, ParameterCurve, SignalType, PortDirection } from '@/types';
 
@@ -77,7 +77,7 @@ describe('Inspector Custom Block Parameter Support', () => {
         };
 
         // Each exposed param should have blockId and parameterId
-        Object.entries(exposedParams).forEach(([key, mapping]) => {
+        Object.entries(exposedParams).forEach(([_key, mapping]) => {
             expect(mapping.blockId).toBeTruthy();
             expect(mapping.parameterId).toBeTruthy();
             expect(typeof mapping.blockId).toBe('string');

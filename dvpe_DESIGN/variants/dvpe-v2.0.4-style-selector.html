@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DVPE v2.0.4 — Block Style Selector</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Rajdhani:wght@400;500;600;700&family=Oxanium:wght@300;400;500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&family=Fira+Code:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --neon-cyan: #00e5ff;
+            --neon-magenta: #ff00e5;
+            --neon-violet: #b44aff;
+            --neon-amber: #ffab00;
+            --neon-green: #39ff14;
+            --neon-red: #ff3d5a;
+            --neon-blue: #4d7cff;
+            --neon-teal: #00bfa5;
+            --neon-yellow: #ffe600;
+            --neon-orange: #ff6d00;
+            --neon-pink: #ff4081;
+        }
+
+        html, body {
+            width: 100%; min-height: 100vh;
+            font-family: 'Exo 2', sans-serif;
+            color: rgba(255,255,255,0.88);
+            background: #06041a;
+        }
+
+        /* Background */
+        body::before {
+            content: ''; position: fixed; inset: 0; z-index: 0;
+            background:
+                radial-gradient(ellipse 900px 650px at 8% 30%, rgba(255,200,0,0.22), transparent 70%),
+                radial-gradient(ellipse 750px 800px at 88% 12%, rgba(255,100,0,0.18), transparent 70%),
+                radial-gradient(ellipse 1100px 900px at 55% 50%, rgba(120,40,255,0.18), transparent 70%),
+                radial-gradient(ellipse 600px 500px at 82% 80%, rgba(255,0,160,0.14), transparent 65%),
+                linear-gradient(145deg, #0a0520 0%, #0d0828 35%, #12063a 65%, #0a0418 100%);
+        }
+        body::after {
+            content: ''; position: fixed; inset: 0; z-index: 0;
+            background-image: radial-gradient(circle 0.8px, rgba(255,255,255,0.05) 0%, transparent 100%);
+            background-size: 28px 28px; pointer-events: none;
+        }
+
+        /* Layout */
+        .page { position: relative; z-index: 1; padding: 32px 40px 60px; max-width: 1500px; margin: 0 auto; }
+
+        .page-title {
+            font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 800;
+            letter-spacing: 4px; text-align: center; margin-bottom: 6px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .page-sub {
+            font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: center;
+            color: rgba(255,255,255,0.3); letter-spacing: 1px; margin-bottom: 36px;
+        }
+
+        /* Category legend */
+        .legend {
+            display: flex; justify-content: center; gap: 24px; margin-bottom: 40px; flex-wrap: wrap;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-swatch { width: 28px; height: 14px; border-radius: 3px; }
+        .legend-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 0.5px; }
+
+        /* Style option cards */
+        .options-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
+        }
+
+        .option-card {
+            background: rgba(10,8,24,0.5);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);
+            padding: 24px; overflow: hidden;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .option-card:hover {
+            border-color: rgba(255,255,255,0.12);
+            box-shadow: 0 0 30px rgba(120,40,255,0.1);
+        }
+
+        .option-header {
+            text-align: center; margin-bottom: 20px; padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .option-num {
+            font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700;
+            letter-spacing: 3px; color: var(--neon-violet); opacity: 0.7; margin-bottom: 4px;
+        }
+        .option-title {
+            font-size: 16px; font-weight: 600; letter-spacing: 1px;
+            color: rgba(255,255,255,0.85); margin-bottom: 4px;
+        }
+        .option-fonts {
+            font-family: 'JetBrains Mono', monospace; font-size: 9px;
+            color: rgba(255,255,255,0.25); letter-spacing: 0.5px;
+        }
+
+        /* Block samples container */
+        .samples { display: flex; flex-direction: column; gap: 14px; }
+
+        /* ============================================================
+           SHARED BLOCK STRUCTURE
+           ============================================================ */
+        .blk {
+            position: relative;
+            background: rgba(12,9,28,0.35);
+            backdrop-filter: blur(18px) saturate(1.2);
+            -webkit-backdrop-filter: blur(18px) saturate(1.2);
+            border-radius: 12px;
+            overflow: visible;
+            padding: 0;
+        }
+
+        .blk-tint {
+            position: absolute; inset: 0; border-radius: 12px;
+            pointer-events: none; z-index: 0; mix-blend-mode: screen;
+        }
+
+        .blk-head {
+            position: relative; z-index: 1;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 7px 12px 5px; gap: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .blk-head-left { display: flex; align-items: center; gap: 7px; }
+        .blk-icon { font-size: 11px; opacity: 0.65; }
+        .blk-dot { width: 6px; height: 6px; border-radius: 50%; animation: blink 2.5s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:.5;} 50%{opacity:1;} }
+
+        .blk-body {
+            position: relative; z-index: 1;
+            padding: 6px 12px 8px;
+        }
+        .blk-param {
+            display: flex; align-items: center; gap: 6px; padding: 2px 0;
+        }
+        .blk-param-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+        .blk-param-fill { height: 100%; border-radius: 2px; }
+
+        .blk-ports {
+            position: relative; z-index: 1;
+            display: flex; justify-content: space-between; padding: 3px 8px 7px;
+        }
+        .blk-port { display: flex; align-items: center; gap: 4px; }
+        .blk-port-dot {
+            width: 9px; height: 9px; border-radius: 50%;
+            border: 1.5px solid; background: rgba(0,0,0,0.4);
+        }
+        .blk-port-dot.on { background: currentColor; box-shadow: 0 0 6px currentColor; }
+
+        /* Outer glow — shared */
+        .blk::after {
+            content: ''; position: absolute; inset: -3px;
+            border-radius: 15px; pointer-events: none;
+            opacity: 0.4; transition: opacity 0.3s;
+        }
+        .blk:hover::after { opacity: 0.7; }
+
+        /* Category label tag */
+        .cat-tag {
+            font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase;
+            padding: 1px 6px; border-radius: 3px; opacity: 0.6;
+        }
+
+        /* ============================================================
+           OPTION A — "SIGNAL FLOW TECHNICAL"
+           Fonts: Rajdhani (display) + Fira Code (mono)
+           Borders: Category-specific SVG patterns
+           Style: Technical/schematic — angular, clean, engineering drawing feel
+           ============================================================ */
+        .optA .blk-label { font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 2px; font-size: 12px; }
+        .optA .blk-plbl  { font-family: 'Fira Code', monospace; font-size: 9px; min-width: 36px; }
+        .optA .blk-pval  { font-family: 'Fira Code', monospace; font-size: 9px; min-width: 44px; text-align: right; }
+        .optA .blk-port-lbl { font-family: 'Fira Code', monospace; font-size: 7px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .optA .cat-tag { font-family: 'Fira Code', monospace; background: rgba(255,255,255,0.04); }
+
+        /* A: I/O & Control — dot-dash (hardware connector feel) */
+        .optA .blk-io::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            border: 2px solid transparent; pointer-events: none;
+            background: repeating-linear-gradient(
+                90deg,
+                var(--neon-orange) 0px, var(--neon-orange) 8px,
+                transparent 8px, transparent 11px,
+                var(--neon-orange) 11px, var(--neon-orange) 14px,
+                transparent 14px, transparent 17px
+            ) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude;
+            padding: 1px;
+            opacity: 0.45;
+        }
+
+        /* A: Sources — solid double line (strong signal source) */
+        .optA .blk-src::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            border: 2.5px solid var(--neon-cyan);
+            box-shadow: inset 0 0 0 3px rgba(0,0,0,0.5), inset 0 0 0 4.5px var(--neon-cyan);
+            opacity: 0.4; pointer-events: none;
+        }
+
+        /* A: Filters — zigzag/sawtooth line (frequency cutting) */
+        .optA .blk-flt::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            pointer-events: none;
+            border: 2px solid transparent;
+            background: repeating-linear-gradient(
+                -45deg,
+                var(--neon-magenta) 0px, var(--neon-magenta) 3px,
+                transparent 3px, transparent 6px
+            ) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude;
+            padding: 1px; opacity: 0.45;
+        }
+
+        /* A: Effects — dotted (scattered/processed) */
+        .optA .blk-fx::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            border: 2px dotted var(--neon-violet);
+            opacity: 0.45; pointer-events: none;
+        }
+
+        /* A: Envelopes/Modulators — long dash (control voltage convention) */
+        .optA .blk-env::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            border: 2px dashed var(--neon-amber);
+            border-style: dashed;
+            stroke-dasharray: 12 5;
+            opacity: 0.45; pointer-events: none;
+        }
+
+        /* ============================================================
+           OPTION B — "NEON ARCADE"
+           Fonts: Oxanium (display) + Space Mono (mono)
+           Borders: Animated gradient + glow-pulse per category
+           Style: Bold, saturated, arcade/gaming feel
+           ============================================================ */
+        .optB .blk-label { font-family: 'Oxanium', sans-serif; font-weight: 700; letter-spacing: 1.5px; font-size: 13px; text-transform: uppercase; }
+        .optB .blk-plbl  { font-family: 'Space Mono', monospace; font-size: 9px; min-width: 36px; }
+        .optB .blk-pval  { font-family: 'Space Mono', monospace; font-size: 9px; min-width: 44px; text-align: right; }
+        .optB .blk-port-lbl { font-family: 'Space Mono', monospace; font-size: 7px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .optB .cat-tag { font-family: 'Space Mono', monospace; }
+
+        /* B: All blocks get animated gradient border via conic-gradient */
+        .optB .blk::before {
+            content: ''; position: absolute; inset: -2px;
+            border-radius: 14px; pointer-events: none;
+            padding: 2px;
+            background: conic-gradient(
+                from var(--border-angle, 0deg),
+                var(--c1) 0%,
+                var(--c2) 25%,
+                var(--c1) 50%,
+                transparent 60%,
+                transparent 100%
+            ) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude;
+            animation: spinBorder 4s linear infinite;
+            opacity: 0.6;
+        }
+        @property --border-angle {
+            syntax: '<angle>';
+            inherits: false;
+            initial-value: 0deg;
+        }
+        @keyframes spinBorder {
+            to { --border-angle: 360deg; }
+        }
+
+        /* B: Category colors for spinning gradient */
+        .optB .blk-io  { --c1: var(--neon-orange); --c2: var(--neon-yellow); }
+        .optB .blk-src  { --c1: var(--neon-cyan);   --c2: var(--neon-blue);   }
+        .optB .blk-flt  { --c1: var(--neon-magenta); --c2: var(--neon-pink);  }
+        .optB .blk-fx   { --c1: var(--neon-violet);  --c2: var(--neon-blue);  }
+        .optB .blk-env  { --c1: var(--neon-amber);   --c2: var(--neon-red);   }
+
+        /* B: Pulsing glow per category */
+        .optB .blk-io::after  { box-shadow: 0 0 20px 3px rgba(255,109,0,0.2); animation: glowPulse 3s ease-in-out infinite; }
+        .optB .blk-src::after { box-shadow: 0 0 20px 3px rgba(0,229,255,0.2); animation: glowPulse 3s ease-in-out infinite 0.5s; }
+        .optB .blk-flt::after { box-shadow: 0 0 20px 3px rgba(255,0,229,0.2); animation: glowPulse 3s ease-in-out infinite 1s; }
+        .optB .blk-fx::after  { box-shadow: 0 0 20px 3px rgba(180,74,255,0.2); animation: glowPulse 3s ease-in-out infinite 1.5s; }
+        .optB .blk-env::after { box-shadow: 0 0 20px 3px rgba(255,171,0,0.2); animation: glowPulse 3s ease-in-out infinite 2s; }
+        @keyframes glowPulse { 0%,100%{opacity:0.3;} 50%{opacity:0.65;} }
+
+        /* B: Corner accents */
+        .optB .corner-tl, .optB .corner-br {
+            position: absolute; width: 10px; height: 10px; pointer-events: none; opacity: 0.5;
+        }
+        .optB .corner-tl { top: 4px; left: 4px; border-top: 2px solid; border-left: 2px solid; border-radius: 3px 0 0 0; }
+        .optB .corner-br { bottom: 4px; right: 4px; border-bottom: 2px solid; border-right: 2px solid; border-radius: 0 0 3px 0; }
+
+        /* ============================================================
+           OPTION C — "CIRCUIT BLUEPRINT"
+           Fonts: Chakra Petch (display) + Share Tech Mono (mono)
+           Borders: PCB trace / circuit-board patterns per category
+           Style: Clean engineering blueprint, copper-trace aesthetic
+           ============================================================ */
+        .optC .blk-label { font-family: 'Chakra Petch', sans-serif; font-weight: 600; letter-spacing: 1px; font-size: 12px; }
+        .optC .blk-plbl  { font-family: 'Share Tech Mono', monospace; font-size: 9px; min-width: 36px; }
+        .optC .blk-pval  { font-family: 'Share Tech Mono', monospace; font-size: 9px; min-width: 44px; text-align: right; }
+        .optC .blk-port-lbl { font-family: 'Share Tech Mono', monospace; font-size: 7px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .optC .cat-tag { font-family: 'Share Tech Mono', monospace; }
+
+        /* C: I/O — solid with corner notches (IC pin / connector) */
+        .optC .blk-io {
+            border: 1.5px solid color-mix(in srgb, var(--neon-orange) 55%, transparent);
+            clip-path: polygon(
+                8px 0%, calc(100% - 8px) 0%, 100% 8px,
+                100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%,
+                0% calc(100% - 8px), 0% 8px
+            );
+            border-radius: 0;
+        }
+        .optC .blk-io::before {
+            content: ''; position: absolute; inset: -1px; pointer-events: none;
+            clip-path: polygon(
+                8px 0%, calc(100% - 8px) 0%, 100% 8px,
+                100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%,
+                0% calc(100% - 8px), 0% 8px
+            );
+            box-shadow: 0 0 15px 2px rgba(255,109,0,0.2);
+            opacity: 0.5;
+        }
+
+        /* C: Sources — double-line (power rail / bus) */
+        .optC .blk-src {
+            border: 1.5px solid color-mix(in srgb, var(--neon-cyan) 45%, transparent);
+            outline: 1.5px solid color-mix(in srgb, var(--neon-cyan) 20%, transparent);
+            outline-offset: 3px;
+        }
+        .optC .blk-src::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            box-shadow: 0 0 12px 2px rgba(0,229,255,0.15); opacity: 0.5; pointer-events: none;
+        }
+
+        /* C: Filters — hatched diagonal (cross-section / filter symbol) */
+        .optC .blk-flt::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            pointer-events: none; padding: 1.5px;
+            background: repeating-linear-gradient(
+                135deg,
+                var(--neon-magenta) 0px, var(--neon-magenta) 2px,
+                transparent 2px, transparent 7px
+            ) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude;
+            opacity: 0.4;
+        }
+
+        /* C: Effects — dashed with varied spacing (delay taps / echo) */
+        .optC .blk-fx::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            pointer-events: none; padding: 1.5px;
+            background: repeating-linear-gradient(
+                90deg,
+                var(--neon-violet) 0px, var(--neon-violet) 4px,
+                transparent 4px, transparent 8px,
+                var(--neon-violet) 8px, var(--neon-violet) 10px,
+                transparent 10px, transparent 18px
+            ) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude;
+            opacity: 0.4;
+        }
+
+        /* C: Envelopes/Modulators — smooth solid with tick marks at corners */
+        .optC .blk-env {
+            border: 1.5px solid color-mix(in srgb, var(--neon-amber) 45%, transparent);
+        }
+        .optC .blk-env::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 13px;
+            box-shadow: 0 0 12px 2px rgba(255,171,0,0.12); pointer-events: none; opacity: 0.5;
+        }
+        /* Tick marks */
+        .optC .tick {
+            position: absolute; background: var(--neon-amber); opacity: 0.4; pointer-events: none;
+        }
+        .optC .tick-h { width: 8px; height: 1.5px; }
+        .optC .tick-v { width: 1.5px; height: 8px; }
+        .optC .tick-tl-h { top: -1px; left: 10px; }
+        .optC .tick-tl-v { top: 10px; left: -1px; }
+        .optC .tick-br-h { bottom: -1px; right: 10px; }
+        .optC .tick-br-v { bottom: 10px; right: -1px; }
+
+        /* ============================================================
+           SHARED CATEGORY COLORS
+           ============================================================ */
+        .neon-io  { color: var(--neon-orange); }
+        .neon-src { color: var(--neon-cyan); }
+        .neon-flt { color: var(--neon-magenta); }
+        .neon-fx  { color: var(--neon-violet); }
+        .neon-env { color: var(--neon-amber); }
+
+        .tint-io  { background: radial-gradient(ellipse 120% 80% at 50% 110%, rgba(255,109,0,0.10), transparent 70%); }
+        .tint-src { background: radial-gradient(ellipse 120% 80% at 50% 110%, rgba(0,229,255,0.10), transparent 70%); }
+        .tint-flt { background: radial-gradient(ellipse 120% 80% at 50% 110%, rgba(255,0,229,0.10), transparent 70%); }
+        .tint-fx  { background: radial-gradient(ellipse 120% 80% at 50% 110%, rgba(180,74,255,0.10), transparent 70%); }
+        .tint-env { background: radial-gradient(ellipse 120% 80% at 50% 110%, rgba(255,171,0,0.10), transparent 70%); }
+
+        /* Responsive */
+        @media (max-width: 1100px) { .options-grid { grid-template-columns: 1fr; max-width: 450px; margin: 0 auto; } }
+    </style>
+</head>
+<body>
+
+<div class="page">
+    <div class="page-title">BLOCK STYLE SELECTOR</div>
+    <div class="page-sub">v2.0.4 — Choose border patterns + font pairing per category</div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background: linear-gradient(135deg, var(--neon-orange), var(--neon-yellow));"></div><span class="legend-label">I/O & Control</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));"></div><span class="legend-label">Sources</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="background: linear-gradient(135deg, var(--neon-magenta), var(--neon-pink));"></div><span class="legend-label">Filters</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="background: linear-gradient(135deg, var(--neon-violet), var(--neon-blue));"></div><span class="legend-label">Effects</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="background: linear-gradient(135deg, var(--neon-amber), var(--neon-red));"></div><span class="legend-label">Envelopes / Mod</span></div>
+    </div>
+
+    <div class="options-grid">
+
+        <!-- ====== OPTION A: SIGNAL FLOW TECHNICAL ====== -->
+        <div class="option-card optA">
+            <div class="option-header">
+                <div class="option-num">OPTION A</div>
+                <div class="option-title" style="font-family:'Rajdhani',sans-serif; font-weight:700; letter-spacing:2px;">Signal Flow Technical</div>
+                <div class="option-fonts">Display: Rajdhani 700 · Mono: Fira Code</div>
+            </div>
+            <div class="samples">
+                <!-- I/O -->
+                <div class="blk blk-io">
+                    <div class="blk-tint tint-io"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-io">◎</span><span class="blk-label neon-io">KNOB 1</span></div><span class="cat-tag neon-io">I/O</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-io" style="opacity:0.5">Chan</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:20%; background:var(--neon-orange);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">0</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-io"></div><span class="blk-port-lbl neon-io" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <!-- Source -->
+                <div class="blk blk-src">
+                    <div class="blk-tint tint-src"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-src">∿</span><span class="blk-label neon-src">OSCILLATOR</span></div><span class="cat-tag neon-src">SRC</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-src" style="opacity:0.5">Freq</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:28%; background:var(--neon-cyan);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">110Hz</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-src"></div><span class="blk-port-lbl neon-src" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <!-- Filter -->
+                <div class="blk blk-flt">
+                    <div class="blk-tint tint-flt"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-flt">◇</span><span class="blk-label neon-flt">MOOG FILTER</span></div><span class="cat-tag neon-flt">FLT</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-flt" style="opacity:0.5">Cuto</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:70%; background:var(--neon-magenta);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">2.4kHz</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-flt"></div><span class="blk-port-lbl neon-flt" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <!-- Effects -->
+                <div class="blk blk-fx">
+                    <div class="blk-tint tint-fx"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-fx">⟳</span><span class="blk-label neon-fx">DELAY</span></div><span class="cat-tag neon-fx">FX</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-fx" style="opacity:0.5">Time</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:45%; background:var(--neon-violet);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">350ms</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-fx"></div><span class="blk-port-lbl neon-fx" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <!-- Envelope -->
+                <div class="blk blk-env">
+                    <div class="blk-tint tint-env"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-env">⌒</span><span class="blk-label neon-env">ENVELOPE</span></div><span class="cat-tag neon-env">MOD</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-env" style="opacity:0.5">Attk</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:15%; background:var(--neon-amber);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">0.01s</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-env"></div><span class="blk-port-lbl neon-env" style="opacity:0.4">Out</span></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== OPTION B: NEON ARCADE ====== -->
+        <div class="option-card optB">
+            <div class="option-header">
+                <div class="option-num">OPTION B</div>
+                <div class="option-title" style="font-family:'Oxanium',sans-serif; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;">Neon Arcade</div>
+                <div class="option-fonts">Display: Oxanium 700 · Mono: Space Mono</div>
+            </div>
+            <div class="samples">
+                <div class="blk blk-io">
+                    <div class="blk-tint tint-io"></div>
+                    <div class="corner-tl" style="color:var(--neon-orange)"></div><div class="corner-br" style="color:var(--neon-orange)"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-io">◎</span><span class="blk-label neon-io">KNOB 1</span></div><div class="blk-dot" style="background:var(--neon-orange); box-shadow:0 0 6px var(--neon-orange);"></div></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-io" style="opacity:0.5">Chan</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:20%; background:var(--neon-orange);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">0</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-io"></div><span class="blk-port-lbl neon-io" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <div class="blk blk-src">
+                    <div class="blk-tint tint-src"></div>
+                    <div class="corner-tl" style="color:var(--neon-cyan)"></div><div class="corner-br" style="color:var(--neon-cyan)"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-src">∿</span><span class="blk-label neon-src">OSCILLATOR</span></div><div class="blk-dot" style="background:var(--neon-cyan); box-shadow:0 0 6px var(--neon-cyan);"></div></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-src" style="opacity:0.5">Freq</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:28%; background:var(--neon-cyan);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">110Hz</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-src"></div><span class="blk-port-lbl neon-src" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <div class="blk blk-flt">
+                    <div class="blk-tint tint-flt"></div>
+                    <div class="corner-tl" style="color:var(--neon-magenta)"></div><div class="corner-br" style="color:var(--neon-magenta)"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-flt">◇</span><span class="blk-label neon-flt">MOOG FILTER</span></div><div class="blk-dot" style="background:var(--neon-magenta); box-shadow:0 0 6px var(--neon-magenta);"></div></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-flt" style="opacity:0.5">Cuto</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:70%; background:var(--neon-magenta);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">2.4kHz</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-flt"></div><span class="blk-port-lbl neon-flt" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <div class="blk blk-fx">
+                    <div class="blk-tint tint-fx"></div>
+                    <div class="corner-tl" style="color:var(--neon-violet)"></div><div class="corner-br" style="color:var(--neon-violet)"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-fx">⟳</span><span class="blk-label neon-fx">DELAY</span></div><div class="blk-dot" style="background:var(--neon-violet); box-shadow:0 0 6px var(--neon-violet);"></div></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-fx" style="opacity:0.5">Time</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:45%; background:var(--neon-violet);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">350ms</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-fx"></div><span class="blk-port-lbl neon-fx" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <div class="blk blk-env">
+                    <div class="blk-tint tint-env"></div>
+                    <div class="corner-tl" style="color:var(--neon-amber)"></div><div class="corner-br" style="color:var(--neon-amber)"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-env">⌒</span><span class="blk-label neon-env">ENVELOPE</span></div><div class="blk-dot" style="background:var(--neon-amber); box-shadow:0 0 6px var(--neon-amber);"></div></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-env" style="opacity:0.5">Attk</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:15%; background:var(--neon-amber);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">0.01s</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-env"></div><span class="blk-port-lbl neon-env" style="opacity:0.4">Out</span></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== OPTION C: CIRCUIT BLUEPRINT ====== -->
+        <div class="option-card optC">
+            <div class="option-header">
+                <div class="option-num">OPTION C</div>
+                <div class="option-title" style="font-family:'Chakra Petch',sans-serif; font-weight:600; letter-spacing:1px;">Circuit Blueprint</div>
+                <div class="option-fonts">Display: Chakra Petch 600 · Mono: Share Tech Mono</div>
+            </div>
+            <div class="samples">
+                <div class="blk blk-io" style="border-radius:0;">
+                    <div class="blk-tint tint-io"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-io">◎</span><span class="blk-label neon-io">KNOB 1</span></div><span class="cat-tag neon-io">I/O</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-io" style="opacity:0.5">Chan</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:20%; background:var(--neon-orange);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">0</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-io"></div><span class="blk-port-lbl neon-io" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <div class="blk blk-src">
+                    <div class="blk-tint tint-src"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-src">∿</span><span class="blk-label neon-src">OSCILLATOR</span></div><span class="cat-tag neon-src">SRC</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-src" style="opacity:0.5">Freq</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:28%; background:var(--neon-cyan);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">110Hz</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-src"></div><span class="blk-port-lbl neon-src" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <div class="blk blk-flt">
+                    <div class="blk-tint tint-flt"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-flt">◇</span><span class="blk-label neon-flt">MOOG FILTER</span></div><span class="cat-tag neon-flt">FLT</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-flt" style="opacity:0.5">Cuto</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:70%; background:var(--neon-magenta);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">2.4kHz</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-flt"></div><span class="blk-port-lbl neon-flt" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <div class="blk blk-fx">
+                    <div class="blk-tint tint-fx"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-fx">⟳</span><span class="blk-label neon-fx">DELAY</span></div><span class="cat-tag neon-fx">FX</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-fx" style="opacity:0.5">Time</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:45%; background:var(--neon-violet);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">350ms</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-fx"></div><span class="blk-port-lbl neon-fx" style="opacity:0.4">Out</span></div></div>
+                </div>
+                <div class="blk blk-env">
+                    <div class="blk-tint tint-env"></div>
+                    <div class="tick tick-h tick-tl-h" style="background:var(--neon-amber);"></div>
+                    <div class="tick tick-v tick-tl-v" style="background:var(--neon-amber);"></div>
+                    <div class="tick tick-h tick-br-h" style="background:var(--neon-amber);"></div>
+                    <div class="tick tick-v tick-br-v" style="background:var(--neon-amber);"></div>
+                    <div class="blk-head"><div class="blk-head-left"><span class="blk-icon neon-env">⌒</span><span class="blk-label neon-env">ENVELOPE</span></div><span class="cat-tag neon-env">MOD</span></div>
+                    <div class="blk-body"><div class="blk-param"><span class="blk-plbl neon-env" style="opacity:0.5">Attk</span><div class="blk-param-bar"><div class="blk-param-fill" style="width:15%; background:var(--neon-amber);"></div></div><span class="blk-pval" style="color:rgba(255,255,255,0.6)">0.01s</span></div></div>
+                    <div class="blk-ports"><div class="blk-port"><div class="blk-port-dot on neon-env"></div><span class="blk-port-lbl neon-env" style="opacity:0.4">Out</span></div></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>

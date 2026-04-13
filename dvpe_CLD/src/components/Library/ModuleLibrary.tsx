@@ -12,51 +12,18 @@ import * as Icons from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
-import { useCustomBlockStore, DuplicateResolution } from '@/stores/customBlockStore';
+import { useCustomBlockStore } from '@/stores/customBlockStore';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import { BlockCategory, BlockColorScheme, BlockDefinition } from '@/types';
 import { BlockContextMenu, ContextMenuAction } from './BlockContextMenu';
 import { ImportBlockDialog } from './ImportBlockDialog';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import { CustomBlockEditorModal } from '@/components/Canvas/CustomBlockEditorModal';
+import { getGlassNeonColor } from '@/components/Canvas/BlockNode';
 
 // ============================================================================
 // CATEGORY STYLING
 // ============================================================================
-
-const getCategoryColor = (category: BlockCategory): string => {
-  switch (category) {
-    case BlockCategory.SOURCES:
-      return 'text-audio-primary';
-    case BlockCategory.FILTERS:
-      return 'text-audio-primary';
-    case BlockCategory.EFFECTS:
-      return 'text-cv-primary';
-    case BlockCategory.MODULATORS:
-      return 'text-cv-primary';
-    case BlockCategory.USER_IO:
-      return 'text-user-primary';
-    case BlockCategory.UTILITY:
-      return 'text-logic-primary';
-    default:
-      return 'text-text-secondary';
-  }
-};
-
-const getBlockSchemeColor = (scheme: BlockColorScheme): string => {
-  switch (scheme) {
-    case BlockColorScheme.AUDIO:
-      return 'border-audio-primary/30 hover:border-audio-primary/60 bg-audio-primary/5';
-    case BlockColorScheme.CONTROL:
-      return 'border-cv-primary/30 hover:border-cv-primary/60 bg-cv-primary/5';
-    case BlockColorScheme.USER:
-      return 'border-user-primary/30 hover:border-user-primary/60 bg-user-primary/5';
-    case BlockColorScheme.LOGIC:
-      return 'border-logic-primary/30 hover:border-logic-primary/60 bg-logic-primary/5';
-    default:
-      return 'border-border hover:border-border/80 bg-surface-tertiary';
-  }
-};
 
 // ============================================================================
 // BLOCK ITEM COMPONENT
@@ -69,6 +36,7 @@ interface BlockItemProps {
   description: string;
   icon?: string;
   colorScheme: BlockColorScheme;
+  category: BlockCategory;
   isCustom?: boolean;
   onContextMenu?: (e: React.MouseEvent, id: string, name: string) => void;
 }
@@ -80,6 +48,7 @@ const BlockItem: React.FC<BlockItemProps> = ({
   description,
   icon,
   colorScheme,
+  category,
   isCustom = false,
   onContextMenu,
 }) => {
@@ -110,30 +79,34 @@ const BlockItem: React.FC<BlockItemProps> = ({
     }
   }, [isCustom, onContextMenu, id, displayName]);
 
+  const neonColor = useMemo(() => getGlassNeonColor(colorScheme, category), [colorScheme, category]);
+
   return (
     <div
       draggable
       onDragStart={handleDragStart}
       onContextMenu={handleContextMenu}
       className={cn(
-        'flex items-center gap-2 p-2 rounded-lg border cursor-grab active:cursor-grabbing',
+        'group flex items-center gap-2 p-2 rounded-lg border cursor-grab active:cursor-grabbing',
         'transition-colors duration-150',
-        getBlockSchemeColor(colorScheme),
+        'hover:bg-white/10',
         isCustom && 'ring-1 ring-amber-500/30'
       )}
+      style={{
+        borderColor: `${neonColor}40`,
+        backgroundColor: `${neonColor}1a`
+      }}
     >
       {/* Drag Handle */}
       <GripVertical className="w-3 h-3 text-text-tertiary flex-shrink-0" />
 
       {/* Icon */}
       <div
-        className={cn(
-          'w-8 h-8 rounded flex items-center justify-center flex-shrink-0',
-          colorScheme === BlockColorScheme.AUDIO && 'bg-audio-primary/20 text-audio-primary',
-          colorScheme === BlockColorScheme.CONTROL && 'bg-cv-primary/20 text-cv-primary',
-          colorScheme === BlockColorScheme.USER && 'bg-user-primary/20 text-user-primary',
-          colorScheme === BlockColorScheme.LOGIC && 'bg-logic-primary/20 text-logic-primary'
-        )}
+        className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
+        style={{
+          backgroundColor: `${neonColor}33`,
+          color: neonColor
+        }}
       >
         <IconComponent className="w-4 h-4" />
       </div>
@@ -178,6 +151,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   onBlockContextMenu,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const neonColor = useMemo(() => getGlassNeonColor(BlockColorScheme.AUDIO, category), [category]);
 
   return (
     <div className="mb-2">
@@ -185,11 +159,11 @@ const CategorySection: React.FC<CategorySectionProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'flex items-center gap-2 w-full px-3 py-2 rounded-lg',
-          'text-sm font-medium transition-colors',
-          'hover:bg-surface-tertiary/50',
-          getCategoryColor(category)
+          'flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#0f172a]/40',
+          'text-sm font-bold tracking-wide transition-colors',
+          'hover:bg-[#0f172a]/80'
         )}
+        style={{ color: neonColor, borderLeft: `3px solid ${neonColor}80` }}
       >
         <motion.span
           animate={{ rotate: isOpen ? 180 : 0 }}
@@ -223,6 +197,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
                   description={block.description}
                   icon={block.icon}
                   colorScheme={block.colorScheme}
+                  category={block.category}
                   isCustom={customBlockIds.has(block.id)}
                   onContextMenu={onBlockContextMenu}
                 />

@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DVPE — Stitch Neon Transparent Synth Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           CSS RESET & VARIABLES
+           ============================================================ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            /* Neon Palette */
+            --neon-cyan: #00e5ff;
+            --neon-magenta: #ff00e5;
+            --neon-violet: #b44aff;
+            --neon-amber: #ffab00;
+            --neon-green: #39ff14;
+            --neon-red: #ff3d5a;
+            --neon-blue: #4d7cff;
+
+            /* Glass properties */
+            --glass-bg: rgba(12, 10, 28, 0.45);
+            --glass-bg-elevated: rgba(18, 15, 42, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: 18px;
+            --glass-radius: 14px;
+
+            /* Stitch border */
+            --stitch-dash: 6px;
+            --stitch-gap: 4px;
+
+            /* Typography */
+            --font-display: 'Orbitron', sans-serif;
+            --font-body: 'Exo 2', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            /* Spacing */
+            --module-gap: 28px;
+            --port-size: 14px;
+            --connection-width: 2.5px;
+        }
+
+        /* ============================================================
+           BACKGROUND — YELLOW-ORANGE-VIOLET DIFFUSED GRID
+           ============================================================ */
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-family: var(--font-body);
+            color: rgba(255, 255, 255, 0.9);
+            background: #080618;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background:
+                /* Diffused aurora blobs */
+                radial-gradient(ellipse 900px 600px at 15% 25%, rgba(255, 171, 0, 0.18), transparent),
+                radial-gradient(ellipse 700px 800px at 85% 15%, rgba(255, 80, 0, 0.12), transparent),
+                radial-gradient(ellipse 1000px 700px at 50% 60%, rgba(180, 74, 255, 0.16), transparent),
+                radial-gradient(ellipse 600px 500px at 75% 80%, rgba(255, 0, 229, 0.10), transparent),
+                radial-gradient(ellipse 800px 600px at 20% 85%, rgba(255, 140, 0, 0.10), transparent);
+            animation: auroraDrift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes auroraDrift {
+            0%   { background-position: 0% 0%, 100% 0%, 50% 50%, 75% 80%, 20% 85%; }
+            100% { background-position: 5% 8%, 90% 5%, 45% 55%, 80% 75%, 25% 90%; }
+        }
+
+        /* Subtle dot grid overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background-image:
+                radial-gradient(circle 1px at center, rgba(255, 255, 255, 0.06) 0%, transparent 100%);
+            background-size: 32px 32px;
+            pointer-events: none;
+        }
+
+        /* ============================================================
+           MAIN LAYOUT
+           ============================================================ */
+        .app-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ============================================================
+           TOP BAR
+           ============================================================ */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .topbar-logo {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.4));
+        }
+
+        .topbar-version {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.35);
+            letter-spacing: 1px;
+        }
+
+        .topbar-patch-name {
+            font-family: var(--font-display);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+        }
+
+        .topbar-patch-name span {
+            color: var(--neon-amber);
+            text-shadow: 0 0 10px rgba(255, 171, 0, 0.5);
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .topbar-btn {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.25s;
+            letter-spacing: 0.5px;
+        }
+
+        .topbar-btn:hover {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            background: rgba(0, 229, 255, 0.06);
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+        }
+
+        .topbar-btn.primary {
+            border-style: solid;
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+            background: rgba(57, 255, 20, 0.06);
+        }
+
+        .topbar-btn.primary:hover {
+            background: rgba(57, 255, 20, 0.12);
+            box-shadow: 0 0 16px rgba(57, 255, 20, 0.25);
+        }
+
+        /* ============================================================
+           CANVAS AREA
+           ============================================================ */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            padding: 40px;
+            overflow: auto;
+        }
+
+        /* SVG connections layer */
+        .connections-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* ============================================================
+           MODULE — GLASSMORPHIC STITCH-BORDER
+           ============================================================ */
+        .module-grid {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--module-gap);
+            align-items: flex-start;
+            justify-content: center;
+            padding-bottom: 40px;
+        }
+
+        .module-row {
+            display: flex;
+            gap: var(--module-gap);
+            align-items: flex-start;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .module {
+            position: relative;
+            min-width: 220px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-radius: var(--glass-radius);
+            overflow: visible;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+        }
+
+        .module:hover {
+            transform: translateY(-2px) scale(1.008);
+        }
+
+        /* Stitch border effect — dashed neon outline */
+        .module::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: calc(var(--glass-radius) + 1px);
+            border: 2px dashed var(--module-neon, var(--neon-cyan));
+            opacity: 0.5;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .module:hover::before {
+            opacity: 0.85;
+        }
+
+        /* Neon glow outer ring */
+        .module::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: calc(var(--glass-radius) + 4px);
+            border: 1px solid transparent;
+            background: transparent;
+            box-shadow:
+                0 0 15px 1px color-mix(in srgb, var(--module-neon, var(--neon-cyan)) 25%, transparent),
+                inset 0 0 15px 1px color-mix(in srgb, var(--module-neon, var(--neon-cyan)) 8%, transparent);
+            opacity: 0.4;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .module:hover::after {
+            opacity: 0.7;
+        }
+
+        /* Module header */
+        .module-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .module-type {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--module-neon, var(--neon-cyan));
+            opacity: 0.7;
+        }
+
+        .module-title {
+            font-family: var(--font-display);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .module-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--module-neon, var(--neon-cyan));
+            box-shadow: 0 0 8px var(--module-neon, var(--neon-cyan));
+            animation: pulse-indicator 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-indicator {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Module body */
+        .module-body {
+            padding: 12px 16px 14px;
+        }
+
+        /* Parameter rows */
+        .param-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            gap: 10px;
+        }
+
+        .param-label {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.5px;
+            min-width: 70px;
+        }
+
+        .param-value {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.85);
+            text-align: right;
+        }
+
+        /* Slider track */
+        .param-slider-wrap {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .param-slider-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, 
+                color-mix(in srgb, var(--module-neon, var(--neon-cyan)) 60%, transparent),
+                var(--module-neon, var(--neon-cyan))
+            );
+            box-shadow: 0 0 6px color-mix(in srgb, var(--module-neon, var(--neon-cyan)) 40%, transparent);
+            transition: width 0.3s;
+        }
+
+        /* Waveform selector */
+        .waveform-select {
+            display: flex;
+            gap: 4px;
+        }
+
+        .wave-btn {
+            width: 30px;
+            height: 22px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            padding: 3px;
+        }
+
+        .wave-btn svg {
+            width: 100%;
+            height: 100%;
+            stroke: rgba(255, 255, 255, 0.4);
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        .wave-btn.active {
+            border-color: var(--module-neon, var(--neon-cyan));
+            background: color-mix(in srgb, var(--module-neon, var(--neon-cyan)) 10%, transparent);
+        }
+
+        .wave-btn.active svg {
+            stroke: var(--module-neon, var(--neon-cyan));
+            filter: drop-shadow(0 0 3px var(--module-neon, var(--neon-cyan)));
+        }
+
+        .wave-btn:hover:not(.active) {
+            border-color: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* ============================================================
+           PORTS (INPUT / OUTPUT)
+           ============================================================ */
+        .module-ports {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 6px 10px;
+        }
+
+        .ports-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .port {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .port-in { flex-direction: row; }
+        .port-out { flex-direction: row-reverse; }
+
+        .port-dot {
+            width: var(--port-size);
+            height: var(--port-size);
+            border-radius: 50%;
+            border: 2px solid var(--module-neon, var(--neon-cyan));
+            background: rgba(0, 0, 0, 0.4);
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .port-dot.connected {
+            background: var(--module-neon, var(--neon-cyan));
+            box-shadow: 0 0 8px var(--module-neon, var(--neon-cyan));
+        }
+
+        .port:hover .port-dot {
+            box-shadow: 0 0 12px var(--module-neon, var(--neon-cyan));
+            transform: scale(1.15);
+        }
+
+        .port-label {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.35);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* ============================================================
+           CONNECTION PATHS — ETHEREAL LIGHT TRAILS
+           ============================================================ */
+        .connection-path {
+            fill: none;
+            stroke-width: var(--connection-width);
+            stroke-linecap: round;
+            filter: url(#glow);
+        }
+
+        .connection-trail {
+            fill: none;
+            stroke-width: 8px;
+            stroke-linecap: round;
+            opacity: 0.08;
+        }
+
+        /* Animated flow particles along paths */
+        .flow-particle {
+            r: 3;
+            fill: white;
+            opacity: 0.9;
+            filter: url(#glow);
+        }
+
+        /* ============================================================
+           SECTION LABELS
+           ============================================================ */
+        .section-label {
+            font-family: var(--font-display);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.2);
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        /* ============================================================
+           BOTTOM STATUS BAR
+           ============================================================ */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 24px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-top: 1px solid var(--glass-border);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.35);
+            letter-spacing: 0.5px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 6px var(--neon-green);
+        }
+
+        .status-dot.warn { background: var(--neon-amber); box-shadow: 0 0 6px var(--neon-amber); }
+
+        /* ============================================================
+           MODULE COLOR VARIANTS
+           ============================================================ */
+        .module--osc1    { --module-neon: var(--neon-cyan); }
+        .module--osc2    { --module-neon: var(--neon-blue); }
+        .module--mixer   { --module-neon: var(--neon-violet); }
+        .module--filter  { --module-neon: var(--neon-magenta); }
+        .module--env-amp { --module-neon: var(--neon-amber); }
+        .module--env-flt { --module-neon: var(--neon-red); }
+        .module--lfo     { --module-neon: var(--neon-green); }
+        .module--output  { --module-neon: #ffffff; }
+
+        /* ============================================================
+           MINI WAVEFORM DISPLAY
+           ============================================================ */
+        .mini-scope {
+            width: 100%;
+            height: 32px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            margin-top: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .mini-scope svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .mini-scope-line {
+            fill: none;
+            stroke-width: 1.5;
+            opacity: 0.7;
+        }
+
+        /* ============================================================
+           KNOB DISPLAY
+           ============================================================ */
+        .param-knob-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            padding: 6px 0;
+        }
+
+        .knob-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .knob-svg {
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+        }
+
+        .knob-track {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.08);
+            stroke-width: 3;
+            stroke-linecap: round;
+        }
+
+        .knob-fill {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s;
+        }
+
+        .knob-dot {
+            transition: all 0.2s;
+        }
+
+        .knob-label {
+            font-family: var(--font-mono);
+            font-size: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        .knob-value {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* ============================================================
+           ENVELOPE VISUAL
+           ============================================================ */
+        .env-display {
+            width: 100%;
+            height: 40px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .env-display svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .env-line {
+            fill: none;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .env-fill {
+            stroke: none;
+            opacity: 0.08;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1200px) {
+            .module-row { flex-wrap: wrap; }
+            .canvas-area { padding: 24px 16px; }
+        }
+
+        @media (max-width: 768px) {
+            .topbar { flex-direction: column; gap: 8px; padding: 8px 12px; }
+            .module { min-width: 180px; }
+        }
+
+        /* ============================================================
+           SCANLINE OVERLAY (subtle)
+           ============================================================ */
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.015) 2px,
+                rgba(0, 0, 0, 0.015) 4px
+            );
+        }
+    </style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<div class="app-container">
+    <!-- ============== TOP BAR ============== -->
+    <header class="topbar" role="banner">
+        <div class="topbar-brand">
+            <div class="topbar-logo">DVPE</div>
+            <div class="topbar-version">v2.0 neon</div>
+        </div>
+        <div class="topbar-patch-name">
+            <span>▸</span> Dual-Oscillator Subtractive Synthesizer
+        </div>
+        <nav class="topbar-actions" aria-label="Editor actions">
+            <button class="topbar-btn">Library</button>
+            <button class="topbar-btn">Settings</button>
+            <button class="topbar-btn primary">⚡ Compile</button>
+        </nav>
+    </header>
+
+    <!-- ============== CANVAS ============== -->
+    <main class="canvas-area" role="main" aria-label="Patch editor canvas">
+
+        <!-- SVG Connections Layer -->
+        <svg class="connections-layer" id="connectionsLayer" aria-hidden="true">
+            <defs>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="blur"/>
+                    <feMerge>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+                <filter id="glow-strong">
+                    <feGaussianBlur stdDeviation="5" result="blur"/>
+                    <feMerge>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+        </svg>
+
+        <!-- ROW 1: OSCILLATORS + MIXER -->
+        <div class="section-label">— Sound Sources —</div>
+        <div class="module-row" id="row1">
+
+            <!-- OSC 1 -->
+            <div class="module module--osc1" data-module="osc1">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">oscillator</div>
+                        <div class="module-title">OSC 1</div>
+                    </div>
+                    <div class="module-indicator"></div>
+                </div>
+                <div class="module-body">
+                    <div class="param-row">
+                        <span class="param-label">Wave</span>
+                        <div class="waveform-select">
+                            <button class="wave-btn active" title="Sawtooth" aria-label="Sawtooth wave">
+                                <svg viewBox="0 0 24 14"><polyline points="2,12 12,2 12,12 22,2"/></svg>
+                            </button>
+                            <button class="wave-btn" title="Square" aria-label="Square wave">
+                                <svg viewBox="0 0 24 14"><polyline points="2,12 2,2 8,2 8,12 14,12 14,2 20,2 20,12 22,12"/></svg>
+                            </button>
+                            <button class="wave-btn" title="Triangle" aria-label="Triangle wave">
+                                <svg viewBox="0 0 24 14"><polyline points="2,12 7,2 12,12 17,2 22,12"/></svg>
+                            </button>
+                            <button class="wave-btn" title="Sine" aria-label="Sine wave">
+                                <svg viewBox="0 0 24 14"><path d="M2,7 C5,2 8,2 12,7 C16,12 19,12 22,7"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Freq</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 55%"></div>
+                        </div>
+                        <span class="param-value">440 Hz</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Detune</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 50%"></div>
+                        </div>
+                        <span class="param-value">0 ct</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Level</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 80%"></div>
+                        </div>
+                        <span class="param-value">0.8</span>
+                    </div>
+                    <div class="mini-scope">
+                        <svg viewBox="0 0 200 32" preserveAspectRatio="none">
+                            <polyline class="mini-scope-line" style="stroke: var(--neon-cyan);" 
+                                points="" id="osc1-wave"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group">
+                        <div class="port port-in">
+                            <div class="port-dot"></div>
+                            <span class="port-label">V/Oct</span>
+                        </div>
+                        <div class="port port-in">
+                            <div class="port-dot"></div>
+                            <span class="port-label">FM</span>
+                        </div>
+                    </div>
+                    <div class="ports-group">
+                        <div class="port port-out">
+                            <div class="port-dot connected" id="port-osc1-out"></div>
+                            <span class="port-label">Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OSC 2 -->
+            <div class="module module--osc2" data-module="osc2">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">oscillator</div>
+                        <div class="module-title">OSC 2</div>
+                    </div>
+                    <div class="module-indicator"></div>
+                </div>
+                <div class="module-body">
+                    <div class="param-row">
+                        <span class="param-label">Wave</span>
+                        <div class="waveform-select">
+                            <button class="wave-btn" title="Sawtooth" aria-label="Sawtooth wave">
+                                <svg viewBox="0 0 24 14"><polyline points="2,12 12,2 12,12 22,2"/></svg>
+                            </button>
+                            <button class="wave-btn active" title="Square" aria-label="Square wave">
+                                <svg viewBox="0 0 24 14"><polyline points="2,12 2,2 8,2 8,12 14,12 14,2 20,2 20,12 22,12"/></svg>
+                            </button>
+                            <button class="wave-btn" title="Triangle" aria-label="Triangle wave">
+                                <svg viewBox="0 0 24 14"><polyline points="2,12 7,2 12,12 17,2 22,12"/></svg>
+                            </button>
+                            <button class="wave-btn" title="Sine" aria-label="Sine wave">
+                                <svg viewBox="0 0 24 14"><path d="M2,7 C5,2 8,2 12,7 C16,12 19,12 22,7"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Freq</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 55%"></div>
+                        </div>
+                        <span class="param-value">440 Hz</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Detune</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 60%"></div>
+                        </div>
+                        <span class="param-value">+7 ct</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">PW</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 50%"></div>
+                        </div>
+                        <span class="param-value">50%</span>
+                    </div>
+                    <div class="mini-scope">
+                        <svg viewBox="0 0 200 32" preserveAspectRatio="none">
+                            <polyline class="mini-scope-line" style="stroke: var(--neon-blue);" 
+                                points="" id="osc2-wave"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group">
+                        <div class="port port-in">
+                            <div class="port-dot"></div>
+                            <span class="port-label">V/Oct</span>
+                        </div>
+                        <div class="port port-in">
+                            <div class="port-dot"></div>
+                            <span class="port-label">PWM</span>
+                        </div>
+                    </div>
+                    <div class="ports-group">
+                        <div class="port port-out">
+                            <div class="port-dot connected" id="port-osc2-out"></div>
+                            <span class="port-label">Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MIXER -->
+            <div class="module module--mixer" data-module="mixer" style="min-width: 180px;">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">utility</div>
+                        <div class="module-title">MIXER</div>
+                    </div>
+                    <div class="module-indicator"></div>
+                </div>
+                <div class="module-body">
+                    <div class="param-row">
+                        <span class="param-label">OSC 1</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 70%"></div>
+                        </div>
+                        <span class="param-value">0.7</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">OSC 2</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 50%"></div>
+                        </div>
+                        <span class="param-value">0.5</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Noise</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 10%"></div>
+                        </div>
+                        <span class="param-value">0.1</span>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group">
+                        <div class="port port-in">
+                            <div class="port-dot connected" id="port-mixer-in1"></div>
+                            <span class="port-label">In 1</span>
+                        </div>
+                        <div class="port port-in">
+                            <div class="port-dot connected" id="port-mixer-in2"></div>
+                            <span class="port-label">In 2</span>
+                        </div>
+                    </div>
+                    <div class="ports-group">
+                        <div class="port port-out">
+                            <div class="port-dot connected" id="port-mixer-out"></div>
+                            <span class="port-label">Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 2: FILTER + ENVELOPES -->
+        <div class="section-label" style="margin-top: 10px;">— Sound Shaping —</div>
+        <div class="module-row" id="row2">
+
+            <!-- FILTER -->
+            <div class="module module--filter" data-module="filter">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">filter</div>
+                        <div class="module-title">VCF</div>
+                    </div>
+                    <div class="module-indicator"></div>
+                </div>
+                <div class="module-body">
+                    <div class="param-row">
+                        <span class="param-label">Type</span>
+                        <div class="waveform-select">
+                            <button class="wave-btn active" title="Low Pass" aria-label="Low pass filter" style="font-family: var(--font-mono); font-size: 8px; color: rgba(255,255,255,0.4);">
+                                LP
+                            </button>
+                            <button class="wave-btn" title="High Pass" aria-label="High pass filter" style="font-family: var(--font-mono); font-size: 8px; color: rgba(255,255,255,0.4);">
+                                HP
+                            </button>
+                            <button class="wave-btn" title="Band Pass" aria-label="Band pass filter" style="font-family: var(--font-mono); font-size: 8px; color: rgba(255,255,255,0.4);">
+                                BP
+                            </button>
+                        </div>
+                    </div>
+                    <div class="param-knob-row">
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" 
+                                    stroke-dasharray="75.4" stroke-dashoffset="-12.6"
+                                    transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16"
+                                    stroke="var(--neon-magenta)" 
+                                    stroke-dasharray="75.4" stroke-dashoffset="-47"
+                                    transform="rotate(135 20 20)"
+                                    filter="url(#glow)"/>
+                                <circle class="knob-dot" cx="20" cy="8" r="2" fill="var(--neon-magenta)"/>
+                            </svg>
+                            <span class="knob-label">Cutoff</span>
+                            <span class="knob-value">2.4 kHz</span>
+                        </div>
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" 
+                                    stroke-dasharray="75.4" stroke-dashoffset="-12.6"
+                                    transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16"
+                                    stroke="var(--neon-magenta)" 
+                                    stroke-dasharray="75.4" stroke-dashoffset="-55"
+                                    transform="rotate(135 20 20)"
+                                    filter="url(#glow)"/>
+                                <circle class="knob-dot" cx="20" cy="8" r="2" fill="var(--neon-magenta)"/>
+                            </svg>
+                            <span class="knob-label">Reso</span>
+                            <span class="knob-value">0.6</span>
+                        </div>
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" 
+                                    stroke-dasharray="75.4" stroke-dashoffset="-12.6"
+                                    transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16"
+                                    stroke="var(--neon-magenta)" 
+                                    stroke-dasharray="75.4" stroke-dashoffset="-60"
+                                    transform="rotate(135 20 20)"
+                                    filter="url(#glow)"/>
+                                <circle class="knob-dot" cx="20" cy="8" r="2" fill="var(--neon-magenta)"/>
+                            </svg>
+                            <span class="knob-label">Env</span>
+                            <span class="knob-value">0.45</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group">
+                        <div class="port port-in">
+                            <div class="port-dot connected" id="port-filter-in"></div>
+                            <span class="port-label">In</span>
+                        </div>
+                        <div class="port port-in">
+                            <div class="port-dot connected" id="port-filter-cv"></div>
+                            <span class="port-label">CV</span>
+                        </div>
+                    </div>
+                    <div class="ports-group">
+                        <div class="port port-out">
+                            <div class="port-dot connected" id="port-filter-out"></div>
+                            <span class="port-label">Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENVELOPE - FILTER -->
+            <div class="module module--env-flt" data-module="env-filter" style="min-width: 200px;">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">envelope</div>
+                        <div class="module-title">ENV FILTER</div>
+                    </div>
+                    <div class="module-indicator"></div>
+                </div>
+                <div class="module-body">
+                    <div class="env-display">
+                        <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                            <path class="env-fill" d="M10,38 L30,4 L70,12 L140,12 L180,38 Z" fill="var(--neon-red)"/>
+                            <path class="env-line" d="M10,38 L30,4 L70,12 L140,12 L180,38" stroke="var(--neon-red)" filter="url(#glow)"/>
+                            <!-- ADSR labels -->
+                            <text x="20" y="38" font-size="6" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono" text-anchor="middle">A</text>
+                            <text x="50" y="38" font-size="6" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono" text-anchor="middle">D</text>
+                            <text x="105" y="38" font-size="6" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono" text-anchor="middle">S</text>
+                            <text x="160" y="38" font-size="6" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono" text-anchor="middle">R</text>
+                        </svg>
+                    </div>
+                    <div class="param-knob-row">
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" stroke-dasharray="75.4" stroke-dashoffset="-12.6" transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16" stroke="var(--neon-red)" stroke-dasharray="75.4" stroke-dashoffset="-55" transform="rotate(135 20 20)"/>
+                            </svg>
+                            <span class="knob-label">A</span>
+                            <span class="knob-value">15ms</span>
+                        </div>
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" stroke-dasharray="75.4" stroke-dashoffset="-12.6" transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16" stroke="var(--neon-red)" stroke-dasharray="75.4" stroke-dashoffset="-50" transform="rotate(135 20 20)"/>
+                            </svg>
+                            <span class="knob-label">D</span>
+                            <span class="knob-value">120ms</span>
+                        </div>
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" stroke-dasharray="75.4" stroke-dashoffset="-12.6" transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16" stroke="var(--neon-red)" stroke-dasharray="75.4" stroke-dashoffset="-48" transform="rotate(135 20 20)"/>
+                            </svg>
+                            <span class="knob-label">S</span>
+                            <span class="knob-value">0.3</span>
+                        </div>
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" stroke-dasharray="75.4" stroke-dashoffset="-12.6" transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16" stroke="var(--neon-red)" stroke-dasharray="75.4" stroke-dashoffset="-52" transform="rotate(135 20 20)"/>
+                            </svg>
+                            <span class="knob-label">R</span>
+                            <span class="knob-value">250ms</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group">
+                        <div class="port port-in">
+                            <div class="port-dot"></div>
+                            <span class="port-label">Gate</span>
+                        </div>
+                    </div>
+                    <div class="ports-group">
+                        <div class="port port-out">
+                            <div class="port-dot connected" id="port-envf-out"></div>
+                            <span class="port-label">Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENVELOPE - AMP -->
+            <div class="module module--env-amp" data-module="env-amp" style="min-width: 200px;">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">envelope</div>
+                        <div class="module-title">ENV AMP</div>
+                    </div>
+                    <div class="module-indicator"></div>
+                </div>
+                <div class="module-body">
+                    <div class="env-display">
+                        <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                            <path class="env-fill" d="M10,38 L25,4 L55,8 L140,8 L190,38 Z" fill="var(--neon-amber)"/>
+                            <path class="env-line" d="M10,38 L25,4 L55,8 L140,8 L190,38" stroke="var(--neon-amber)" filter="url(#glow)"/>
+                            <text x="17" y="38" font-size="6" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono" text-anchor="middle">A</text>
+                            <text x="40" y="38" font-size="6" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono" text-anchor="middle">D</text>
+                            <text x="98" y="38" font-size="6" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono" text-anchor="middle">S</text>
+                            <text x="165" y="38" font-size="6" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono" text-anchor="middle">R</text>
+                        </svg>
+                    </div>
+                    <div class="param-knob-row">
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" stroke-dasharray="75.4" stroke-dashoffset="-12.6" transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16" stroke="var(--neon-amber)" stroke-dasharray="75.4" stroke-dashoffset="-56" transform="rotate(135 20 20)"/>
+                            </svg>
+                            <span class="knob-label">A</span>
+                            <span class="knob-value">5ms</span>
+                        </div>
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" stroke-dasharray="75.4" stroke-dashoffset="-12.6" transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16" stroke="var(--neon-amber)" stroke-dasharray="75.4" stroke-dashoffset="-50" transform="rotate(135 20 20)"/>
+                            </svg>
+                            <span class="knob-label">D</span>
+                            <span class="knob-value">80ms</span>
+                        </div>
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" stroke-dasharray="75.4" stroke-dashoffset="-12.6" transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16" stroke="var(--neon-amber)" stroke-dasharray="75.4" stroke-dashoffset="-43" transform="rotate(135 20 20)"/>
+                            </svg>
+                            <span class="knob-label">S</span>
+                            <span class="knob-value">0.8</span>
+                        </div>
+                        <div class="knob-group">
+                            <svg class="knob-svg" viewBox="0 0 40 40">
+                                <circle class="knob-track" cx="20" cy="20" r="16" stroke-dasharray="75.4" stroke-dashoffset="-12.6" transform="rotate(135 20 20)"/>
+                                <circle class="knob-fill" cx="20" cy="20" r="16" stroke="var(--neon-amber)" stroke-dasharray="75.4" stroke-dashoffset="-45" transform="rotate(135 20 20)"/>
+                            </svg>
+                            <span class="knob-label">R</span>
+                            <span class="knob-value">400ms</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group">
+                        <div class="port port-in">
+                            <div class="port-dot"></div>
+                            <span class="port-label">Gate</span>
+                        </div>
+                    </div>
+                    <div class="ports-group">
+                        <div class="port port-out">
+                            <div class="port-dot connected" id="port-enva-out"></div>
+                            <span class="port-label">Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 3: LFO + VCA + OUTPUT -->
+        <div class="section-label" style="margin-top: 10px;">— Modulation & Output —</div>
+        <div class="module-row" id="row3">
+
+            <!-- LFO -->
+            <div class="module module--lfo" data-module="lfo" style="min-width: 190px;">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">modulator</div>
+                        <div class="module-title">LFO</div>
+                    </div>
+                    <div class="module-indicator"></div>
+                </div>
+                <div class="module-body">
+                    <div class="param-row">
+                        <span class="param-label">Wave</span>
+                        <div class="waveform-select">
+                            <button class="wave-btn" title="Sine" aria-label="Sine">
+                                <svg viewBox="0 0 24 14"><path d="M2,7 C5,2 8,2 12,7 C16,12 19,12 22,7"/></svg>
+                            </button>
+                            <button class="wave-btn active" title="Triangle" aria-label="Triangle">
+                                <svg viewBox="0 0 24 14"><polyline points="2,12 7,2 12,12 17,2 22,12"/></svg>
+                            </button>
+                            <button class="wave-btn" title="S&H" aria-label="Sample and Hold">
+                                <svg viewBox="0 0 24 14"><polyline points="2,10 5,10 5,4 9,4 9,11 13,11 13,6 17,6 17,3 22,3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Rate</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 30%"></div>
+                        </div>
+                        <span class="param-value">2.5 Hz</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Depth</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 45%"></div>
+                        </div>
+                        <span class="param-value">0.45</span>
+                    </div>
+                    <div class="mini-scope">
+                        <svg viewBox="0 0 200 32" preserveAspectRatio="none">
+                            <polyline class="mini-scope-line" style="stroke: var(--neon-green);" 
+                                points="" id="lfo-wave"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group"></div>
+                    <div class="ports-group">
+                        <div class="port port-out">
+                            <div class="port-dot connected" id="port-lfo-out"></div>
+                            <span class="port-label">Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VCA -->
+            <div class="module module--env-amp" data-module="vca" style="min-width: 170px;">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">amplifier</div>
+                        <div class="module-title">VCA</div>
+                    </div>
+                    <div class="module-indicator"></div>
+                </div>
+                <div class="module-body">
+                    <div class="param-row">
+                        <span class="param-label">Gain</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 100%"></div>
+                        </div>
+                        <span class="param-value">1.0</span>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group">
+                        <div class="port port-in">
+                            <div class="port-dot connected" id="port-vca-in"></div>
+                            <span class="port-label">In</span>
+                        </div>
+                        <div class="port port-in">
+                            <div class="port-dot connected" id="port-vca-cv"></div>
+                            <span class="port-label">CV</span>
+                        </div>
+                    </div>
+                    <div class="ports-group">
+                        <div class="port port-out">
+                            <div class="port-dot connected" id="port-vca-out"></div>
+                            <span class="port-label">Out</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OUTPUT -->
+            <div class="module module--output" data-module="output" style="min-width: 170px;">
+                <div class="module-header">
+                    <div>
+                        <div class="module-type">hardware</div>
+                        <div class="module-title">DAISY OUT</div>
+                    </div>
+                    <div class="module-indicator" style="background: #fff; box-shadow: 0 0 8px #fff;"></div>
+                </div>
+                <div class="module-body">
+                    <div class="param-row">
+                        <span class="param-label">Master</span>
+                        <div class="param-slider-wrap">
+                            <div class="param-slider-fill" style="width: 75%; background: linear-gradient(90deg, rgba(255,255,255,0.3), #fff);"></div>
+                        </div>
+                        <span class="param-value">0.75</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">SR</span>
+                        <span class="param-value" style="color: rgba(255,255,255,0.4);">48 kHz</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Buf</span>
+                        <span class="param-value" style="color: rgba(255,255,255,0.4);">256</span>
+                    </div>
+                </div>
+                <div class="module-ports">
+                    <div class="ports-group">
+                        <div class="port port-in">
+                            <div class="port-dot connected" id="port-out-l"></div>
+                            <span class="port-label">L</span>
+                        </div>
+                        <div class="port port-in">
+                            <div class="port-dot connected" id="port-out-r"></div>
+                            <span class="port-label">R</span>
+                        </div>
+                    </div>
+                    <div class="ports-group"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ============== STATUS BAR ============== -->
+    <footer class="statusbar" role="contentinfo">
+        <div class="status-item">
+            <div class="status-dot"></div>
+            <span>Daisy Seed connected</span>
+        </div>
+        <div class="status-item">
+            <span>Modules: 8 &nbsp;|&nbsp; Connections: 7 &nbsp;|&nbsp; CPU est: 12%</span>
+        </div>
+        <div class="status-item">
+            <span>Target: Electrosmith Daisy Seed Rev7</span>
+        </div>
+    </footer>
+</div>
+
+<script>
+    // ============================================================
+    // WAVEFORM GENERATION FOR MINI SCOPES
+    // ============================================================
+    function generateSawWave(svgId, periods, amplitude) {
+        const points = [];
+        const w = 200, h = 32, mid = h / 2;
+        for (let i = 0; i <= w; i++) {
+            const phase = (i / w) * periods;
+            const frac = phase - Math.floor(phase);
+            const y = mid - (frac * 2 - 1) * amplitude;
+            points.push(`${i},${y.toFixed(1)}`);
+        }
+        document.getElementById(svgId).setAttribute('points', points.join(' '));
+    }
+
+    function generateSquareWave(svgId, periods, amplitude) {
+        const points = [];
+        const w = 200, h = 32, mid = h / 2;
+        for (let i = 0; i <= w; i++) {
+            const phase = (i / w) * periods;
+            const frac = phase - Math.floor(phase);
+            const y = mid - (frac < 0.5 ? 1 : -1) * amplitude;
+            points.push(`${i},${y.toFixed(1)}`);
+        }
+        document.getElementById(svgId).setAttribute('points', points.join(' '));
+    }
+
+    function generateTriangleWave(svgId, periods, amplitude) {
+        const points = [];
+        const w = 200, h = 32, mid = h / 2;
+        for (let i = 0; i <= w; i++) {
+            const phase = (i / w) * periods;
+            const frac = phase - Math.floor(phase);
+            const tri = frac < 0.5 ? frac * 4 - 1 : 3 - frac * 4;
+            const y = mid - tri * amplitude;
+            points.push(`${i},${y.toFixed(1)}`);
+        }
+        document.getElementById(svgId).setAttribute('points', points.join(' '));
+    }
+
+    // Generate waveforms
+    generateSawWave('osc1-wave', 4, 11);
+    generateSquareWave('osc2-wave', 4, 11);
+    generateTriangleWave('lfo-wave', 3, 10);
+
+    // ============================================================
+    // SVG CONNECTIONS — ETHEREAL LIGHT TRAILS
+    // ============================================================
+    const connections = [
+        { from: 'port-osc1-out',  to: 'port-mixer-in1', color: '#00e5ff' },
+        { from: 'port-osc2-out',  to: 'port-mixer-in2', color: '#4d7cff' },
+        { from: 'port-mixer-out', to: 'port-filter-in',  color: '#b44aff' },
+        { from: 'port-envf-out',  to: 'port-filter-cv',  color: '#ff3d5a' },
+        { from: 'port-filter-out',to: 'port-vca-in',     color: '#ff00e5' },
+        { from: 'port-enva-out',  to: 'port-vca-cv',     color: '#ffab00' },
+        { from: 'port-vca-out',   to: 'port-out-l',      color: '#ffffff' },
+    ];
+
+    function getPortCenter(id) {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        const svgRect = document.getElementById('connectionsLayer').getBoundingClientRect();
+        return {
+            x: rect.left + rect.width / 2 - svgRect.left,
+            y: rect.top + rect.height / 2 - svgRect.top
+        };
+    }
+
+    function drawConnections() {
+        const svg = document.getElementById('connectionsLayer');
+        // Clear old paths
+        svg.querySelectorAll('.conn-group').forEach(g => g.remove());
+
+        connections.forEach((conn, idx) => {
+            const from = getPortCenter(conn.from);
+            const to = getPortCenter(conn.to);
+            if (!from || !to) return;
+
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.classList.add('conn-group');
+
+            // Calculate control points for smooth bezier
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const cx1 = from.x + dx * 0.4;
+            const cy1 = from.y;
+            const cx2 = to.x - dx * 0.4;
+            const cy2 = to.y;
+            const pathD = `M${from.x},${from.y} C${cx1},${cy1} ${cx2},${cy2} ${to.x},${to.y}`;
+
+            // Trail (wide, faint)
+            const trail = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            trail.setAttribute('d', pathD);
+            trail.setAttribute('class', 'connection-trail');
+            trail.setAttribute('stroke', conn.color);
+            g.appendChild(trail);
+
+            // Main path
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathD);
+            path.setAttribute('class', 'connection-path');
+            path.setAttribute('stroke', conn.color);
+            path.setAttribute('id', `conn-path-${idx}`);
+            g.appendChild(path);
+
+            // Animated flow particle
+            const particle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            particle.setAttribute('class', 'flow-particle');
+            particle.setAttribute('fill', conn.color);
+            const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+            anim.setAttribute('dur', `${2 + idx * 0.3}s`);
+            anim.setAttribute('repeatCount', 'indefinite');
+            const mpath = document.createElementNS('http://www.w3.org/2000/svg', 'mpath');
+            mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#conn-path-${idx}`);
+            anim.appendChild(mpath);
+            particle.appendChild(anim);
+            g.appendChild(particle);
+
+            // Second staggered particle
+            const particle2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            particle2.setAttribute('class', 'flow-particle');
+            particle2.setAttribute('fill', conn.color);
+            particle2.setAttribute('r', '2');
+            particle2.setAttribute('opacity', '0.5');
+            const anim2 = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+            anim2.setAttribute('dur', `${2 + idx * 0.3}s`);
+            anim2.setAttribute('begin', `${1 + idx * 0.15}s`);
+            anim2.setAttribute('repeatCount', 'indefinite');
+            const mpath2 = document.createElementNS('http://www.w3.org/2000/svg', 'mpath');
+            mpath2.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#conn-path-${idx}`);
+            anim2.appendChild(mpath2);
+            particle2.appendChild(anim2);
+            g.appendChild(particle2);
+
+            svg.appendChild(g);
+        });
+    }
+
+    // Draw on load and resize
+    window.addEventListener('load', () => {
+        setTimeout(drawConnections, 100);
+    });
+    window.addEventListener('resize', drawConnections);
+
+    // Waveform button interaction
+    document.querySelectorAll('.waveform-select').forEach(group => {
+        group.querySelectorAll('.wave-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                group.querySelectorAll('.wave-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+    });
+</script>
+</body>
+</html>

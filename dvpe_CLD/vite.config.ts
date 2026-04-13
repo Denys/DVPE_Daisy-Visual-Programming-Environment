@@ -1,11 +1,13 @@
-/// <reference types="vitest" />
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+
+  // Base URL for GitHub Pages deployment (set via BASE_URL env var in CI)
+  base: process.env.BASE_URL || '/',
 
   // Prevent Vite from clearing the terminal
   clearScreen: false,
@@ -14,6 +16,18 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    proxy: {
+      '/api/anthropic': {
+        target: 'https://api.anthropic.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
+      },
+      '/api/openai': {
+        target: 'https://api.openai.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/openai/, ''),
+      },
+    },
   },
 
   // Env variables starting with TAURI_ will be exposed
@@ -26,6 +40,20 @@ export default defineConfig({
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     // Produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG,
+    // Raise warning threshold and split large chunks
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-reactflow': ['@xyflow/react'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-monaco': ['@monaco-editor/react'],
+          'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge', 'sonner'],
+          'vendor-zip': ['jszip', 'file-saver'],
+        },
+      },
+    },
   },
 
   resolve: {
@@ -46,5 +74,23 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: false,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'html'],
+      exclude: [
+        'node_modules/',
+        'src/test/**',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/index.ts',
+      ],
+      thresholds: {
+        lines: 50,
+        functions: 50,
+        branches: 40,
+        statements: 50,
+      },
+    },
   },
 });
+

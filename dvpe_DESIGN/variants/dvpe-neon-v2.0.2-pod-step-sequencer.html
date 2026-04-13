@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DVPE v2.0.2 — Stitch Neon · Pod Step Sequencer (Enhanced)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            /* Neon Palette */
+            --neon-cyan: #00e5ff;
+            --neon-magenta: #ff00e5;
+            --neon-violet: #b44aff;
+            --neon-amber: #ffab00;
+            --neon-green: #39ff14;
+            --neon-red: #ff3d5a;
+            --neon-blue: #4d7cff;
+            --neon-teal: #00bfa5;
+            --neon-yellow: #ffe600;
+            --neon-orange: #ff6d00;
+            --neon-pink: #ff4081;
+
+            /* Glass */
+            --glass-bg: rgba(10, 8, 24, 0.52);
+            --glass-bg-panel: rgba(8, 6, 20, 0.72);
+            --glass-bg-module: rgba(14, 11, 32, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.07);
+            --glass-blur: 20px;
+            --glass-radius: 12px;
+
+            /* Layout */
+            --sidebar-w: 240px;
+            --inspector-w: 280px;
+            --topbar-h: 42px;
+            --statusbar-h: 28px;
+
+            /* Fonts */
+            --font-display: 'Orbitron', sans-serif;
+            --font-body: 'Exo 2', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            /* Connection */
+            --conn-width: 2.5px;
+            --conn-trail: 10px;
+        }
+
+        html, body {
+            width: 100%; height: 100vh;
+            overflow: hidden;
+            font-family: var(--font-body);
+            color: rgba(255, 255, 255, 0.88);
+            background: #06041a;
+        }
+
+        /* ============================================================
+           BACKGROUND — DIFFUSED YELLOW-ORANGE-VIOLET AURORA + GRID
+           ============================================================ */
+        .bg-layer {
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                radial-gradient(ellipse 1000px 700px at 10% 20%, rgba(255, 171, 0, 0.14), transparent),
+                radial-gradient(ellipse 800px 900px at 90% 10%, rgba(255, 100, 0, 0.10), transparent),
+                radial-gradient(ellipse 1200px 800px at 50% 55%, rgba(140, 50, 255, 0.13), transparent),
+                radial-gradient(ellipse 700px 600px at 80% 85%, rgba(255, 0, 180, 0.08), transparent),
+                radial-gradient(ellipse 900px 500px at 15% 90%, rgba(255, 150, 0, 0.08), transparent);
+            animation: auroraDrift 25s ease-in-out infinite alternate;
+        }
+        @keyframes auroraDrift {
+            0%   { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(8deg); }
+        }
+
+        /* Dot grid */
+        .grid-layer {
+            position: fixed; inset: 0; z-index: 0;
+            background-image: radial-gradient(circle 0.8px, rgba(255,255,255,0.045) 0%, transparent 100%);
+            background-size: 28px 28px;
+            pointer-events: none;
+        }
+
+        /* Faint crosshair lines at intervals */
+        .grid-lines {
+            position: fixed; inset: 0; z-index: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 140px 140px;
+            pointer-events: none;
+        }
+
+        /* Scanlines */
+        .scanlines {
+            position: fixed; inset: 0; z-index: 10000;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.012) 2px, rgba(0,0,0,0.012) 4px);
+        }
+
+        /* ============================================================
+           APP SHELL — 3-panel layout
+           ============================================================ */
+        .app {
+            position: relative; z-index: 1;
+            display: grid;
+            grid-template-rows: var(--topbar-h) 1fr var(--statusbar-h);
+            grid-template-columns: var(--sidebar-w) 1fr var(--inspector-w);
+            grid-template-areas:
+                "topbar topbar topbar"
+                "sidebar canvas inspector"
+                "status status status";
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ============================================================
+           TOPBAR
+           ============================================================ */
+        .topbar {
+            grid-area: topbar;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 18px;
+            background: var(--glass-bg-panel);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 100;
+        }
+
+        .topbar-left {
+            display: flex; align-items: center; gap: 14px;
+        }
+
+        .logo {
+            font-family: var(--font-display); font-size: 15px; font-weight: 800;
+            letter-spacing: 3px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 6px rgba(0,229,255,0.35));
+        }
+
+        .topbar-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.1); }
+
+        .patch-name {
+            font-family: var(--font-body); font-size: 13px; font-weight: 500;
+            color: rgba(255,255,255,0.6); letter-spacing: 0.5px;
+        }
+
+        .patch-name .dot {
+            display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+            background: var(--neon-green); box-shadow: 0 0 6px var(--neon-green);
+            margin-right: 6px; vertical-align: middle;
+        }
+
+        .topbar-center {
+            display: flex; gap: 4px;
+        }
+
+        .tb-icon-btn {
+            width: 28px; height: 28px; border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02);
+            color: rgba(255,255,255,0.4); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; transition: all 0.2s;
+        }
+        .tb-icon-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(0,229,255,0.05); }
+
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+        .btn-hardware {
+            font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px;
+            padding: 5px 12px; border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.55); cursor: pointer; transition: all 0.2s;
+        }
+        .btn-hardware:hover { border-color: var(--neon-teal); color: var(--neon-teal); }
+
+        .btn-compile {
+            font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+            letter-spacing: 1.5px; padding: 5px 16px; border-radius: 6px;
+            border: 1px solid var(--neon-green); background: rgba(57,255,20,0.08);
+            color: var(--neon-green); cursor: pointer; transition: all 0.2s;
+        }
+        .btn-compile:hover { background: rgba(57,255,20,0.15); box-shadow: 0 0 14px rgba(57,255,20,0.2); }
+
+        /* ============================================================
+           SIDEBAR — MODULE LIBRARY
+           ============================================================ */
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--glass-bg-panel);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-right: 1px solid var(--glass-border);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 14px 14px 10px;
+            font-family: var(--font-display); font-size: 11px; font-weight: 600;
+            letter-spacing: 2px; color: rgba(255,255,255,0.45);
+        }
+
+        .sidebar-search {
+            margin: 0 12px 10px; padding: 7px 10px;
+            border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.7);
+            font-family: var(--font-mono); font-size: 11px;
+            outline: none; transition: border-color 0.2s;
+        }
+        .sidebar-search:focus { border-color: var(--neon-cyan); }
+        .sidebar-search::placeholder { color: rgba(255,255,255,0.2); }
+
+        .module-list {
+            flex: 1; overflow-y: auto; padding: 0 8px 12px;
+            scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
+        }
+
+        .mod-category {
+            font-family: var(--font-mono); font-size: 9px; font-weight: 500;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: rgba(255,255,255,0.2); padding: 10px 8px 4px;
+        }
+
+        .mod-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 7px 10px; border-radius: 8px;
+            cursor: pointer; transition: all 0.2s;
+            margin-bottom: 2px;
+        }
+        .mod-item:hover { background: rgba(255,255,255,0.04); }
+
+        .mod-icon {
+            width: 26px; height: 26px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; flex-shrink: 0;
+            border: 1px dashed;
+            opacity: 0.7;
+        }
+
+        .mod-info { display: flex; flex-direction: column; gap: 1px; }
+        .mod-name { font-family: var(--font-body); font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.75); }
+        .mod-desc { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.25); }
+
+        .sidebar-footer {
+            padding: 8px 14px; border-top: 1px solid var(--glass-border);
+            font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.2);
+        }
+
+        /* ============================================================
+           CANVAS
+           ============================================================ */
+        .canvas {
+            grid-area: canvas;
+            position: relative;
+            overflow: auto;
+        }
+
+        .canvas-inner {
+            position: relative;
+            width: 1800px; height: 1100px;
+            min-width: 100%; min-height: 100%;
+        }
+
+        .connections-svg {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; z-index: 1;
+        }
+
+        /* ============================================================
+           CANVAS MODULE BLOCKS
+           ============================================================ */
+        .block {
+            position: absolute; z-index: 5;
+            background: var(--glass-bg-module);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-radius: var(--glass-radius);
+            min-width: 160px;
+            cursor: grab;
+            transition: box-shadow 0.3s, transform 0.15s;
+        }
+
+        .block:hover {
+            transform: scale(1.012);
+            z-index: 10;
+        }
+
+        /* Stitch border */
+        .block::before {
+            content: ''; position: absolute; inset: -1px;
+            border-radius: calc(var(--glass-radius) + 1px);
+            border: 1.5px dashed var(--block-neon, var(--neon-cyan));
+            opacity: 0.45; transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .block:hover::before { opacity: 0.8; }
+
+        /* Outer glow */
+        .block::after {
+            content: ''; position: absolute; inset: -3px;
+            border-radius: calc(var(--glass-radius) + 3px);
+            box-shadow: 0 0 18px 2px color-mix(in srgb, var(--block-neon, var(--neon-cyan)) 20%, transparent),
+                        inset 0 0 12px 1px color-mix(in srgb, var(--block-neon, var(--neon-cyan)) 6%, transparent);
+            opacity: 0.35; transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .block:hover::after { opacity: 0.65; }
+
+        /* Block header bar */
+        .block-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 12px 6px; gap: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .block-head-left { display: flex; align-items: center; gap: 7px; }
+
+        .block-icon {
+            font-size: 12px; opacity: 0.7;
+        }
+
+        .block-label {
+            font-family: var(--font-display); font-size: 11px; font-weight: 600;
+            letter-spacing: 1.5px; color: var(--block-neon, var(--neon-cyan));
+            text-shadow: 0 0 8px color-mix(in srgb, var(--block-neon, var(--neon-cyan)) 40%, transparent);
+        }
+
+        .block-badge {
+            font-family: var(--font-mono); font-size: 8px;
+            padding: 2px 6px; border-radius: 4px;
+            background: color-mix(in srgb, var(--block-neon, var(--neon-cyan)) 10%, transparent);
+            color: var(--block-neon, var(--neon-cyan)); opacity: 0.6;
+        }
+
+        .block-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--block-neon, var(--neon-cyan));
+            box-shadow: 0 0 6px var(--block-neon, var(--neon-cyan));
+            animation: blink 2.5s ease-in-out infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:.5;} 50%{opacity:1;} }
+
+        /* Block body */
+        .block-body { padding: 8px 12px 10px; }
+
+        /* Parameters inside block */
+        .bp { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+        .bp-label { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.4); min-width: 42px; }
+        .bp-bar { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; position: relative; overflow: hidden; }
+        .bp-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--block-neon) 50%, transparent), var(--block-neon)); box-shadow: 0 0 5px color-mix(in srgb, var(--block-neon) 35%, transparent); }
+        .bp-val { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.65); min-width: 48px; text-align: right; }
+
+        /* Inline info */
+        .block-info {
+            font-family: var(--font-mono); font-size: 9px;
+            color: rgba(255,255,255,0.3); padding: 4px 0 0;
+            letter-spacing: 0.3px;
+        }
+
+        /* Ports */
+        .block-ports { display: flex; justify-content: space-between; padding: 4px 8px 8px; }
+        .ports-col { display: flex; flex-direction: column; gap: 5px; }
+        .port { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .port-in { flex-direction: row; }
+        .port-out { flex-direction: row-reverse; }
+        .port-dot {
+            width: 11px; height: 11px; border-radius: 50%;
+            border: 2px solid var(--block-neon, var(--neon-cyan));
+            background: rgba(0,0,0,0.5); transition: all 0.2s;
+        }
+        .port-dot.on { background: var(--block-neon, var(--neon-cyan)); box-shadow: 0 0 8px var(--block-neon, var(--neon-cyan)); }
+        .port:hover .port-dot { box-shadow: 0 0 10px var(--block-neon, var(--neon-cyan)); transform: scale(1.15); }
+        .port-lbl { font-family: var(--font-mono); font-size: 8px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* ============================================================
+           STEP SEQUENCER SPECIAL — GRID DISPLAY
+           ============================================================ */
+        .seq-grid {
+            display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px;
+            padding: 4px 0;
+        }
+        .seq-step {
+            height: 28px; border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.02);
+            position: relative; cursor: pointer;
+            transition: all 0.15s;
+            display: flex; align-items: flex-end;
+            overflow: hidden;
+        }
+        .seq-step:hover { border-color: rgba(255,255,255,0.15); }
+        .seq-step.active { border-color: var(--neon-yellow); }
+        .seq-step .step-bar {
+            width: 100%; border-radius: 0 0 3px 3px;
+            background: linear-gradient(180deg, var(--neon-yellow), var(--neon-orange));
+            opacity: 0.7; transition: height 0.2s;
+        }
+        .seq-step.current::after {
+            content: ''; position: absolute; inset: -1px;
+            border: 1.5px solid var(--neon-yellow);
+            border-radius: 4px;
+            box-shadow: 0 0 8px var(--neon-yellow);
+            animation: blink 0.8s ease-in-out infinite;
+        }
+
+        /* ============================================================
+           KNOB (SVG inline)
+           ============================================================ */
+        .knob-row { display: flex; gap: 14px; justify-content: center; padding: 4px 0; }
+        .knob-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .knob-svg { width: 34px; height: 34px; cursor: pointer; }
+        .knob-track { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 3; stroke-linecap: round; }
+        .knob-arc { fill: none; stroke-width: 3; stroke-linecap: round; }
+        .knob-lbl { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+        .knob-val { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.55); }
+
+        /* Waveform selector chips */
+        .wave-chips { display: flex; gap: 3px; }
+        .wchip {
+            padding: 2px 7px; border-radius: 4px; font-family: var(--font-mono); font-size: 8px;
+            border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02);
+            color: rgba(255,255,255,0.35); cursor: pointer; transition: all 0.15s;
+        }
+        .wchip.on { border-color: var(--block-neon); color: var(--block-neon); background: color-mix(in srgb, var(--block-neon) 8%, transparent); }
+
+        /* Mini envelope display */
+        .env-mini { width: 100%; height: 30px; border-radius: 5px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); margin-top: 3px; overflow: hidden; }
+        .env-mini svg { width: 100%; height: 100%; }
+
+        /* ============================================================
+           INSPECTOR PANEL
+           ============================================================ */
+        .inspector {
+            grid-area: inspector;
+            background: var(--glass-bg-panel);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-left: 1px solid var(--glass-border);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        .insp-header {
+            padding: 14px 16px 10px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .insp-title {
+            font-family: var(--font-display); font-size: 11px; font-weight: 600;
+            letter-spacing: 2px; color: rgba(255,255,255,0.45);
+        }
+
+        .insp-close {
+            width: 22px; height: 22px; border-radius: 5px;
+            border: 1px solid rgba(255,255,255,0.08); background: transparent;
+            color: rgba(255,255,255,0.3); cursor: pointer; font-size: 11px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .insp-body { flex: 1; overflow-y: auto; padding: 12px 16px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.06) transparent; }
+
+        .insp-section { margin-bottom: 16px; }
+        .insp-section-head {
+            font-family: var(--font-mono); font-size: 9px; font-weight: 500;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: rgba(255,255,255,0.2); padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+        }
+        .insp-section-icon { font-size: 11px; }
+
+        .insp-field { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; }
+        .insp-field-label { font-family: var(--font-mono); font-size: 11px; color: rgba(255,255,255,0.4); }
+        .insp-field-value {
+            font-family: var(--font-mono); font-size: 11px; color: rgba(255,255,255,0.75);
+            padding: 3px 8px; border-radius: 5px;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+            min-width: 90px; text-align: right;
+        }
+
+        .insp-slider-row { padding: 6px 0; }
+        .insp-slider-label { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.35); margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .insp-slider-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+        .insp-slider-fill { height: 100%; border-radius: 3px; }
+
+        /* Connectivity section */
+        .conn-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+        .conn-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .conn-label { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.45); }
+        .conn-type { font-family: var(--font-mono); font-size: 8px; color: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 3px; background: rgba(255,255,255,0.03); }
+        .conn-target { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.55); margin-left: auto; }
+
+        /* Documentation */
+        .insp-doc {
+            font-family: var(--font-body); font-size: 11px; font-style: italic;
+            color: rgba(255,255,255,0.25); line-height: 1.5; padding: 6px 0;
+        }
+
+        /* Module preview in inspector */
+        .insp-preview {
+            width: 100%; height: 80px; border-radius: 8px;
+            background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.04);
+            margin-bottom: 12px; display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.15);
+        }
+
+        /* ============================================================
+           STATUS BAR
+           ============================================================ */
+        .statusbar {
+            grid-area: status;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 18px;
+            background: var(--glass-bg-panel);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-top: 1px solid var(--glass-border);
+            font-family: var(--font-mono); font-size: 9px;
+            color: rgba(255,255,255,0.25); letter-spacing: 0.5px;
+        }
+
+        .stat { display: flex; align-items: center; gap: 5px; }
+        .stat-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+        .status-keys {
+            display: flex; gap: 12px;
+        }
+        .skey { padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,0.04); font-size: 8px; }
+
+        /* ============================================================
+           MODULE COLOR CLASSES
+           ============================================================ */
+        .b-clock   { --block-neon: var(--neon-teal); }
+        .b-seq     { --block-neon: var(--neon-yellow); }
+        .b-osc     { --block-neon: var(--neon-cyan); }
+        .b-vca     { --block-neon: var(--neon-blue); }
+        .b-filter  { --block-neon: var(--neon-magenta); }
+        .b-output  { --block-neon: var(--neon-green); }
+        .b-env     { --block-neon: var(--neon-amber); }
+        .b-knob    { --block-neon: var(--neon-orange); }
+        .b-led     { --block-neon: var(--neon-pink); }
+        .b-encoder { --block-neon: var(--neon-violet); }
+
+        /* Sidebar icon colors */
+        .ic-teal    { border-color: var(--neon-teal); color: var(--neon-teal); }
+        .ic-cyan    { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+        .ic-yellow  { border-color: var(--neon-yellow); color: var(--neon-yellow); }
+        .ic-magenta { border-color: var(--neon-magenta); color: var(--neon-magenta); }
+        .ic-blue    { border-color: var(--neon-blue); color: var(--neon-blue); }
+        .ic-green   { border-color: var(--neon-green); color: var(--neon-green); }
+        .ic-amber   { border-color: var(--neon-amber); color: var(--neon-amber); }
+        .ic-orange  { border-color: var(--neon-orange); color: var(--neon-orange); }
+        .ic-pink    { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .ic-violet  { border-color: var(--neon-violet); color: var(--neon-violet); }
+    </style>
+</head>
+<body>
+
+<div class="bg-layer"></div>
+<div class="grid-layer"></div>
+<div class="grid-lines"></div>
+<div class="scanlines"></div>
+
+<div class="app">
+
+    <!-- ====== TOPBAR ====== -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <span class="logo">DVPE</span>
+            <div class="topbar-sep"></div>
+            <span class="patch-name"><span class="dot"></span>Pod Step Sequencer (Enhanced)</span>
+        </div>
+        <div class="topbar-center">
+            <button class="tb-icon-btn" title="Add module">＋</button>
+            <button class="tb-icon-btn" title="Duplicate">⧉</button>
+            <button class="tb-icon-btn" title="Undo">↩</button>
+            <button class="tb-icon-btn" title="Redo">↪</button>
+        </div>
+        <div class="topbar-right">
+            <button class="btn-hardware">Hardware</button>
+            <button class="btn-compile">⚡ Export C++</button>
+        </div>
+    </header>
+
+    <!-- ====== SIDEBAR ====== -->
+    <aside class="sidebar">
+        <div class="sidebar-header">MODULES</div>
+        <input class="sidebar-search" type="search" placeholder="Search modules..." aria-label="Search modules">
+        <div class="module-list">
+            <div class="mod-category">Sources</div>
+            <div class="mod-item"><div class="mod-icon ic-cyan">∿</div><div class="mod-info"><span class="mod-name">Oscillator</span><span class="mod-desc">Waveform generator</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-teal">⏱</div><div class="mod-info"><span class="mod-name">Tempo Clock</span><span class="mod-desc">BPM clock source</span></div></div>
+
+            <div class="mod-category">Sequencers</div>
+            <div class="mod-item"><div class="mod-icon ic-yellow">⊞</div><div class="mod-info"><span class="mod-name">8-Step Sequencer</span><span class="mod-desc">CV step sequence</span></div></div>
+
+            <div class="mod-category">Processors</div>
+            <div class="mod-item"><div class="mod-icon ic-magenta">◇</div><div class="mod-info"><span class="mod-name">Moog Filter</span><span class="mod-desc">Ladder LP/HP/BP</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-blue">△</div><div class="mod-info"><span class="mod-name">VCA</span><span class="mod-desc">Voltage controlled amp</span></div></div>
+
+            <div class="mod-category">Modulators</div>
+            <div class="mod-item"><div class="mod-icon ic-amber">⌒</div><div class="mod-info"><span class="mod-name">Envelope</span><span class="mod-desc">ADSR / AD generator</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-green">∿</div><div class="mod-info"><span class="mod-name">LFO</span><span class="mod-desc">Low frequency osc</span></div></div>
+
+            <div class="mod-category">Effects</div>
+            <div class="mod-item"><div class="mod-icon ic-violet">⟳</div><div class="mod-info"><span class="mod-name">Delay</span><span class="mod-desc">Variable delay line</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-violet">▦</div><div class="mod-info"><span class="mod-name">Reverb</span><span class="mod-desc">Stereo room/hall</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-orange">⊿</div><div class="mod-info"><span class="mod-name">Overdrive</span><span class="mod-desc">Soft clipping</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-orange">∿̸</div><div class="mod-info"><span class="mod-name">Wavefolder</span><span class="mod-desc">Wavefolding shaper</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-pink">⊓</div><div class="mod-info"><span class="mod-name">Bitcrush</span><span class="mod-desc">Bit depth reduction</span></div></div>
+
+            <div class="mod-category">I/O & Control</div>
+            <div class="mod-item"><div class="mod-icon ic-green">◈</div><div class="mod-info"><span class="mod-name">Output</span><span class="mod-desc">Audio output to DAC</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-orange">◎</div><div class="mod-info"><span class="mod-name">Knob</span><span class="mod-desc">Hardware knob input</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-violet">⟲</div><div class="mod-info"><span class="mod-name">Encoder</span><span class="mod-desc">Rotary encoder input</span></div></div>
+            <div class="mod-item"><div class="mod-icon ic-pink">●</div><div class="mod-info"><span class="mod-name">LED</span><span class="mod-desc">Hardware LED output</span></div></div>
+        </div>
+        <div class="sidebar-footer">Drag modules to canvas to add</div>
+    </aside>
+
+    <!-- ====== CANVAS ====== -->
+    <main class="canvas" role="main" aria-label="Patch canvas">
+        <div class="canvas-inner">
+            <svg class="connections-svg" id="svgConn" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <filter id="glow"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                    <filter id="glowSoft"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                </defs>
+            </svg>
+
+            <!-- KNOB 1 (Decay/Tempo) -->
+            <div class="block b-knob" style="left:60px; top:40px; width:180px;" data-id="knob1">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">◎</span><span class="block-label">KNOB 1</span></div>
+                    <span class="block-badge">Decay/Tempo</span>
+                </div>
+                <div class="block-body">
+                    <div class="block-info">Chan: 0 &nbsp; Min: 0.01</div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col"></div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-knob1-out"></div><span class="port-lbl">Out</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENCODER (Step/Wave) -->
+            <div class="block b-encoder" style="left:320px; top:30px; width:200px;" data-id="encoder">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">⟲</span><span class="block-label">ENCODER</span></div>
+                    <span class="block-badge">Step/Wave</span>
+                </div>
+                <div class="block-body">
+                    <div class="block-info">Pin: 0 &nbsp; PWM: true</div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col"></div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-enc-out"></div><span class="port-lbl">Out</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LED 1 (Step Color) -->
+            <div class="block b-led" style="left:600px; top:25px; width:190px;" data-id="led1">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">●</span><span class="block-label">LED 1</span></div>
+                    <span class="block-badge">Step Color</span>
+                </div>
+                <div class="block-body">
+                    <div class="block-info">Pin: 0 &nbsp; PWM: true</div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col">
+                        <div class="port port-in"><div class="port-dot on" id="p-led1-in"></div><span class="port-lbl">In</span></div>
+                    </div>
+                    <div class="ports-col"></div>
+                </div>
+            </div>
+
+            <!-- TEMPO CLOCK -->
+            <div class="block b-clock" style="left:40px; top:220px; width:170px;" data-id="clock">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">⏱</span><span class="block-label">TEMPO CLK</span></div>
+                    <div class="block-dot"></div>
+                </div>
+                <div class="block-body">
+                    <div class="bp"><span class="bp-label">Freq</span><div class="bp-bar"><div class="bp-fill" style="width:35%"></div></div><span class="bp-val">3.00 Hz</span></div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col"></div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-clk-out"></div><span class="port-lbl">Out</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8-STEP SEQUENCER -->
+            <div class="block b-seq" style="left:260px; top:180px; width:280px;" data-id="seq">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">⊞</span><span class="block-label">8-STEP SEQ</span></div>
+                    <div class="block-dot"></div>
+                </div>
+                <div class="block-body">
+                    <div class="seq-grid">
+                        <div class="seq-step active current"><div class="step-bar" style="height:70%"></div></div>
+                        <div class="seq-step active"><div class="step-bar" style="height:50%"></div></div>
+                        <div class="seq-step active"><div class="step-bar" style="height:85%"></div></div>
+                        <div class="seq-step"><div class="step-bar" style="height:20%"></div></div>
+                        <div class="seq-step active"><div class="step-bar" style="height:60%"></div></div>
+                        <div class="seq-step active"><div class="step-bar" style="height:40%"></div></div>
+                        <div class="seq-step"><div class="step-bar" style="height:15%"></div></div>
+                        <div class="seq-step active"><div class="step-bar" style="height:90%"></div></div>
+                    </div>
+                    <div class="block-info">Trac: 0 &nbsp; Tempo: 120.0BPM</div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col">
+                        <div class="port port-in"><div class="port-dot on" id="p-seq-clk"></div><span class="port-lbl">Clk</span></div>
+                    </div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-seq-cv"></div><span class="port-lbl">CV</span></div>
+                        <div class="port port-out"><div class="port-dot on" id="p-seq-gate"></div><span class="port-lbl">Gate</span></div>
+                        <div class="port port-out"><div class="port-dot on" id="p-seq-trig"></div><span class="port-lbl">Trig</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LED 2 (Active/Env) -->
+            <div class="block b-led" style="left:610px; top:185px; width:175px;" data-id="led2">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">●</span><span class="block-label">LED 2</span></div>
+                    <span class="block-badge">Active/Env</span>
+                </div>
+                <div class="block-body">
+                    <div class="block-info">Pin: 1 &nbsp; PWM: true</div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col">
+                        <div class="port port-in"><div class="port-dot on" id="p-led2-in"></div><span class="port-lbl">In</span></div>
+                    </div>
+                    <div class="ports-col"></div>
+                </div>
+            </div>
+
+            <!-- ENVELOPE -->
+            <div class="block b-env" style="left:300px; top:390px; width:220px;" data-id="env">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">⌒</span><span class="block-label">ENVELOPE</span></div>
+                    <div class="block-dot"></div>
+                </div>
+                <div class="block-body">
+                    <div class="env-mini">
+                        <svg viewBox="0 0 200 30" preserveAspectRatio="none">
+                            <path d="M8,28 L25,3 L55,10 L130,10 L185,28" fill="none" stroke="var(--neon-amber)" stroke-width="1.5" stroke-linecap="round" filter="url(#glow)"/>
+                            <path d="M8,28 L25,3 L55,10 L130,10 L185,28 V30 H8 Z" fill="var(--neon-amber)" opacity="0.06"/>
+                        </svg>
+                    </div>
+                    <div class="block-info">Attk: 0.01s &nbsp; Deca: 0.50s</div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col">
+                        <div class="port port-in"><div class="port-dot on" id="p-env-trig"></div><span class="port-lbl">Trig</span></div>
+                        <div class="port port-in"><div class="port-dot on" id="p-env-deccv"></div><span class="port-lbl">Dec CV</span></div>
+                    </div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-env-out"></div><span class="port-lbl">Out</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OSCILLATOR -->
+            <div class="block b-osc" style="left:380px; top:570px; width:210px;" data-id="osc">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">∿</span><span class="block-label">OSCILLATOR</span></div>
+                    <div class="block-dot"></div>
+                </div>
+                <div class="block-body">
+                    <div class="bp"><span class="bp-label">Freq</span><div class="bp-bar"><div class="bp-fill" style="width:28%"></div></div><span class="bp-val">110 Hz</span></div>
+                    <div class="bp"><span class="bp-label">Ampl</span><div class="bp-bar"><div class="bp-fill" style="width:100%"></div></div><span class="bp-val">1.00</span></div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col">
+                        <div class="port port-in"><div class="port-dot on" id="p-osc-freqcv"></div><span class="port-lbl">Freq CV</span></div>
+                    </div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-osc-out"></div><span class="port-lbl">Out</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VCA -->
+            <div class="block b-vca" style="left:650px; top:560px; width:170px;" data-id="vca">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">△</span><span class="block-label">VCA</span></div>
+                    <div class="block-dot"></div>
+                </div>
+                <div class="block-body">
+                    <div class="bp"><span class="bp-label">Gain</span><div class="bp-bar"><div class="bp-fill" style="width:100%"></div></div><span class="bp-val">1.00</span></div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col">
+                        <div class="port port-in"><div class="port-dot on" id="p-vca-in"></div><span class="port-lbl">In</span></div>
+                        <div class="port port-in"><div class="port-dot on" id="p-vca-cv"></div><span class="port-lbl">CV</span></div>
+                    </div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-vca-out"></div><span class="port-lbl">Out</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MOOG FILTER -->
+            <div class="block b-filter" style="left:870px; top:550px; width:200px;" data-id="moog">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">◇</span><span class="block-label">MOOG FILTER</span></div>
+                    <div class="block-dot"></div>
+                </div>
+                <div class="block-body">
+                    <div class="bp"><span class="bp-label">Cuto</span><div class="bp-bar"><div class="bp-fill" style="width:95%"></div></div><span class="bp-val">20000 Hz</span></div>
+                    <div class="bp"><span class="bp-label">Reso</span><div class="bp-bar"><div class="bp-fill" style="width:70%"></div></div><span class="bp-val">0.70</span></div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col">
+                        <div class="port port-in"><div class="port-dot on" id="p-moog-in"></div><span class="port-lbl">In</span></div>
+                        <div class="port port-in"><div class="port-dot on" id="p-moog-freqcv"></div><span class="port-lbl">Freq CV</span></div>
+                    </div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-moog-out"></div><span class="port-lbl">Out</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OUTPUT -->
+            <div class="block b-output" style="left:1100px; top:560px; width:160px;" data-id="output">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">◈</span><span class="block-label">OUTPUT</span></div>
+                    <span class="block-badge">0.8</span>
+                </div>
+                <div class="block-body">
+                    <div class="bp"><span class="bp-label">Gain</span><div class="bp-bar"><div class="bp-fill" style="width:80%; background: linear-gradient(90deg, rgba(57,255,20,0.4), var(--neon-green)); box-shadow: 0 0 5px rgba(57,255,20,0.3);"></div></div><span class="bp-val">0.80</span></div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col">
+                        <div class="port port-in"><div class="port-dot on" id="p-out-l"></div><span class="port-lbl">L</span></div>
+                        <div class="port port-in"><div class="port-dot on" id="p-out-r"></div><span class="port-lbl">R</span></div>
+                    </div>
+                    <div class="ports-col"></div>
+                </div>
+            </div>
+
+            <!-- KNOB 2 (Pitch/Filter) -->
+            <div class="block b-knob" style="left:380px; top:740px; width:200px;" data-id="knob2">
+                <div class="block-head">
+                    <div class="block-head-left"><span class="block-icon">◎</span><span class="block-label">KNOB 2</span></div>
+                    <span class="block-badge">Pitch/Filter</span>
+                </div>
+                <div class="block-body">
+                    <div class="block-info">Chan: 1 &nbsp; Min: 0.00</div>
+                </div>
+                <div class="block-ports">
+                    <div class="ports-col"></div>
+                    <div class="ports-col">
+                        <div class="port port-out"><div class="port-dot on" id="p-knob2-out"></div><span class="port-lbl">Out</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ====== INSPECTOR ====== -->
+    <aside class="inspector">
+        <div class="insp-header">
+            <span class="insp-title">INSPECTOR</span>
+            <button class="insp-close" title="Close">✕</button>
+        </div>
+        <div class="insp-body">
+            <!-- Module info -->
+            <div class="insp-section">
+                <div class="insp-section-head"><span class="insp-section-icon">⌒</span> Module</div>
+                <div class="insp-field"><span class="insp-field-label">Label</span><span class="insp-field-value">ENVELOPE</span></div>
+                <div class="insp-field"><span class="insp-field-label">DaisySP Class</span><span class="insp-field-value" style="font-size:9px; color:var(--neon-amber);">daisysp::AdEnv</span></div>
+                <div class="insp-field"><span class="insp-field-label">Category</span><span class="insp-field-value">Modulators</span></div>
+            </div>
+
+            <!-- Parameters -->
+            <div class="insp-section">
+                <div class="insp-section-head"><span class="insp-section-icon">⚙</span> Time</div>
+                <div class="insp-slider-row">
+                    <div class="insp-slider-label"><span>Attack</span><span style="color:rgba(255,255,255,0.6);">0.01s</span></div>
+                    <div class="insp-slider-track"><div class="insp-slider-fill" style="width:5%; background: var(--neon-amber);"></div></div>
+                </div>
+                <div class="insp-slider-row">
+                    <div class="insp-slider-label"><span>Decay</span><span style="color:rgba(255,255,255,0.6);">0.50s</span></div>
+                    <div class="insp-slider-track"><div class="insp-slider-fill" style="width:50%; background: var(--neon-amber);"></div></div>
+                </div>
+            </div>
+
+            <div class="insp-section">
+                <div class="insp-section-head"><span class="insp-section-icon">✧</span> Shape</div>
+                <div class="insp-slider-row">
+                    <div class="insp-slider-label"><span>Curve</span><span style="color:rgba(255,255,255,0.6);">0.00</span></div>
+                    <div class="insp-slider-track"><div class="insp-slider-fill" style="width:50%; background: var(--neon-amber);"></div></div>
+                </div>
+                <div style="font-family:var(--font-mono); font-size:9px; color:rgba(255,255,255,0.2); padding:4px 0;">Envelope curve shape (-10 to +10)</div>
+            </div>
+
+            <!-- Connectivity -->
+            <div class="insp-section">
+                <div class="insp-section-head"><span class="insp-section-icon">◎</span> Connectivity</div>
+                <div style="font-family:var(--font-mono); font-size:9px; color:rgba(255,255,255,0.2); padding:0 0 6px;">INPUTS</div>
+                <div class="conn-item">
+                    <div class="conn-dot" style="background:var(--neon-yellow); box-shadow:0 0 4px var(--neon-yellow);"></div>
+                    <span class="conn-label">TRIG</span>
+                    <span class="conn-type">Trigger</span>
+                    <span class="conn-target">→ 8-STEP SEQ</span>
+                </div>
+                <div class="conn-item">
+                    <div class="conn-dot" style="background:var(--neon-orange); box-shadow:0 0 4px var(--neon-orange);"></div>
+                    <span class="conn-label">DEC CV</span>
+                    <span class="conn-type">CV</span>
+                    <span class="conn-target">→ KNOB 1</span>
+                </div>
+                <div style="font-family:var(--font-mono); font-size:9px; color:rgba(255,255,255,0.2); padding:8px 0 6px;">OUTPUTS</div>
+                <div class="conn-item">
+                    <div class="conn-dot" style="background:var(--neon-amber); box-shadow:0 0 4px var(--neon-amber);"></div>
+                    <span class="conn-label">OUT</span>
+                    <span class="conn-type">CV</span>
+                    <span class="conn-target">→ 2 conn.</span>
+                </div>
+            </div>
+
+            <!-- Documentation -->
+            <div class="insp-section">
+                <div class="insp-section-head"><span class="insp-section-icon">ⓘ</span> Documentation</div>
+                <div class="insp-doc">The ENVELOPE provides standard AD/ADSR generator for amplitude and modulation control. Connect trigger inputs to gate sources for rhythmic envelope shaping.</div>
+            </div>
+
+            <!-- Preview -->
+            <div class="insp-preview">Module Waveform Preview</div>
+        </div>
+    </aside>
+
+    <!-- ====== STATUS BAR ====== -->
+    <footer class="statusbar">
+        <div class="stat"><div class="stat-dot" style="background:var(--neon-green); box-shadow:0 0 4px var(--neon-green);"></div> Daisy Pod connected</div>
+        <div style="display:flex; gap:16px;">
+            <span>12 blocks</span><span>13 connections</span><span>1 selected</span>
+        </div>
+        <div class="status-keys">
+            <span class="skey">Del</span><span class="skey">⌫ Delete</span><span class="skey">⌘Z Undo</span>
+            <span class="skey">Shift Multi-select</span><span class="skey">Ctrl+Drag Box select</span>
+        </div>
+        <span>Zoom: 110%</span>
+    </footer>
+</div>
+
+<script>
+    // ============================================================
+    // SVG CONNECTION DRAWING — NEON LIGHT TRAILS
+    // ============================================================
+    const conns = [
+        // Clock → Sequencer
+        { from: 'p-clk-out',     to: 'p-seq-clk',     color: '#00bfa5' },
+        // Sequencer → Oscillator Freq CV
+        { from: 'p-seq-cv',      to: 'p-osc-freqcv',  color: '#ffe600' },
+        // Sequencer → Envelope Trigger
+        { from: 'p-seq-trig',    to: 'p-env-trig',     color: '#ffe600' },
+        // Sequencer → LED 1
+        { from: 'p-seq-gate',    to: 'p-led1-in',      color: '#ffe600' },
+        // Envelope → VCA CV
+        { from: 'p-env-out',     to: 'p-vca-cv',       color: '#ffab00' },
+        // Envelope → LED 2
+        { from: 'p-env-out',     to: 'p-led2-in',      color: '#ffab00' },
+        // Oscillator → VCA In
+        { from: 'p-osc-out',     to: 'p-vca-in',       color: '#00e5ff' },
+        // VCA → Moog Filter
+        { from: 'p-vca-out',     to: 'p-moog-in',      color: '#4d7cff' },
+        // Moog → Output L
+        { from: 'p-moog-out',    to: 'p-out-l',        color: '#ff00e5' },
+        // Knob 1 → Envelope Dec CV
+        { from: 'p-knob1-out',   to: 'p-env-deccv',    color: '#ff6d00' },
+        // Knob 2 → Moog Freq CV
+        { from: 'p-knob2-out',   to: 'p-moog-freqcv',  color: '#ff6d00' },
+        // Encoder → LED 1 (secondary)
+        { from: 'p-enc-out',     to: 'p-led1-in',      color: '#b44aff' },
+    ];
+
+    function portPos(id) {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        const svg = document.getElementById('svgConn');
+        const sr = svg.getBoundingClientRect();
+        return { x: r.left + r.width/2 - sr.left, y: r.top + r.height/2 - sr.top };
+    }
+
+    function drawConns() {
+        const svg = document.getElementById('svgConn');
+        svg.querySelectorAll('.cg').forEach(g => g.remove());
+
+        conns.forEach((c, i) => {
+            const a = portPos(c.from), b = portPos(c.to);
+            if (!a || !b) return;
+
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.classList.add('cg');
+
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const cx1 = a.x + dx * 0.35, cy1 = a.y;
+            const cx2 = b.x - dx * 0.35, cy2 = b.y;
+            const d = `M${a.x},${a.y} C${cx1},${cy1} ${cx2},${cy2} ${b.x},${b.y}`;
+
+            // Wide trail
+            const trail = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            trail.setAttribute('d', d);
+            trail.setAttribute('fill', 'none');
+            trail.setAttribute('stroke', c.color);
+            trail.setAttribute('stroke-width', '10');
+            trail.setAttribute('stroke-linecap', 'round');
+            trail.setAttribute('opacity', '0.06');
+            g.appendChild(trail);
+
+            // Main path
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', c.color);
+            path.setAttribute('stroke-width', '2.5');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('filter', 'url(#glow)');
+            path.setAttribute('id', `cp${i}`);
+            g.appendChild(path);
+
+            // Flow particle
+            const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot.setAttribute('r', '3');
+            dot.setAttribute('fill', c.color);
+            dot.setAttribute('opacity', '0.85');
+            dot.setAttribute('filter', 'url(#glow)');
+            const am = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+            am.setAttribute('dur', `${1.8 + (i % 5) * 0.35}s`);
+            am.setAttribute('repeatCount', 'indefinite');
+            const mp = document.createElementNS('http://www.w3.org/2000/svg', 'mpath');
+            mp.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#cp${i}`);
+            am.appendChild(mp);
+            dot.appendChild(am);
+            g.appendChild(dot);
+
+            // Second particle (staggered)
+            const dot2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot2.setAttribute('r', '2');
+            dot2.setAttribute('fill', c.color);
+            dot2.setAttribute('opacity', '0.45');
+            const am2 = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+            am2.setAttribute('dur', `${1.8 + (i % 5) * 0.35}s`);
+            am2.setAttribute('begin', `${0.9 + (i % 3) * 0.2}s`);
+            am2.setAttribute('repeatCount', 'indefinite');
+            const mp2 = document.createElementNS('http://www.w3.org/2000/svg', 'mpath');
+            mp2.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#cp${i}`);
+            am2.appendChild(mp2);
+            dot2.appendChild(am2);
+            g.appendChild(dot2);
+
+            svg.appendChild(g);
+        });
+    }
+
+    window.addEventListener('load', () => setTimeout(drawConns, 120));
+    window.addEventListener('resize', drawConns);
+
+    // Step sequencer animation
+    let currentStep = 0;
+    setInterval(() => {
+        const steps = document.querySelectorAll('.seq-step');
+        steps.forEach(s => s.classList.remove('current'));
+        currentStep = (currentStep + 1) % steps.length;
+        steps[currentStep].classList.add('current');
+    }, 500);
+</script>
+</body>
+</html>

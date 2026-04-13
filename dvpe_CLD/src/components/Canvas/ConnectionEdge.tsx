@@ -14,8 +14,14 @@ import {
 import { motion } from 'framer-motion';
 import { X, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ConnectionType } from '@/types';
-import { usePatchStore } from '@/stores';
+import { ConnectionType, BlockInstance } from '@/types';
+import { BlockCategory } from '@/types/blocks';
+import { BlockRegistry } from '@/core/blocks/BlockRegistry';
+import { usePatchStore, useUIStore } from '@/stores';
+
+export interface BlockNodeData extends Record<string, unknown> {
+  instance: BlockInstance;
+}
 
 // ============================================================================
 // TYPES
@@ -31,7 +37,13 @@ export interface ConnectionEdgeData extends Record<string, unknown> {
 // COLOR CONFIGURATION
 // ============================================================================
 
-const getConnectionColors = (type: ConnectionType) => {
+const getConnectionColors = (type: ConnectionType, targetCategory?: BlockCategory) => {
+  // If we are dealing with a CV/Trigger signal into a Modulator/Utility/Math/User I/O block, make it white/grey
+  const isTargetingControlBlock = targetCategory === BlockCategory.MODULATORS ||
+    targetCategory === BlockCategory.USER_IO ||
+    targetCategory === BlockCategory.UTILITY ||
+    targetCategory === BlockCategory.MATH;
+
   switch (type) {
     case 'audio':
       return {
@@ -40,12 +52,26 @@ const getConnectionColors = (type: ConnectionType) => {
         gradient: ['#22d3ee', '#06b6d4'],
       };
     case 'cv':
+      if (isTargetingControlBlock) {
+        return {
+          stroke: '#f3f4f6', // very light grey/white
+          glow: 'rgba(243, 244, 246, 0.4)',
+          gradient: ['#ffffff', '#e5e7eb'],
+        };
+      }
       return {
         stroke: '#facc15', // yellow
         glow: 'rgba(250, 204, 21, 0.4)',
         gradient: ['#facc15', '#eab308'],
       };
     case 'trigger':
+      if (isTargetingControlBlock) {
+        return {
+          stroke: '#f3f4f6', // very light grey/white
+          glow: 'rgba(243, 244, 246, 0.4)',
+          gradient: ['#ffffff', '#e5e7eb'],
+        };
+      }
       return {
         stroke: '#fb923c', // orange
         glow: 'rgba(251, 146, 60, 0.4)',
@@ -108,6 +134,7 @@ type ConnectionEdgeType = Edge<ConnectionEdgeData>;
 
 const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
   id,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -117,8 +144,9 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
   data = { type: 'audio' }, // Provide default
   selected,
 }) => {
-  const { setEdges } = useReactFlow();
+  const { setEdges, getNode } = useReactFlow();
   const setConnectionLabel = usePatchStore((state) => state.setConnectionLabel);
+  const layoutStyle = useUIStore((state) => state.layoutStyle);
 
   // Type-safe data access
   const edgeData = (data || { type: 'audio' }) as ConnectionEdgeData;
@@ -128,10 +156,16 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
   const [labelValue, setLabelValue] = useState(edgeData.label || '');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Get target node resolving category
+  const targetNode = getNode(target);
+  const targetNodeData = targetNode?.data as BlockNodeData;
+  const targetDefinition = targetNodeData ? BlockRegistry.get(targetNodeData.instance.definitionId) : null;
+  const targetCategory = targetDefinition?.category;
+
   // Get colors for this connection type
   const colors = useMemo(
-    () => getConnectionColors(edgeData.type || 'audio'),
-    [edgeData.type]
+    () => getConnectionColors(edgeData.type || 'audio', targetCategory),
+    [edgeData.type, targetCategory]
   );
 
   // Calculate bezier path
@@ -175,16 +209,18 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
 
   return (
     <>
-      {/* Glow effect layer */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke={colors.glow}
-        strokeWidth={selected ? 12 : 8}
-        strokeLinecap="round"
-        className="transition-all duration-200"
-        style={{ filter: 'blur(4px)' }}
-      />
+      {/* Glow effect layer - omit if glass mode for cleaner look */}
+      {layoutStyle !== 'glass' && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={colors.glow}
+          strokeWidth={selected ? 12 : 8}
+          strokeLinecap="round"
+          className="transition-all duration-200"
+          style={{ filter: 'blur(4px)' }}
+        />
+      )}
 
       {/* Main wire */}
       <motion.path
@@ -192,7 +228,8 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
         d={edgePath}
         fill="none"
         stroke={colors.stroke}
-        strokeWidth={selected ? 3 : 2}
+        strokeWidth={layoutStyle === 'glass' ? (edgeData.type === 'audio' ? 3.5 : edgeData.type === 'cv' ? 3 : 2.7) : (selected ? 3 : 2)}
+        strokeDasharray={layoutStyle === 'glass' ? (edgeData.type === 'cv' ? '8 10' : edgeData.type === 'trigger' ? '3 11' : undefined) : undefined}
         strokeLinecap="round"
         className={cn(
           'transition-all duration-200',

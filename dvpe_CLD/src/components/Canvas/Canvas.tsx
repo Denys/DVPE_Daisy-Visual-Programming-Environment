@@ -4,7 +4,7 @@
  * Implements drag-drop block placement, connection creation, and viewport controls
  */
 
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -28,6 +28,7 @@ import '@xyflow/react/dist/style.css';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { motion } from 'framer-motion';
 
+import { cn } from '@/lib/utils';
 import { usePatchStore, useUIStore } from '@/stores';
 // import { BlockInstance } from '@/types'; // Unused
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
@@ -76,6 +77,8 @@ const CanvasInner: React.FC = () => {
   const undo = usePatchStore((state) => state.undo);
   const redo = usePatchStore((state) => state.redo);
 
+  const loadCount = usePatchStore((state) => state.loadCount);
+
   const viewport = useUIStore((state) => state.viewport);
   const setViewport = useUIStore((state) => state.setViewport);
   const gridEnabled = useUIStore((state) => state.gridEnabled);
@@ -87,6 +90,7 @@ const CanvasInner: React.FC = () => {
   const openModal = useUIStore((state) => state.openModal);
   const draggingBlockId = useUIStore((state) => state.draggingBlockId);
   const setDraggingBlock = useUIStore((state) => state.setDraggingBlock);
+  const layoutStyle = useUIStore((state) => state.layoutStyle);
 
   // Convert blocks to React Flow nodes
   // Convert blocks to React Flow nodes
@@ -290,6 +294,17 @@ const CanvasInner: React.FC = () => {
     [inspectBlock, blocks, openModal]
   );
 
+  // Re-initialize React Flow node layout after patch load
+  // (fixes Ctrl+Drag box select not working in loaded projects)
+  useEffect(() => {
+    if (loadCount > 0) {
+      const timer = setTimeout(() => {
+        fitView({ duration: 300, padding: 0.2, maxZoom: 1.5 });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [loadCount, fitView]);
+
   // Keyboard shortcuts
   useHotkeys('delete,backspace', () => deleteSelection(), [deleteSelection]);
   useHotkeys('mod+z', () => undo(), [undo]);
@@ -355,7 +370,8 @@ const CanvasInner: React.FC = () => {
   return (
     <div
       ref={reactFlowWrapper}
-      className="w-full h-full bg-surface-primary"
+      className={cn("w-full h-full", layoutStyle === 'glass' ? "bg-black" : "bg-surface-primary")}
+      style={layoutStyle === 'glass' ? { background: 'linear-gradient(to right, #1e293b 0%, #000000 50%, #000000 100%)' } : {}}
     >
       <ReactFlow
         nodes={nodes}

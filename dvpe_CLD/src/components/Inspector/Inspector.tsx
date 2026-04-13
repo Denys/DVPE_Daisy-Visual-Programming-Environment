@@ -22,6 +22,7 @@ import ParameterDial from './ParameterDial';
 import ParameterSelect from './ParameterSelect';
 import ParameterToggle from './ParameterToggle';
 import { CustomBlockDefinition } from '@/types/customBlock';
+import { DesignExperimentator } from './DesignExperimentator';
 
 function isCustomBlock(def: any): def is CustomBlockDefinition {
   return Boolean(def?.isCustom);
@@ -206,6 +207,15 @@ const Inspector: React.FC = () => {
   const updateBlockParameter = usePatchStore((state) => state.updateBlockParameter);
   const setBlockLabel = usePatchStore((state) => state.setBlockLabel);
 
+  const [activeTab, setActiveTab] = React.useState<'params' | 'design'>('params');
+
+  // Auto-switch to params when a block is selected
+  React.useEffect(() => {
+    if (inspectedBlockId) {
+      setActiveTab('params');
+    }
+  }, [inspectedBlockId]);
+
   // Get inspected block
   const block = useMemo(
     () => blocks.find((b) => b.id === inspectedBlockId),
@@ -278,20 +288,48 @@ const Inspector: React.FC = () => {
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-primary">
-        <h2 className="font-semibold text-text-primary">Inspector</h2>
-        <button
-          onClick={handleClose}
-          className="p-1 rounded hover:bg-surface-tertiary text-text-tertiary hover:text-text-primary transition-colors"
-          aria-label="Close inspector"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Content */}
+      <div className="border-b border-border bg-surface-primary">
+        <div className="flex items-center justify-between px-4 py-3">
+          <h2 className="font-semibold text-text-primary">Inspector</h2>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded hover:bg-surface-tertiary text-text-tertiary hover:text-text-primary transition-colors"
+            aria-label="Close inspector"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        
+        {/* Tabs */}
+        <div className="flex px-2 pb-px gap-1">
+          <button
+            onClick={() => setActiveTab('params')}
+            className={cn(
+              'flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2',
+              activeTab === 'params' 
+                ? 'text-audio-primary border-audio-primary bg-audio-primary/5' 
+                : 'text-text-tertiary border-transparent hover:text-text-secondary'
+            )}
+          >
+            Parameters
+          </button>
+          <button
+            onClick={() => setActiveTab('design')}
+            className={cn(
+              'flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2',
+              activeTab === 'design' 
+                ? 'text-cv-primary border-cv-primary bg-cv-primary/5' 
+                : 'text-text-tertiary border-transparent hover:text-text-secondary'
+            )}
+          >
+            Design
+          </button>
+        </div>
+      </div>      {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {block && definition ? (
+        {activeTab === 'design' ? (
+          <DesignExperimentator />
+        ) : block && definition ? (
           <>
             {/* Module Identity */}
             <Section
@@ -411,7 +449,7 @@ const Inspector: React.FC = () => {
                             <ParameterToggle
                               id={param.id}
                               label={param.displayName}
-                              value={value as boolean}
+                               value={value as boolean}
                               onChange={(v) => handleParameterChange(param.id, v)}
                             />
                           </div>
@@ -563,7 +601,7 @@ const Inspector: React.FC = () => {
               No Block Selected
             </h3>
             <p className="text-sm text-text-tertiary">
-              Double-click a block on the canvas to inspect and edit its parameters.
+              Double-click a block on the canvas to inspect and edit its parameters, or switch to the <b>Design</b> tab to experiment with visuals.
             </p>
           </div>
         )}

@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DVPE - Liquid Glass Design</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Color palette */
+            --bg-deep: #0a0e14;
+            --bg-primary: #0d1117;
+            --audio-primary: #58a6ff;
+            --control-primary: #f0883e;
+            --user-accent: #3fb950;
+            --text-primary: rgba(255, 255, 255, 0.9);
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            
+            /* Glass properties */
+            --glass-blur: 20px;
+            --glass-opacity: 0.7;
+            --glass-saturation: 1.2;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Main layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 240px 1fr 340px;
+            grid-template-rows: 56px 1fr;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(40px) saturate(1.5);
+            border-bottom: 1px solid var(--border-subtle);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .header-title {
+            color: var(--text-secondary);
+        }
+
+        .patch-name {
+            color: var(--text-primary);
+        }
+
+        .header-right {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(88, 166, 255, 0.12);
+            backdrop-filter: blur(10px);
+            color: var(--audio-primary);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+        }
+
+        .btn:hover {
+            background: rgba(88, 166, 255, 0.18);
+            border-color: rgba(88, 166, 255, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: rgba(88, 166, 255, 0.2);
+            border-color: rgba(88, 166, 255, 0.4);
+        }
+
+        /* Module library (left panel) */
+        .module-library {
+            background: rgba(13, 17, 23, 0.7);
+            backdrop-filter: blur(20px) saturate(1.2);
+            border-right: 1px solid var(--border-subtle);
+            box-shadow: 8px 0 32px rgba(0, 0, 0, 0.4);
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .module-library h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-box::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .module-category {
+            margin-bottom: 20px;
+        }
+
+        .category-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .module-item {
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            cursor: move;
+            transition: all 0.2s ease;
+            font-size: 13px;
+        }
+
+        .module-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateX(4px);
+        }
+
+        .module-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .module-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Canvas (center) */
+        .canvas-container {
+            position: relative;
+            background: var(--bg-deep);
+            overflow: hidden;
+        }
+
+        .canvas {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-image: 
+                radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+
+        .canvas-content {
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* SVG Connection Layer */
+        .connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Blocks */
+        .block {
+            position: absolute;
+            border-radius: 8px;
+            backdrop-filter: blur(10px) saturate(1.4);
+            border: 1.5px solid;
+            box-shadow: 0 4px 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: grab;
+            z-index: 10;
+            min-width: 140px;
+            padding: 12px;
+        }
+
+        .block:active {
+            cursor: grabbing;
+        }
+
+        .block:hover {
+            transform: scale(1.02);
+        }
+
+        .block.selected {
+            transform: scale(1.02);
+        }
+
+        /* Block categories */
+        .block-audio {
+            background: rgba(88, 166, 255, 0.12);
+            border-color: rgba(88, 166, 255, 0.4);
+            box-shadow: 0 4px 16px rgba(88, 166, 255, 0.25);
+        }
+
+        .block-audio:hover,
+        .block-audio.selected {
+            background: rgba(88, 166, 255, 0.18);
+            border-color: rgba(88, 166, 255, 0.6);
+            box-shadow: 0 0 20px rgba(88, 166, 255, 0.5);
+        }
+
+        .block-control {
+            background: rgba(240, 136, 62, 0.12);
+            border-color: rgba(240, 136, 62, 0.4);
+            box-shadow: 0 4px 16px rgba(240, 136, 62, 0.25);
+        }
+
+        .block-control:hover,
+        .block-control.selected {
+            background: rgba(240, 136, 62, 0.18);
+            border-color: rgba(240, 136, 62, 0.6);
+            box-shadow: 0 0 20px rgba(240, 136, 62, 0.5);
+        }
+
+        .block-user {
+            background: rgba(63, 185, 80, 0.12);
+            border-color: rgba(63, 185, 80, 0.4);
+            box-shadow: 0 4px 16px rgba(63, 185, 80, 0.25);
+        }
+
+        .block-user:hover,
+        .block-user.selected {
+            background: rgba(63, 185, 80, 0.18);
+            border-color: rgba(63, 185, 80, 0.6);
+            box-shadow: 0 0 20px rgba(63, 185, 80, 0.5);
+        }
+
+        /* Block content */
+        .block-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .block-icon {
+            width: 16px;
+            height: 16px;
+            opacity: 0.8;
+        }
+
+        .block-params {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .block-params div {
+            margin: 2px 0;
+        }
+
+        /* Ports */
+        .port {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            backdrop-filter: blur(8px);
+            border: 2px solid;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+            cursor: crosshair;
+        }
+
+        .port:hover {
+            transform: scale(1.5);
+        }
+
+        .port-audio {
+            background: rgba(88, 166, 255, 0.3);
+            border-color: var(--audio-primary);
+        }
+
+        .port-audio.connected {
+            background: var(--audio-primary);
+            box-shadow: 0 0 12px rgba(88, 166, 255, 0.6);
+        }
+
+        .port-cv {
+            background: rgba(240, 136, 62, 0.3);
+            border-color: var(--control-primary);
+        }
+
+        .port-cv.connected {
+            background: var(--control-primary);
+            box-shadow: 0 0 12px rgba(240, 136, 62, 0.6);
+        }
+
+        .port-input {
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .port-output {
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Inspector panel (right) */
+        .inspector-panel {
+            background: rgba(13, 17, 23, 0.7);
+            backdrop-filter: blur(20px) saturate(1.2);
+            border-left: 1px solid var(--border-subtle);
+            box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
+            overflow-y: auto;
+        }
+
+        .inspector-header {
+            position: sticky;
+            top: 0;
+            padding: 16px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(40px);
+            border-bottom: 1px solid var(--border-subtle);
+            z-index: 10;
+        }
+
+        .inspector-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .inspector-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .inspector-content {
+            padding: 20px;
+        }
+
+        .inspector-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+        }
+
+        .section-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .param-group {
+            margin-bottom: 20px;
+        }
+
+        .param-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .param-value {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .param-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .knob {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .knob:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .knob-indicator {
+            position: absolute;
+            width: 3px;
+            height: 30px;
+            background: var(--audio-primary);
+            top: 10px;
+            left: 50%;
+            transform-origin: bottom center;
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(88, 166, 255, 0.6);
+        }
+
+        .cv-badge {
+            padding: 2px 6px;
+            background: rgba(240, 136, 62, 0.2);
+            border: 1px solid rgba(240, 136, 62, 0.4);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--control-primary);
+            backdrop-filter: blur(8px);
+        }
+
+        .port-list {
+            margin-top: 12px;
+        }
+
+        .port-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .port-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .port-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .port-dot.audio {
+            background: var(--audio-primary);
+        }
+
+        .port-dot.cv {
+            background: var(--control-primary);
+        }
+
+        .connection-info {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Scrollbar styling */
+        .module-library::-webkit-scrollbar,
+        .inspector-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .module-library::-webkit-scrollbar-track,
+        .inspector-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .module-library::-webkit-scrollbar-thumb,
+        .inspector-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .module-library::-webkit-scrollbar-thumb:hover,
+        .inspector-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Canvas controls */
+        .canvas-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 50;
+        }
+
+        .canvas-btn {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-primary);
+            font-size: 18px;
+        }
+
+        .canvas-btn:hover {
+            background: rgba(13, 17, 23, 0.95);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateX(2px);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .block {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <span class="header-title">DVPE</span>
+                <span>•</span>
+                <span class="patch-name">Dual-Oscillator Subtractive Synthesizer 🔥</span>
+            </div>
+            <div class="header-right">
+                <button class="btn">Hardware</button>
+                <button class="btn btn-primary">⬇ Export C++</button>
+            </div>
+        </header>
+
+        <!-- Module Library -->
+        <aside class="module-library">
+            <h2>Modules</h2>
+            <input type="text" class="search-box" placeholder="Search modules...">
+            
+            <div class="module-category">
+                <div class="category-header">
+                    <span>🎵</span>
+                    <span>Sources</span>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">OSCILLATOR</div>
+                    <div class="module-desc">Multi-waveform oscillator</div>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">NOISE</div>
+                    <div class="module-desc">White noise generator</div>
+                </div>
+            </div>
+
+            <div class="module-category">
+                <div class="category-header">
+                    <span>🎛️</span>
+                    <span>Filters</span>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">MOOG LADDER</div>
+                    <div class="module-desc">24dB/oct lowpass filter</div>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">SVF</div>
+                    <div class="module-desc">State variable filter</div>
+                </div>
+            </div>
+
+            <div class="module-category">
+                <div class="category-header">
+                    <span>📈</span>
+                    <span>Control</span>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">ADSR ENVELOPE</div>
+                    <div class="module-desc">Attack-decay-sustain-release</div>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">LFO</div>
+                    <div class="module-desc">Low frequency oscillator</div>
+                </div>
+            </div>
+
+            <div class="module-category">
+                <div class="category-header">
+                    <span>🎚️</span>
+                    <span>User I/O</span>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">KNOB</div>
+                    <div class="module-desc">Hardware knob/potentiometer</div>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">MIDI NOTE</div>
+                    <div class="module-desc">MIDI note input</div>
+                </div>
+                <div class="module-item">
+                    <div class="module-name">AUDIO OUTPUT</div>
+                    <div class="module-desc">Stereo audio output</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Canvas -->
+        <main class="canvas-container">
+            <div class="canvas">
+                <svg class="connections-svg" id="connectionsSvg">
+                    <defs>
+                        <!-- Glow filter for connections -->
+                        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="3" result="blur"/>
+                            <feColorMatrix in="blur" type="matrix" 
+                                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.6 0"/>
+                        </filter>
+                        
+                        <!-- Shadow filter -->
+                        <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="2" result="shadow-blur"/>
+                            <feOffset in="shadow-blur" dx="0" dy="2" result="shadow-offset"/>
+                        </filter>
+                    </defs>
+                </svg>
+                
+                <div class="canvas-content" id="canvasContent">
+                    <!-- Blocks will be dynamically added here -->
+                </div>
+            </div>
+            
+            <div class="canvas-controls">
+                <div class="canvas-btn" title="Zoom In">+</div>
+                <div class="canvas-btn" title="Zoom Out">−</div>
+                <div class="canvas-btn" title="Fit to Screen">⊡</div>
+            </div>
+        </main>
+
+        <!-- Inspector Panel -->
+        <aside class="inspector-panel">
+            <div class="inspector-header">
+                <div class="inspector-title">MOOG LADDER</div>
+                <div class="inspector-subtitle">DaisySP Class: daisysp::MoogLadder</div>
+            </div>
+            
+            <div class="inspector-content">
+                <section class="inspector-section">
+                    <div class="section-header">
+                        <span>⚙️ Main</span>
+                    </div>
+                    
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Cutoff</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="cv-badge">CV</span>
+                                <span class="param-value">10880Hz</span>
+                            </div>
+                        </div>
+                        <div class="param-control">
+                            <div class="knob">
+                                <div class="knob-indicator" style="transform: translateX(-50%) rotate(135deg);"></div>
+                            </div>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+                            Filter cutoff frequency
+                        </div>
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Resonance</span>
+                            <span class="param-value">0.40</span>
+                        </div>
+                        <div class="param-control">
+                            <div class="knob">
+                                <div class="knob-indicator" style="transform: translateX(-50%) rotate(72deg);"></div>
+                            </div>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+                            Filter resonance (self-oscillation at high values)
+                        </div>
+                    </div>
+                </section>
+
+                <section class="inspector-section">
+                    <div class="section-header">
+                        <span>🔌 Connectivity</span>
+                    </div>
+                    
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
+                        INPUTS
+                    </div>
+                    <div class="port-list">
+                        <div class="port-item">
+                            <div class="port-name">
+                                <div class="port-dot audio"></div>
+                                <span>IN (Audio)</span>
+                            </div>
+                            <div class="connection-info">→ MIXER</div>
+                        </div>
+                        <div class="port-item">
+                            <div class="port-name">
+                                <div class="port-dot cv"></div>
+                                <span>FREQ CV (CV)</span>
+                            </div>
+                            <div class="connection-info">→ DEMUX</div>
+                        </div>
+                        <div class="port-item">
+                            <div class="port-name">
+                                <div class="port-dot cv"></div>
+                                <span>RES CV (CV)</span>
+                            </div>
+                            <div class="connection-info">Not connected</div>
+                        </div>
+                    </div>
+
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 16px 0 8px 0;">
+                        OUTPUTS
+                    </div>
+                    <div class="port-list">
+                        <div class="port-item">
+                            <div class="port-name">
+                                <div class="port-dot audio"></div>
+                                <span>OUT (Audio)</span>
+                            </div>
+                            <div class="connection-info">→ 1 connection</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="inspector-section">
+                    <div class="section-header">
+                        <span>📚 Documentation</span>
+                    </div>
+                    <div style="font-size: 12px; line-height: 1.6; color: var(--text-secondary);">
+                        The Moog ladder filter provides the warm, musical filtering characteristic of the classic Moog synthesizer ladder filter design.
+                    </div>
+                </section>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // Block definitions matching the screenshot
+        const blocks = [
+            // MIDI NOTE
+            {
+                id: 'midi-note',
+                type: 'user',
+                title: 'MIDI NOTE',
+                icon: '🎹',
+                x: 300,
+                y: 70,
+                params: ['Chan: 1'],
+                ports: {
+                    outputs: [
+                        { id: 'freq', type: 'cv', y: 20 },
+                        { id: 'gate', type: 'cv', y: 40 }
+                    ]
+                }
+            },
+            
+            // DEMUX (top)
+            {
+                id: 'demux-1',
+                type: 'control',
+                title: 'DEMUX',
+                icon: '🔀',
+                x: 460,
+                y: 70,
+                params: ['Outs: 2  Sel: 0'],
+                ports: {
+                    inputs: [{ id: 'in', type: 'cv', y: 20 }],
+                    outputs: [
+                        { id: 'out1', type: 'cv', y: 15 },
+                        { id: 'out2', type: 'cv', y: 35 }
+                    ]
+                }
+            },
+            
+            // OSCILLATOR 1
+            {
+                id: 'osc-1',
+                type: 'audio',
+                title: 'OSCILLATOR',
+                icon: '〜',
+                x: 620,
+                y: 70,
+                params: ['Freq: 440Hz  Amp: 0.50'],
+                ports: {
+                    inputs: [{ id: 'freq', type: 'cv', y: 20 }],
+                    outputs: [{ id: 'out', type: 'audio', y: 30 }]
+                }
+            },
+            
+            // OSCILLATOR 2
+            {
+                id: 'osc-2',
+                type: 'audio',
+                title: 'OSCILLATOR',
+                icon: '〜',
+                x: 620,
+                y: 210,
+                params: ['Freq: 440Hz  Amp: 0.50'],
+                ports: {
+                    inputs: [{ id: 'freq', type: 'cv', y: 20 }],
+                    outputs: [{ id: 'out', type: 'audio', y: 30 }]
+                }
+            },
+            
+            // MIXER
+            {
+                id: 'mixer',
+                type: 'control',
+                title: 'MIXER',
+                icon: '⫴',
+                x: 820,
+                y: 140,
+                params: ['Inp: 2  Level: 1.00'],
+                ports: {
+                    inputs: [
+                        { id: 'in1', type: 'audio', y: 15 },
+                        { id: 'in2', type: 'audio', y: 35 }
+                    ],
+                    outputs: [{ id: 'out', type: 'audio', y: 25 }]
+                }
+            },
+            
+            // MOOG LADDER
+            {
+                id: 'moog',
+                type: 'audio',
+                title: 'MOOG LADDER',
+                icon: '▽',
+                x: 995,
+                y: 140,
+                params: ['Cuto: 10880Hz  Reso: 0.40'],
+                ports: {
+                    inputs: [
+                        { id: 'in', type: 'audio', y: 20 },
+                        { id: 'freq-cv', type: 'cv', y: 35 }
+                    ],
+                    outputs: [{ id: 'out', type: 'audio', y: 25 }]
+                }
+            },
+            
+            // VCA
+            {
+                id: 'vca',
+                type: 'control',
+                title: 'VCA',
+                icon: '🔊',
+                x: 1195,
+                y: 140,
+                params: ['Gain: 1.00'],
+                ports: {
+                    inputs: [
+                        { id: 'in', type: 'audio', y: 20 },
+                        { id: 'cv', type: 'cv', y: 35 }
+                    ],
+                    outputs: [{ id: 'out', type: 'audio', y: 25 }]
+                }
+            },
+            
+            // KNOB (top left)
+            {
+                id: 'knob-1',
+                type: 'user',
+                title: 'KNOB',
+                icon: '⟳',
+                x: 300,
+                y: 220,
+                params: ['Chan: 0  Min: 0.00'],
+                ports: {
+                    outputs: [{ id: 'out', type: 'cv', y: 20 }]
+                }
+            },
+            
+            // KNOB (middle left)
+            {
+                id: 'knob-2',
+                type: 'user',
+                title: 'KNOB',
+                icon: '⟳',
+                x: 300,
+                y: 330,
+                params: ['Chan: 0  Min: 0.00'],
+                ports: {
+                    outputs: [{ id: 'out', type: 'cv', y: 20 }]
+                }
+            },
+            
+            // ADSR ENVELOPE
+            {
+                id: 'adsr',
+                type: 'control',
+                title: 'ADSR ENVELOPE',
+                icon: '📈',
+                x: 620,
+                y: 370,
+                params: ['Atts: 0.01s  Deca: 0.10s'],
+                ports: {
+                    inputs: [
+                        { id: 'gate', type: 'cv', y: 20 },
+                        { id: 'attack', type: 'cv', y: 35 },
+                        { id: 'decay', type: 'cv', y: 50 }
+                    ],
+                    outputs: [{ id: 'out', type: 'cv', y: 35 }]
+                }
+            },
+            
+            // KNOB (bottom left)
+            {
+                id: 'knob-3',
+                type: 'user',
+                title: 'KNOB',
+                icon: '⟳',
+                x: 415,
+                y: 450,
+                params: ['Chan: 0  Min: 0.00'],
+                ports: {
+                    outputs: [{ id: 'out', type: 'cv', y: 20 }]
+                }
+            },
+            
+            // KNOB (bottom middle)
+            {
+                id: 'knob-4',
+                type: 'user',
+                title: 'KNOB',
+                icon: '⟳',
+                x: 415,
+                y: 560,
+                params: ['Chan: 0  Min: 0.00'],
+                ports: {
+                    outputs: [{ id: 'out', type: 'cv', y: 20 }]
+                }
+            },
+            
+            // DEMUX (bottom)
+            {
+                id: 'demux-2',
+                type: 'control',
+                title: 'DEMUX',
+                icon: '🔀',
+                x: 820,
+                y: 360,
+                params: ['Outs: 2  Sel: 0'],
+                ports: {
+                    inputs: [{ id: 'in', type: 'cv', y: 20 }],
+                    outputs: [
+                        { id: 'out1', type: 'cv', y: 15 },
+                        { id: 'out2', type: 'cv', y: 35 }
+                    ]
+                }
+            },
+            
+            // AUDIO OUTPUT
+            {
+                id: 'audio-out',
+                type: 'user',
+                title: 'AUDIO OUTPUT',
+                icon: '🔊',
+                x: 1165,
+                y: 320,
+                params: ['Left', 'Right'],
+                ports: {
+                    inputs: [
+                        { id: 'left', type: 'audio', y: 15 },
+                        { id: 'right', type: 'audio', y: 35 }
+                    ]
+                }
+            }
+        ];
+
+        // Connections matching the signal flow
+        const connections = [
+            // MIDI NOTE freq -> DEMUX in
+            { from: 'midi-note.freq', to: 'demux-1.in', type: 'cv' },
+            
+            // DEMUX -> OSC 1 & 2
+            { from: 'demux-1.out1', to: 'osc-1.freq', type: 'cv' },
+            { from: 'demux-1.out2', to: 'osc-2.freq', type: 'cv' },
+            
+            // OSC -> MIXER
+            { from: 'osc-1.out', to: 'mixer.in1', type: 'audio' },
+            { from: 'osc-2.out', to: 'mixer.in2', type: 'audio' },
+            
+            // MIXER -> MOOG LADDER
+            { from: 'mixer.out', to: 'moog.in', type: 'audio' },
+            
+            // KNOB 1 -> MOOG freq CV
+            { from: 'knob-1.out', to: 'moog.freq-cv', type: 'cv' },
+            
+            // MOOG -> VCA
+            { from: 'moog.out', to: 'vca.in', type: 'audio' },
+            
+            // ADSR -> VCA CV
+            { from: 'adsr.out', to: 'vca.cv', type: 'cv' },
+            
+            // MIDI NOTE gate -> ADSR
+            { from: 'midi-note.gate', to: 'adsr.gate', type: 'cv' },
+            
+            // KNOBs -> ADSR
+            { from: 'knob-3.out', to: 'adsr.attack', type: 'cv' },
+            { from: 'knob-4.out', to: 'adsr.decay', type: 'cv' },
+            
+            // ADSR -> DEMUX 2
+            { from: 'adsr.out', to: 'demux-2.in', type: 'cv' },
+            
+            // VCA -> AUDIO OUT
+            { from: 'vca.out', to: 'audio-out.left', type: 'audio' },
+            { from: 'vca.out', to: 'audio-out.right', type: 'audio' }
+        ];
+
+        // Render blocks
+        const canvasContent = document.getElementById('canvasContent');
+        const svg = document.getElementById('connectionsSvg');
+
+        blocks.forEach(block => {
+            const blockEl = document.createElement('div');
+            blockEl.className = `block block-${block.type}`;
+            blockEl.id = block.id;
+            blockEl.style.left = `${block.x}px`;
+            blockEl.style.top = `${block.y}px`;
+            
+            let portsHTML = '';
+            
+            // Input ports
+            if (block.ports.inputs) {
+                block.ports.inputs.forEach(port => {
+                    portsHTML += `
+                        <div class="port port-${port.type} port-input connected" 
+                             data-port="${block.id}.${port.id}"
+                             style="top: ${port.y}px"></div>
+                    `;
+                });
+            }
+            
+            // Output ports
+            if (block.ports.outputs) {
+                block.ports.outputs.forEach(port => {
+                    portsHTML += `
+                        <div class="port port-${port.type} port-output connected" 
+                             data-port="${block.id}.${port.id}"
+                             style="top: ${port.y}px"></div>
+                    `;
+                });
+            }
+            
+            blockEl.innerHTML = `
+                <div class="block-header">
+                    <span class="block-icon">${block.icon}</span>
+                    <span>${block.title}</span>
+                </div>
+                <div class="block-params">
+                    ${block.params.map(p => `<div>${p}</div>`).join('')}
+                </div>
+                ${portsHTML}
+            `;
+            
+            canvasContent.appendChild(blockEl);
+            
+            // Click handler for selection
+            blockEl.addEventListener('click', (e) => {
+                document.querySelectorAll('.block').forEach(b => b.classList.remove('selected'));
+                blockEl.classList.add('selected');
+            });
+        });
+
+        // Draw connections
+        function drawConnections() {
+            svg.innerHTML = svg.innerHTML.split('</defs>')[0] + '</defs>';
+            
+            connections.forEach((conn, idx) => {
+                const [fromBlock, fromPort] = conn.from.split('.');
+                const [toBlock, toPort] = conn.to.split('.');
+                
+                const fromEl = document.querySelector(`#${fromBlock} .port-output[data-port="${conn.from}"]`);
+                const toEl = document.querySelector(`#${toBlock} .port-input[data-port="${conn.to}"]`);
+                
+                if (!fromEl || !toEl) return;
+                
+                const fromRect = fromEl.getBoundingClientRect();
+                const toRect = toEl.getBoundingClientRect();
+                const svgRect = svg.getBoundingClientRect();
+                
+                const x1 = fromRect.left - svgRect.left + fromRect.width / 2;
+                const y1 = fromRect.top - svgRect.top + fromRect.height / 2;
+                const x2 = toRect.left - svgRect.left + toRect.width / 2;
+                const y2 = toRect.top - svgRect.top + toRect.height / 2;
+                
+                const dx = x2 - x1;
+                const cx1 = x1 + dx * 0.5;
+                const cx2 = x2 - dx * 0.5;
+                
+                const path = `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
+                
+                const color = conn.type === 'audio' ? '#58a6ff' : '#f0883e';
+                const glowColor = conn.type === 'audio' 
+                    ? 'rgba(88, 166, 255, 0.4)' 
+                    : 'rgba(240, 136, 62, 0.4)';
+                
+                // Shadow
+                const shadowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                shadowPath.setAttribute('d', path);
+                shadowPath.setAttribute('stroke', 'rgba(0, 0, 0, 0.4)');
+                shadowPath.setAttribute('stroke-width', '3');
+                shadowPath.setAttribute('fill', 'none');
+                shadowPath.setAttribute('filter', 'url(#shadow)');
+                shadowPath.setAttribute('transform', 'translate(0, 2)');
+                svg.appendChild(shadowPath);
+                
+                // Glow
+                const glowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                glowPath.setAttribute('d', path);
+                glowPath.setAttribute('stroke', glowColor);
+                glowPath.setAttribute('stroke-width', '8');
+                glowPath.setAttribute('fill', 'none');
+                glowPath.setAttribute('filter', 'url(#glow)');
+                svg.appendChild(glowPath);
+                
+                // Main line
+                const mainPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                mainPath.setAttribute('d', path);
+                mainPath.setAttribute('stroke', color);
+                mainPath.setAttribute('stroke-width', '2');
+                mainPath.setAttribute('fill', 'none');
+                if (conn.type === 'cv') {
+                    mainPath.setAttribute('stroke-dasharray', '4 4');
+                }
+                svg.appendChild(mainPath);
+            });
+        }
+
+        // Initial draw
+        setTimeout(drawConnections, 100);
+
+        // Redraw on window resize
+        window.addEventListener('resize', drawConnections);
+
+        // Simple drag functionality
+        let draggedBlock = null;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        canvasContent.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.block') && !e.target.closest('.port')) {
+                draggedBlock = e.target.closest('.block');
+                const rect = draggedBlock.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                draggedBlock.style.cursor = 'grabbing';
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (draggedBlock) {
+                const canvasRect = canvasContent.getBoundingClientRect();
+                const x = e.clientX - canvasRect.left - offsetX;
+                const y = e.clientY - canvasRect.top - offsetY;
+                draggedBlock.style.left = `${x}px`;
+                draggedBlock.style.top = `${y}px`;
+                drawConnections();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (draggedBlock) {
+                draggedBlock.style.cursor = 'grab';
+                draggedBlock = null;
+            }
+        });
+
+        console.log('DVPE Liquid Glass - Ready');
+        console.log('Drag blocks to move them around');
+        console.log('Click blocks to select and view in inspector');
+    </script>
+</body>
+</html>

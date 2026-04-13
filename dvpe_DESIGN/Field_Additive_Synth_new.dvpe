@@ -1,0 +1,908 @@
+{
+  "version": "1.0.0",
+  "patch": {
+    "metadata": {
+      "name": "Field Additive Synth",
+      "author": "Antigravity",
+      "description": "8-voice polyphonic additive synthesizer. HarmonicOscillator<16> per voice + ADSR, global LFO (vibrato/tremolo), Chorus, ReverbSc. SW1/SW2 dual knob pages, A-row spectral presets, B-row LFO wave + performance toggles. MIDI TRS, last-note stealing.",
+      "created": "2026-03-05T21:42:00Z",
+      "modified": "2026-03-10T17:54:46.124Z",
+      "version": "1.0.0",
+      "targetHardware": "field",
+      "sampleRate": 48000,
+      "blockSize": 48
+    },
+    "blocks": [
+      {
+        "id": "midi_note_1",
+        "definitionId": "midi_note",
+        "position": {
+          "x": -1500,
+          "y": -260
+        },
+        "parameterValues": {
+          "channel": 1
+        },
+        "label": "MIDI NOTE"
+      },
+      {
+        "id": "scale_pitch_1",
+        "definitionId": "scale",
+        "position": {
+          "x": -1220,
+          "y": -300
+        },
+        "parameterValues": {
+          "factor": 127
+        },
+        "label": "PITCH ×127"
+      },
+      {
+        "id": "midi_to_freq_1",
+        "definitionId": "midi_to_freq",
+        "position": {
+          "x": -960,
+          "y": -380
+        },
+        "parameterValues": {},
+        "label": "MIDI → Hz"
+      },
+      {
+        "id": "hosc_1",
+        "definitionId": "harmonic_oscillator",
+        "position": {
+          "x": -780,
+          "y": -860
+        },
+        "parameterValues": {
+          "freq": 110,
+          "first_harm_idx": 1,
+          "amp_1": 0.4,
+          "amp_2": 0.2,
+          "amp_3": 0.13,
+          "amp_4": 0.1,
+          "amp_5": 0.08,
+          "amp_6": 0.07,
+          "amp_7": 0.06,
+          "amp_8": 0.05
+        },
+        "enabledCvPorts": [
+          "freq"
+        ],
+        "label": "HARMONIC OSC"
+      },
+      {
+        "id": "adsr_1",
+        "definitionId": "adsr",
+        "position": {
+          "x": -960,
+          "y": -20
+        },
+        "parameterValues": {
+          "attack": 0.01,
+          "decay": 0.1,
+          "sustain": 0.7,
+          "release": 0.3
+        },
+        "enabledCvPorts": [
+          "attack",
+          "decay",
+          "sustain",
+          "release"
+        ],
+        "label": "ADSR"
+      },
+      {
+        "id": "vca_env_1",
+        "definitionId": "vca",
+        "position": {
+          "x": -440,
+          "y": -620
+        },
+        "parameterValues": {
+          "gain": 1
+        },
+        "enabledCvPorts": [
+          "gain"
+        ],
+        "label": "VCA ENV"
+      },
+      {
+        "id": "lfo_1",
+        "definitionId": "lfo",
+        "position": {
+          "x": -640,
+          "y": -60
+        },
+        "parameterValues": {
+          "freq": 2,
+          "amp": 1,
+          "waveform": "WAVE_SIN"
+        },
+        "enabledCvPorts": [
+          "freq",
+          "amp"
+        ],
+        "label": "LFO"
+      },
+      {
+        "id": "vca_lfo_1",
+        "definitionId": "vca",
+        "position": {
+          "x": -160,
+          "y": -560
+        },
+        "parameterValues": {
+          "gain": 1
+        },
+        "enabledCvPorts": [
+          "gain"
+        ],
+        "label": "VCA LFO MOD"
+      },
+      {
+        "id": "gain_master",
+        "definitionId": "gain",
+        "position": {
+          "x": 160,
+          "y": -480
+        },
+        "parameterValues": {
+          "gain": 0.8
+        },
+        "enabledCvPorts": [
+          "gain"
+        ],
+        "label": "MASTER VOL"
+      },
+      {
+        "id": "chorus_1",
+        "definitionId": "chorus",
+        "position": {
+          "x": 340,
+          "y": -300
+        },
+        "parameterValues": {
+          "lfo_freq": 0.5,
+          "lfo_depth": 0.5,
+          "delay": 0.5,
+          "feedback": 0.2
+        },
+        "enabledCvPorts": [
+          "lfo_freq",
+          "lfo_depth",
+          "delay"
+        ],
+        "label": "CHORUS"
+      },
+      {
+        "id": "xfade_chorus",
+        "definitionId": "crossfade",
+        "position": {
+          "x": 700,
+          "y": -220
+        },
+        "parameterValues": {
+          "pos": 0
+        },
+        "enabledCvPorts": [
+          "pos"
+        ],
+        "label": "CHO BYPASS"
+      },
+      {
+        "id": "reverb_1",
+        "definitionId": "reverb_sc",
+        "position": {
+          "x": 960,
+          "y": -480
+        },
+        "parameterValues": {
+          "feedback": 0.85,
+          "lpfreq": 8000,
+          "wet_dry": 0.3
+        },
+        "enabledCvPorts": [
+          "wet_dry"
+        ],
+        "label": "REVERB"
+      },
+      {
+        "id": "xfade_rev_l",
+        "definitionId": "crossfade",
+        "position": {
+          "x": 1400,
+          "y": -380
+        },
+        "parameterValues": {
+          "pos": 0
+        },
+        "enabledCvPorts": [
+          "pos"
+        ],
+        "label": "REV BYPASS L"
+      },
+      {
+        "id": "xfade_rev_r",
+        "definitionId": "crossfade",
+        "position": {
+          "x": 1380,
+          "y": -20
+        },
+        "parameterValues": {
+          "pos": 0
+        },
+        "enabledCvPorts": [
+          "pos"
+        ],
+        "label": "REV BYPASS R"
+      },
+      {
+        "id": "audio_out_1",
+        "definitionId": "audio_output",
+        "position": {
+          "x": 1680,
+          "y": -80
+        },
+        "parameterValues": {},
+        "label": "AUDIO OUT"
+      },
+      {
+        "id": "switch_rev",
+        "definitionId": "switch",
+        "position": {
+          "x": 960,
+          "y": 100
+        },
+        "parameterValues": {
+          "channel": "0"
+        },
+        "label": "SW1 REV BYP"
+      },
+      {
+        "id": "switch_cho",
+        "definitionId": "switch",
+        "position": {
+          "x": 260,
+          "y": 440
+        },
+        "parameterValues": {
+          "channel": "1"
+        },
+        "label": "SW2 CHO BYP"
+      },
+      {
+        "id": "knob_rolloff",
+        "definitionId": "knob",
+        "position": {
+          "x": -1720,
+          "y": -840
+        },
+        "parameterValues": {
+          "channel": "0",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K1 ROLLOFF"
+      },
+      {
+        "id": "knob_even",
+        "definitionId": "knob",
+        "position": {
+          "x": -2120,
+          "y": -600
+        },
+        "parameterValues": {
+          "channel": "1",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K2 EVEN"
+      },
+      {
+        "id": "knob_odd",
+        "definitionId": "knob",
+        "position": {
+          "x": -2280,
+          "y": -300
+        },
+        "parameterValues": {
+          "channel": "2",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K3 ODD"
+      },
+      {
+        "id": "knob_attack",
+        "definitionId": "knob",
+        "position": {
+          "x": -2420,
+          "y": 60
+        },
+        "parameterValues": {
+          "channel": "3",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K4 ATTACK"
+      },
+      {
+        "id": "map_attack",
+        "definitionId": "range_map",
+        "position": {
+          "x": -1400,
+          "y": -60
+        },
+        "parameterValues": {
+          "in_min": 0,
+          "in_max": 1,
+          "out_min": 0.001,
+          "out_max": 2
+        },
+        "label": "ATK MAP"
+      },
+      {
+        "id": "knob_decay",
+        "definitionId": "knob",
+        "position": {
+          "x": -2380,
+          "y": 360
+        },
+        "parameterValues": {
+          "channel": "4",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K5 DECAY"
+      },
+      {
+        "id": "map_decay",
+        "definitionId": "range_map",
+        "position": {
+          "x": -1400,
+          "y": 100
+        },
+        "parameterValues": {
+          "in_min": 0,
+          "in_max": 1,
+          "out_min": 0.001,
+          "out_max": 2
+        },
+        "label": "DEC MAP"
+      },
+      {
+        "id": "knob_sustain",
+        "definitionId": "knob",
+        "position": {
+          "x": -2300,
+          "y": 620
+        },
+        "parameterValues": {
+          "channel": "5",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K6 SUSTAIN"
+      },
+      {
+        "id": "knob_release",
+        "definitionId": "knob",
+        "position": {
+          "x": -2460,
+          "y": 980
+        },
+        "parameterValues": {
+          "channel": "6",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K7 RELEASE"
+      },
+      {
+        "id": "map_release",
+        "definitionId": "range_map",
+        "position": {
+          "x": -1500,
+          "y": 640
+        },
+        "parameterValues": {
+          "in_min": 0,
+          "in_max": 1,
+          "out_min": 0.001,
+          "out_max": 4
+        },
+        "label": "REL MAP"
+      },
+      {
+        "id": "knob_rev_mix",
+        "definitionId": "knob",
+        "position": {
+          "x": 80,
+          "y": -860
+        },
+        "parameterValues": {
+          "channel": "7",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K8 REV MIX"
+      },
+      {
+        "id": "knob_lfo_rate",
+        "definitionId": "knob",
+        "position": {
+          "x": -1800,
+          "y": 1100
+        },
+        "parameterValues": {
+          "channel": "0",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K1B LFO RATE"
+      },
+      {
+        "id": "map_lfo_rate",
+        "definitionId": "range_map",
+        "position": {
+          "x": -960,
+          "y": 680
+        },
+        "parameterValues": {
+          "in_min": 0,
+          "in_max": 1,
+          "out_min": 0.1,
+          "out_max": 20
+        },
+        "label": "LFO RATE MAP"
+      },
+      {
+        "id": "knob_lfo_depth",
+        "definitionId": "knob",
+        "position": {
+          "x": -1380,
+          "y": 360
+        },
+        "parameterValues": {
+          "channel": "1",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K2B LFO DEPTH"
+      },
+      {
+        "id": "knob_cho_rate",
+        "definitionId": "knob",
+        "position": {
+          "x": -560,
+          "y": 300
+        },
+        "parameterValues": {
+          "channel": "3",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K4B CHO RATE"
+      },
+      {
+        "id": "map_cho_rate",
+        "definitionId": "range_map",
+        "position": {
+          "x": 40,
+          "y": 80
+        },
+        "parameterValues": {
+          "in_min": 0,
+          "in_max": 1,
+          "out_min": 0.1,
+          "out_max": 5
+        },
+        "label": "CHO RATE MAP"
+      },
+      {
+        "id": "knob_cho_depth",
+        "definitionId": "knob",
+        "position": {
+          "x": -520,
+          "y": 640
+        },
+        "parameterValues": {
+          "channel": "4",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K5B CHO DEPTH"
+      },
+      {
+        "id": "knob_cho_delay",
+        "definitionId": "knob",
+        "position": {
+          "x": -460,
+          "y": 940
+        },
+        "parameterValues": {
+          "channel": "5",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K6B CHO DELAY"
+      },
+      {
+        "id": "knob_cho_mix",
+        "definitionId": "knob",
+        "position": {
+          "x": 280,
+          "y": 40
+        },
+        "parameterValues": {
+          "channel": "6",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K7B CHO MIX"
+      },
+      {
+        "id": "knob_master",
+        "definitionId": "knob",
+        "position": {
+          "x": -800,
+          "y": -340
+        },
+        "parameterValues": {
+          "channel": "7",
+          "min": 0,
+          "max": 1,
+          "curve": "linear"
+        },
+        "label": "K8B MASTER"
+      }
+    ],
+    "connections": [
+      {
+        "id": "conn-midi-pitch",
+        "sourceBlockId": "midi_note_1",
+        "sourcePortId": "pitch",
+        "targetBlockId": "scale_pitch_1",
+        "targetPortId": "in",
+        "type": "cv"
+      },
+      {
+        "id": "conn-pitch-scale",
+        "sourceBlockId": "scale_pitch_1",
+        "sourcePortId": "out",
+        "targetBlockId": "midi_to_freq_1",
+        "targetPortId": "note",
+        "type": "cv"
+      },
+      {
+        "id": "conn-freq-osc",
+        "sourceBlockId": "midi_to_freq_1",
+        "sourcePortId": "out",
+        "targetBlockId": "hosc_1",
+        "targetPortId": "freq_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-midi-gate",
+        "sourceBlockId": "midi_note_1",
+        "sourcePortId": "gate",
+        "targetBlockId": "adsr_1",
+        "targetPortId": "gate",
+        "type": "trigger"
+      },
+      {
+        "id": "conn-osc-vca",
+        "sourceBlockId": "hosc_1",
+        "sourcePortId": "out",
+        "targetBlockId": "vca_env_1",
+        "targetPortId": "in",
+        "type": "audio"
+      },
+      {
+        "id": "conn-adsr-vca",
+        "sourceBlockId": "adsr_1",
+        "sourcePortId": "out",
+        "targetBlockId": "vca_env_1",
+        "targetPortId": "gain_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-vca-lfomod",
+        "sourceBlockId": "vca_env_1",
+        "sourcePortId": "out",
+        "targetBlockId": "vca_lfo_1",
+        "targetPortId": "in",
+        "type": "audio"
+      },
+      {
+        "id": "conn-lfo-vcalfo",
+        "sourceBlockId": "lfo_1",
+        "sourcePortId": "out",
+        "targetBlockId": "vca_lfo_1",
+        "targetPortId": "gain_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-lfomod-master",
+        "sourceBlockId": "vca_lfo_1",
+        "sourcePortId": "out",
+        "targetBlockId": "gain_master",
+        "targetPortId": "in",
+        "type": "audio"
+      },
+      {
+        "id": "conn-master-chorus",
+        "sourceBlockId": "gain_master",
+        "sourcePortId": "out",
+        "targetBlockId": "chorus_1",
+        "targetPortId": "in",
+        "type": "audio"
+      },
+      {
+        "id": "conn-master-chodry",
+        "sourceBlockId": "gain_master",
+        "sourcePortId": "out",
+        "targetBlockId": "xfade_chorus",
+        "targetPortId": "in1",
+        "type": "audio"
+      },
+      {
+        "id": "conn-chorus-chowet",
+        "sourceBlockId": "chorus_1",
+        "sourcePortId": "out",
+        "targetBlockId": "xfade_chorus",
+        "targetPortId": "in2",
+        "type": "audio"
+      },
+      {
+        "id": "conn-sw-cho",
+        "sourceBlockId": "switch_cho",
+        "sourcePortId": "latch",
+        "targetBlockId": "xfade_chorus",
+        "targetPortId": "pos_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-cho-rev-l",
+        "sourceBlockId": "xfade_chorus",
+        "sourcePortId": "out",
+        "targetBlockId": "reverb_1",
+        "targetPortId": "in_l",
+        "type": "audio"
+      },
+      {
+        "id": "conn-cho-rev-r",
+        "sourceBlockId": "xfade_chorus",
+        "sourcePortId": "out",
+        "targetBlockId": "reverb_1",
+        "targetPortId": "in_r",
+        "type": "audio"
+      },
+      {
+        "id": "conn-cho-revdry-l",
+        "sourceBlockId": "xfade_chorus",
+        "sourcePortId": "out",
+        "targetBlockId": "xfade_rev_l",
+        "targetPortId": "in1",
+        "type": "audio"
+      },
+      {
+        "id": "conn-rev-wet-l",
+        "sourceBlockId": "reverb_1",
+        "sourcePortId": "out_l",
+        "targetBlockId": "xfade_rev_l",
+        "targetPortId": "in2",
+        "type": "audio"
+      },
+      {
+        "id": "conn-sw-rev-l",
+        "sourceBlockId": "switch_rev",
+        "sourcePortId": "latch",
+        "targetBlockId": "xfade_rev_l",
+        "targetPortId": "pos_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-sw-rev-r",
+        "sourceBlockId": "switch_rev",
+        "sourcePortId": "latch",
+        "targetBlockId": "xfade_rev_r",
+        "targetPortId": "pos_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-out-left",
+        "sourceBlockId": "xfade_rev_l",
+        "sourcePortId": "out",
+        "targetBlockId": "audio_out_1",
+        "targetPortId": "left",
+        "type": "audio"
+      },
+      {
+        "id": "conn-out-right",
+        "sourceBlockId": "xfade_rev_r",
+        "sourcePortId": "out",
+        "targetBlockId": "audio_out_1",
+        "targetPortId": "right",
+        "type": "audio"
+      },
+      {
+        "id": "conn-k4-atk-map",
+        "sourceBlockId": "knob_attack",
+        "sourcePortId": "out",
+        "targetBlockId": "map_attack",
+        "targetPortId": "in",
+        "type": "cv"
+      },
+      {
+        "id": "conn-atk-adsr",
+        "sourceBlockId": "map_attack",
+        "sourcePortId": "out",
+        "targetBlockId": "adsr_1",
+        "targetPortId": "attack_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-k5-dec-map",
+        "sourceBlockId": "knob_decay",
+        "sourcePortId": "out",
+        "targetBlockId": "map_decay",
+        "targetPortId": "in",
+        "type": "cv"
+      },
+      {
+        "id": "conn-dec-adsr",
+        "sourceBlockId": "map_decay",
+        "sourcePortId": "out",
+        "targetBlockId": "adsr_1",
+        "targetPortId": "decay_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-k6-sus-adsr",
+        "sourceBlockId": "knob_sustain",
+        "sourcePortId": "out",
+        "targetBlockId": "adsr_1",
+        "targetPortId": "sustain_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-k7-rel-map",
+        "sourceBlockId": "knob_release",
+        "sourcePortId": "out",
+        "targetBlockId": "map_release",
+        "targetPortId": "in",
+        "type": "cv"
+      },
+      {
+        "id": "conn-rel-adsr",
+        "sourceBlockId": "map_release",
+        "sourcePortId": "out",
+        "targetBlockId": "adsr_1",
+        "targetPortId": "release_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-k8-rev-mix",
+        "sourceBlockId": "knob_rev_mix",
+        "sourcePortId": "out",
+        "targetBlockId": "reverb_1",
+        "targetPortId": "wet_dry_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-kb1-lfo-rate-map",
+        "sourceBlockId": "knob_lfo_rate",
+        "sourcePortId": "out",
+        "targetBlockId": "map_lfo_rate",
+        "targetPortId": "in",
+        "type": "cv"
+      },
+      {
+        "id": "conn-lfo-rate-lfo",
+        "sourceBlockId": "map_lfo_rate",
+        "sourcePortId": "out",
+        "targetBlockId": "lfo_1",
+        "targetPortId": "freq_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-kb2-lfo-depth",
+        "sourceBlockId": "knob_lfo_depth",
+        "sourcePortId": "out",
+        "targetBlockId": "lfo_1",
+        "targetPortId": "amp_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-kb4-cho-rate-map",
+        "sourceBlockId": "knob_cho_rate",
+        "sourcePortId": "out",
+        "targetBlockId": "map_cho_rate",
+        "targetPortId": "in",
+        "type": "cv"
+      },
+      {
+        "id": "conn-cho-rate-chorus",
+        "sourceBlockId": "map_cho_rate",
+        "sourcePortId": "out",
+        "targetBlockId": "chorus_1",
+        "targetPortId": "lfo_freq_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-kb5-cho-depth",
+        "sourceBlockId": "knob_cho_depth",
+        "sourcePortId": "out",
+        "targetBlockId": "chorus_1",
+        "targetPortId": "lfo_depth_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-kb6-cho-delay",
+        "sourceBlockId": "knob_cho_delay",
+        "sourcePortId": "out",
+        "targetBlockId": "chorus_1",
+        "targetPortId": "delay_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-kb7-cho-mix",
+        "sourceBlockId": "knob_cho_mix",
+        "sourcePortId": "out",
+        "targetBlockId": "xfade_chorus",
+        "targetPortId": "pos_cv",
+        "type": "cv"
+      },
+      {
+        "id": "conn-kb8-master",
+        "sourceBlockId": "knob_master",
+        "sourcePortId": "out",
+        "targetBlockId": "gain_master",
+        "targetPortId": "gain_cv",
+        "type": "cv"
+      },
+      {
+        "id": "23f7a57c-72c9-4d45-af44-19d43c62ba50",
+        "sourceBlockId": "reverb_1",
+        "sourcePortId": "out_r",
+        "targetBlockId": "xfade_rev_r",
+        "targetPortId": "in1",
+        "type": "audio"
+      },
+      {
+        "id": "516cb93f-9a16-4239-874c-5574df0bec77",
+        "sourceBlockId": "xfade_chorus",
+        "sourcePortId": "out",
+        "targetBlockId": "xfade_rev_r",
+        "targetPortId": "in2",
+        "type": "audio"
+      }
+    ],
+    "hardwareConfig": {
+      "platform": "field",
+      "pinMapping": {},
+      "peripherals": {
+        "useExternalCodec": false,
+        "useSdram": true,
+        "audioBlockSize": 48,
+        "sampleRate": 48000
+      }
+    }
+  }
+}

@@ -4,8 +4,15 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { ImportBlockDialog } from '../ImportBlockDialog';
+
+/** Helper: create a File with a working .text() mock (jsdom lacks File.text()) */
+function createMockFile(content: string, name: string): File {
+    const file = new File([content], name, { type: 'application/json' });
+    file.text = vi.fn().mockResolvedValue(content);
+    return file;
+}
 
 describe('ImportBlockDialog', () => {
     const defaultProps = {
@@ -33,14 +40,23 @@ describe('ImportBlockDialog', () => {
         render(<ImportBlockDialog {...defaultProps} />);
 
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-        const file = new File(['{"version":"1.0","block":{"id":"test"}}'], 'test.dvpe-block', {
-            type: 'application/json',
-        });
+        const content = '{"version":"1.0","block":{"id":"test"}}';
+        const file = new File([content], 'test.dvpe-block', { type: 'application/json' });
+
+        // Control file.text() timing to observe the transient 'reading' state
+        let resolveText!: (value: string) => void;
+        const textPromise = new Promise<string>((resolve) => { resolveText = resolve; });
+        file.text = vi.fn().mockReturnValue(textPromise);
 
         fireEvent.change(fileInput, { target: { files: [file] } });
 
         await waitFor(() => {
             expect(screen.getByText('Reading file...')).toBeInTheDocument();
+        });
+
+        // Resolve so async handler completes and component doesn't hang
+        await act(async () => {
+            resolveText(content);
         });
     });
 
@@ -65,15 +81,13 @@ describe('ImportBlockDialog', () => {
                 exposedParameters: {},
             },
         };
-        const file = new File([JSON.stringify(validBlock)], 'test.dvpe-block', {
-            type: 'application/json',
+        const file = createMockFile(JSON.stringify(validBlock), 'test.dvpe-block');
+
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
         });
 
-        fireEvent.change(fileInput, { target: { files: [file] } });
-
-        await waitFor(() => {
-            expect(screen.getByText('Import Successful')).toBeInTheDocument();
-        });
+        expect(screen.getByText('Import Successful')).toBeInTheDocument();
     });
 
     it('should show error state when import fails', async () => {
@@ -82,15 +96,13 @@ describe('ImportBlockDialog', () => {
 
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
         const invalidData = { invalid: true };
-        const file = new File([JSON.stringify(invalidData)], 'test.dvpe-block', {
-            type: 'application/json',
+        const file = createMockFile(JSON.stringify(invalidData), 'test.dvpe-block');
+
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
         });
 
-        fireEvent.change(fileInput, { target: { files: [file] } });
-
-        await waitFor(() => {
-            expect(screen.getByText('Import Failed')).toBeInTheDocument();
-        });
+        expect(screen.getByText('Import Failed')).toBeInTheDocument();
     });
 
     it('should show duplicate state when block ID already exists', async () => {
@@ -119,16 +131,14 @@ describe('ImportBlockDialog', () => {
                 exposedParameters: {},
             },
         };
-        const file = new File([JSON.stringify(validBlock)], 'test.dvpe-block', {
-            type: 'application/json',
+        const file = createMockFile(JSON.stringify(validBlock), 'test.dvpe-block');
+
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
         });
 
-        fireEvent.change(fileInput, { target: { files: [file] } });
-
-        await waitFor(() => {
-            expect(screen.getByText('Duplicate Block ID')).toBeInTheDocument();
-            expect(screen.getByText(/existing-block/)).toBeInTheDocument();
-        });
+        expect(screen.getByText('Duplicate Block ID')).toBeInTheDocument();
+        expect(screen.getByText(/existing-block/)).toBeInTheDocument();
     });
 
     it('should close when backdrop clicked', () => {

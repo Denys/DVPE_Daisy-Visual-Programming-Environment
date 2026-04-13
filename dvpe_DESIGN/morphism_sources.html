@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morphism Theory — Sources & Resources</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  min-height: 100vh;
+  background: #0a0e1a;
+  color: rgba(255,255,255,0.92);
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+}
+::selection { background: rgba(0,229,255,0.25); }
+input::placeholder { color: rgba(255,255,255,0.25); }
+
+/* Header */
+.header {
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(10,14,26,0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: sticky; top: 0; z-index: 50;
+}
+.header-inner { max-width: 1100px; margin: 0 auto; padding: 16px 24px; }
+.header-top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.header h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px; font-weight: 600;
+  color: rgba(0,229,255,0.9);
+  letter-spacing: 0.5px;
+}
+.header .sep { color: rgba(255,255,255,0.2); }
+.header .sub { font-size: 13px; color: rgba(255,255,255,0.5); }
+.header .count {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: rgba(255,255,255,0.3);
+}
+.header p { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+/* Container */
+.container { max-width: 1100px; margin: 0 auto; padding: 20px 24px; }
+
+/* Search */
+.search-wrap { position: relative; margin-bottom: 16px; }
+.search-wrap input {
+  width: 100%; padding: 10px 16px 10px 36px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; color: rgba(255,255,255,0.9);
+  font-size: 13px; font-family: inherit; outline: none;
+  transition: border-color 0.2s;
+}
+.search-wrap input:focus { border-color: rgba(0,229,255,0.3); }
+.search-wrap .icon {
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%); font-size: 14px; opacity: 0.4;
+}
+
+/* Filter rows */
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.filter-row.tags { gap: 4px; margin-bottom: 20px; }
+
+/* Buttons */
+.btn {
+  padding: 5px 12px; border-radius: 6px; font-size: 11px;
+  font-weight: 500; cursor: pointer; font-family: inherit;
+  transition: all 0.2s; border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.5);
+}
+.btn:hover { border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+.btn.active-cyan { background: rgba(0,229,255,0.08); border-color: rgba(0,229,255,0.25); color: rgba(0,229,255,0.85); }
+.btn.active-orange { background: rgba(255,160,0,0.1); border-color: rgba(255,160,0,0.3); color: rgba(255,160,0,0.85); }
+.btn.clear { background: rgba(255,80,80,0.08); border-color: rgba(255,80,80,0.2); color: rgba(255,120,120,0.8); }
+
+.tag-btn {
+  padding: 2px 8px; border-radius: 4px; font-size: 9px;
+  cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  transition: all 0.15s; border: 1px solid rgba(255,255,255,0.04);
+  background: transparent; color: rgba(255,255,255,0.3);
+}
+.tag-btn:hover { border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+.tag-btn.active { background: rgba(255,160,0,0.1); border-color: rgba(255,160,0,0.3); color: rgba(255,160,0,0.85); }
+
+.type-btn {
+  padding: 4px 10px; border-radius: 5px; font-size: 10px;
+  cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  transition: all 0.2s; border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.4);
+}
+.type-btn:hover { color: rgba(255,255,255,0.6); }
+.type-btn.active { background: rgba(0,229,255,0.08); border-color: rgba(0,229,255,0.25); color: rgba(0,229,255,0.85); }
+
+/* Source cards */
+.source-list { display: flex; flex-direction: column; gap: 8px; }
+
+.source-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 10px; padding: 12px 16px;
+  cursor: pointer; transition: all 0.2s;
+}
+.source-card:hover { border-color: rgba(255,255,255,0.08); }
+.source-card.expanded { border-color: var(--part-color-30); box-shadow: 0 0 20px var(--part-color-08); }
+
+.card-top { display: flex; align-items: center; gap: 10px; }
+.card-icon { font-size: 16px; flex-shrink: 0; }
+.card-body { flex: 1; min-width: 0; }
+.card-title {
+  font-size: 13px; font-weight: 500;
+  color: rgba(255,255,255,0.88); line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.source-card.expanded .card-title { white-space: normal; }
+
+.card-meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.part-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; padding: 1px 6px; border-radius: 3px;
+}
+.type-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: rgba(255,255,255,0.3);
+}
+.card-arrow {
+  font-size: 11px; color: rgba(255,255,255,0.2);
+  transition: transform 0.2s; flex-shrink: 0;
+}
+.source-card.expanded .card-arrow { transform: rotate(180deg); }
+
+/* Expanded */
+.card-expanded {
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  display: none;
+}
+.source-card.expanded .card-expanded { display: block; }
+
+.card-desc {
+  font-size: 12px; line-height: 1.7;
+  color: rgba(255,255,255,0.6); margin-bottom: 12px;
+}
+.card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; }
+.card-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; padding: 2px 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.35);
+  cursor: pointer; transition: all 0.15s;
+}
+.card-tag:hover { color: rgba(255,160,0,0.7); border-color: rgba(255,160,0,0.2); }
+.card-tag.active { color: rgba(255,160,0,0.85); border-color: rgba(255,160,0,0.3); }
+
+.open-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; padding: 6px 14px;
+  border-radius: 6px; text-decoration: none;
+  transition: all 0.2s;
+}
+.open-btn:hover { filter: brightness(1.3); }
+
+/* Empty state */
+.empty {
+  text-align: center; padding: 60px 20px;
+  color: rgba(255,255,255,0.3);
+}
+.empty .icon { font-size: 32px; margin-bottom: 12px; }
+
+/* Footer */
+.footer {
+  margin-top: 40px; padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  text-align: center;
+}
+.footer p {
+  font-size: 11px; color: rgba(255,255,255,0.25);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+@media (max-width: 600px) {
+  .container { padding: 16px; }
+  .header-inner { padding: 12px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <h1>Morphism Theory</h1>
+      <span class="sep">›</span>
+      <span class="sub">Sources &amp; Resources</span>
+      <span class="count" id="countDisplay">48 / 48</span>
+    </div>
+    <p>Every source from the Vibecoders handbook — filterable, searchable, annotated with practical context.</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="search-wrap">
+    <span class="icon">⌕</span>
+    <input type="text" id="searchInput" placeholder="Search sources by title, description, or tag...">
+  </div>
+
+  <div class="filter-row" id="partFilters"></div>
+  <div class="filter-row" id="typeFilters"></div>
+  <div class="filter-row tags" id="tagFilters"></div>
+
+  <div class="source-list" id="sourceList"></div>
+
+  <div class="empty" id="emptyState" style="display:none">
+    <div class="icon">⌕</div>
+    <div>No sources match the current filters</div>
+    <button class="btn clear" style="margin-top:12px" onclick="clearAll()">Clear filters</button>
+  </div>
+
+  <div class="footer">
+    <p>48 sources curated from the Morphism Theory for Vibecoders handbook · Feb 2026</p>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const SOURCES=[{id:1,title:"backdrop-filter — MDN Web Docs",url:"https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter",part:1,tags:["glassmorphism","css","reference"],type:"docs",desc:"Definitive CSS reference for backdrop-filter. Covers all filter functions (blur, brightness, contrast, saturate), formal syntax, browser compat table. Your single source of truth for what the property actually does."},{id:2,title:"Next-level frosted glass with backdrop-filter — Josh W. Comeau",url:"https://www.joshwcomeau.com/css/backdrop-filter/",part:1,tags:["glassmorphism","tutorial","css"],type:"tutorial",desc:"Best practical tutorial on implementing frosted glass effects. Covers stacking context gotchas, performance notes, browser support (~97% as of late 2024). The go-to for learning backdrop-filter properly."},{id:3,title:"Create OS-style backgrounds with backdrop-filter — web.dev",url:"https://web.dev/articles/backdrop-filter",part:1,tags:["glassmorphism","tutorial","performance"],type:"tutorial",desc:"Google's guide to backdrop-filter. Key insight: each backdrop-filter creates a new stacking context. Demonstrates combining multiple filter functions and animated backdrop effects."},{id:4,title:"12 Glassmorphism UI Features, Best Practices, and Examples — UXpilot",url:"https://uxpilot.ai/blogs/glassmorphism-ui",part:1,tags:["glassmorphism","design","best-practices"],type:"article",desc:"Comprehensive glassmorphism guide covering lighting direction, dark mode adaptations, color palette strategies. Real-world examples from AnyDistance, Apple Music. Excellent section on pairing neon gradients with glass."},{id:5,title:"Glassmorphism vs. Claymorphism vs. Skeuomorphism: 2025 UI Guide — Medium",url:"https://medium.com/design-bootcamp/glassmorphism-vs-claymorphism-vs-skeuomorphism-2025-ui-design-guide-e639ff73b389",part:1,tags:["glassmorphism","claymorphism","comparison"],type:"article",desc:"Side-by-side comparison of morphism philosophies with visual examples. Useful for understanding the aesthetic spectrum and when each approach fits."},{id:6,title:"Neumorphism and CSS — CSS-Tricks",url:"https://css-tricks.com/neumorphism-and-css/",part:1,tags:["neumorphism","css","tutorial"],type:"tutorial",desc:"Foundational CSS-Tricks article on implementing neumorphism. Covers the dual-shadow technique, color matching requirements, and why the effect demands background-matching element colors."},{id:7,title:"Implementing Neumorphic Shadows — OpenReplay",url:"https://blog.openreplay.com/implementing-neumorphic-shadows/",part:1,tags:["neumorphism","css","shadows"],type:"tutorial",desc:"Practical neumorphism implementation guide. Details shadow calculations, pressed/raised states, and the performance implications of dual box-shadows on multiple elements."},{id:8,title:"Neumorphism — the accessible and inclusive way — Axess Lab",url:"https://axesslab.com/neumorphism/",part:1,tags:["neumorphism","accessibility","wcag"],type:"article",desc:"Critical accessibility analysis of neumorphism. Low-vision simulator screenshots showing buttons disappearing entirely. WCAG 1.4.11 contrast requirements (≥3:1 for UI components). Essential reading before using neumorphism on interactive elements."},{id:9,title:"Neumorphism vs Glassmorphism 2025: UI Trends — Redlio Designs",url:"https://redliodesigns.com/blog/neumorphism-vs-glassmorphism-2025-ui-trends",part:1,tags:["neumorphism","glassmorphism","comparison","2025"],type:"article",desc:"Updated 2025 comparison. Performance benchmarks for box-shadow rendering vs. backdrop-filter. Practical guidance on where each morphism works in production."},{id:10,title:"How to Animate CSS Box Shadows and Optimize Performance — SitePoint",url:"https://www.sitepoint.com/css-box-shadow-animation-performance/",part:1,tags:["performance","shadows","animation","neumorphism"],type:"tutorial",desc:"Key performance data: shadow animation 55ms → 117ms under 4x CPU throttle. The ::after pseudo-element opacity trick for performant shadow animation. Essential for neumorphism and neon glow hover states."},{id:11,title:"backdrop-filter: blur() performance issues — shadcn/ui #327",url:"https://github.com/shadcn-ui/ui/issues/327",part:1,tags:["glassmorphism","performance","bug-report"],type:"github",desc:"Real-world performance issue report from the most popular React component library. Documents FPS drops with backdrop-filter on large elements and proposed workarounds."},{id:12,title:"backdrop-filter performance mode — FoundryVTT #10400",url:"https://github.com/foundryvtt/foundryvtt/issues/10400",part:1,tags:["glassmorphism","performance","bug-report"],type:"github",desc:"Another real-world report: backdrop-filter causing significant FPS drops in a complex canvas application. Documents per-element vs. accumulated GPU cost. Directly relevant to DVPE's multi-block canvas."},{id:13,title:"CSS blur filter performance — Mozilla Bugzilla #925025",url:"https://bugzilla.mozilla.org/show_bug.cgi?id=925025",part:1,tags:["glassmorphism","performance","firefox"],type:"github",desc:"Historical Firefox bug documenting order-of-magnitude slower blur filter rendering vs. Chrome. Status: mostly resolved by 2024, but explains why Firefox was the last holdout."},{id:14,title:"Glassmorphism CSS Generator — Glass UI",url:"https://ui.glass/generator/",part:1,tags:["glassmorphism","tool","generator"],type:"tool",desc:"Interactive generator for glassmorphism CSS. Adjust blur, transparency, color, border. Instant code output. Good for quick prototyping before fine-tuning."},{id:15,title:"Glassmorphism with Accessibility in Mind — New Target",url:"https://www.newtarget.com/web-insights-blog/glassmorphism/",part:1,tags:["glassmorphism","accessibility","wcag"],type:"article",desc:"Focused on making glassmorphism WCAG-compliant. Covers contrast ratio testing on transparent surfaces, prefers-reduced-transparency media query, and fallback strategies."},{id:16,title:"How Glassmorphism Drives User Focus in Enterprise UI — Innoraft",url:"https://www.innoraft.ai/blog/how-glassmorphism-drives-user-focus-complex-enterprise-ui",part:1,tags:["glassmorphism","ux","enterprise"],type:"article",desc:"Enterprise perspective on glass effects. Visual hierarchy through translucent layering, directing attention with selective blur depth. Relevant for DVPE's complex multi-panel interface."},{id:20,title:"Apple introduces Liquid Glass design — Apple Newsroom (WWDC 2025)",url:"https://www.apple.com/newsroom/2025/06/apple-introduces-a-delightful-and-elegant-new-software-design/",part:2,tags:["liquid-glass","apple","2025"],type:"article",desc:"Apple's official announcement of Liquid Glass across iOS 26, macOS Tahoe. The defining moment that validated glassmorphism as a decade-long paradigm."},{id:21,title:"CSS Liquid Glass Effects — Designfast Tutorial",url:"https://designfast.io/liquid-glass",part:2,tags:["liquid-glass","css","tutorial"],type:"tutorial",desc:"Practical CSS tutorial for recreating Apple's Liquid Glass. Covers SVG feDisplacementMap for optical refraction, dynamic lighting with CSS custom properties."},{id:22,title:"Liquid Glass in CSS and SVG — ekino-france (Medium)",url:"https://medium.com/ekino-france/liquid-glass-in-css-and-svg-839985fcb88d",part:2,tags:["liquid-glass","svg","advanced"],type:"tutorial",desc:"Deep technical implementation using SVG filters for the refraction/distortion effect that separates Liquid Glass from standard glassmorphism."},{id:23,title:"liquid-glass — GitHub generator",url:"https://github.com/yanglei1826877278/liquid-glass",part:2,tags:["liquid-glass","tool","generator"],type:"tool",desc:"Open-source Liquid Glass CSS/HTML generator. Customize blur, transparency, glow parameters and copy the code. React/Vue compatible."},{id:24,title:"Aurora UI — how to create with CSS — DEV Community",url:"https://dev.to/albertwalicki/aurora-ui-how-to-create-with-css-4b6g",part:2,tags:["aurora","css","tutorial"],type:"tutorial",desc:"Step-by-step CSS aurora gradient implementation. Multiple radial-gradient layers with background-position animation. The technique for DVPE's atmospheric background."},{id:25,title:"CSS Aurora Effect — DEV Community",url:"https://dev.to/oobleck/css-aurora-effect-569n",part:2,tags:["aurora","css","animation"],type:"tutorial",desc:"Alternative aurora implementation using filter: blur on pseudo-elements with animated transforms. Lighter GPU load than backdrop-filter approaches."},{id:26,title:"Aurora Gradient with React & Framer Motion — Medium",url:"https://medium.com/design-bootcamp/beautiful-aurora-gradient-with-react-framer-motion-9ab40674b5fb",part:2,tags:["aurora","react","framer-motion"],type:"tutorial",desc:"React-specific aurora using Framer Motion's useMotionTemplate for dynamic gradient animation. Directly applicable to DVPE's React stack."},{id:27,title:"Neobrutalism: Definition and Best Practices — NN/g",url:"https://www.nngroup.com/articles/neobrutalism/",part:2,tags:["neo-brutalism","ux-research","best-practices"],type:"article",desc:"Nielsen Norman Group's authoritative analysis (April 2025). Warns of increased cognitive load. Best use cases vs. contraindications."},{id:28,title:"Neobrutalism Components — shadcn/ui template",url:"https://www.shadcn.io/template/ekmas-neobrutalism-components",part:2,tags:["neo-brutalism","react","components"],type:"tool",desc:"Production-ready neo-brutalism components built on shadcn/ui. Thick borders, hard drop shadows, bold colors."},{id:29,title:"Old Timey Terminal Styling — CSS-Tricks",url:"https://css-tricks.com/old-timey-terminal-styling/",part:2,tags:["terminal","retro","css"],type:"tutorial",desc:"Terminal/CRT aesthetic: phosphor glow via text-shadow, scanline overlays with repeating-linear-gradient, CRT flicker animations. Applicable for DVPE system messages."},{id:30,title:"Retro Terminal UI — Benjamin Brewster (Medium)",url:"https://medium.com/@benjamib/retro-terminal-ui-ae9ac8eae71a",part:2,tags:["terminal","retro","design"],type:"article",desc:"Design principles for terminal aesthetics. Font choices (VT323, JetBrains Mono), color temperature, scanline density."},{id:31,title:"Retro-futuristic UX Designs — LogRocket",url:"https://blog.logrocket.com/ux-design/retro-futuristic-ux-designs-bringing-back-the-future/",part:2,tags:["retro-futurism","ux","design"],type:"article",desc:"How synth/audio interfaces naturally fit the retro-futuristic aesthetic. DVPE's dark-theme-with-neon design sits squarely in this territory."},{id:32,title:"Creating Holographic Effects in CSS — OpenReplay",url:"https://blog.openreplay.com/creating-holographic-effects-css/",part:2,tags:["holographic","css","advanced"],type:"tutorial",desc:"OKLCH gradients with mix-blend-mode for smooth hue rotation, mouse-tracking tilt effects. For premium DVPE UI accents."},{id:33,title:"How to Get the Holographic CSS Effect — CSS3.com",url:"https://css3.com/how-to-get-the-holographic-css-effect-a-complete-guide/",part:2,tags:["holographic","css","tutorial"],type:"tutorial",desc:"Step-by-step holographic effect guide. Iridescent gradients, foil card effects, rainbow shimmer with conic-gradient and hue-rotate."},{id:34,title:"Pokemon Cards CSS — simeydotme (GitHub)",url:"https://github.com/simeydotme/pokemon-cards-css",part:2,tags:["holographic","css","showcase"],type:"github",desc:"Reference implementation of advanced holographic/iridescent CSS. Mouse-reactive tilt, rainbow foil patterns, layered blend modes. The gold standard."},{id:35,title:"The Bento Box Effect: Modular Grids in 2025 — Onecodesoft",url:"https://www.onecodesoft.com/blogs/the-bento-box-effect-why-modular-grids-dominate-2025-design",part:2,tags:["bento","layout","2025"],type:"article",desc:"CSS Grid grid-auto-flow: dense, container queries for responsive bento items. The structural pattern morphism effects sit within."},{id:36,title:"Build a Bento Layout with CSS Grid — iamsteve",url:"https://iamsteve.me/blog/bento-layout-css-grid",part:2,tags:["bento","css-grid","tutorial"],type:"tutorial",desc:"Practical bento grid implementation. Clean CSS Grid patterns with named areas and auto-flow. No frameworks required."},{id:37,title:"BentoGrids.com — Curated Bento Grid Examples",url:"https://bentogrids.com/",part:2,tags:["bento","inspiration","gallery"],type:"tool",desc:"Gallery of hundreds of bento grid designs from Apple, Stripe, Linear. Excellent visual reference for settings/configuration panels."},{id:38,title:"UI Trends: Neumorphism vs. Glassmorphism vs. Neubrutalism — CC Creative",url:"https://www.cccreative.design/blogs/differences-in-ui-design-trends-neumorphism-glassmorphism-and-neubrutalism",part:2,tags:["comparison","neumorphism","glassmorphism","neo-brutalism"],type:"article",desc:"Three-way morphism comparison with visual examples and use-case recommendations."},{id:39,title:"Apple's Liquid Glass UI Design + CSS guide — DEV Community",url:"https://dev.to/gruszdev/apples-liquid-glass-revolution-how-glassmorphism-is-shaping-ui-design-in-2025-with-css-code-1221",part:2,tags:["liquid-glass","css","apple","2025"],type:"tutorial",desc:"Developer-focused Liquid Glass CSS code walkthrough with specific property values. Updated for Apple's 2025 design language."},{id:40,title:"Top UI Design Trends to Watch in 2025 — Nerdify",url:"https://getnerdify.com/blog/user-interface-design-trends/",part:2,tags:["trends","2025","survey"],type:"article",desc:"Broad 2025 UI trend survey covering glassmorphism, aurora gradients, bento grids, AI-generated interfaces."},{id:50,title:"What is v0? — v0.app Documentation",url:"https://v0.app/docs",part:3,tags:["v0","ai-tool","docs"],type:"docs",desc:"Official v0.dev docs. Generates React + Tailwind + shadcn/ui from prompts. Best for initial morphism component scaffolding with specific CSS values."},{id:51,title:"v0.dev Guide 2025 — Flexxited",url:"https://flexxited.com/blog/v0-dev-guide-2025-ai-powered-ui-generation-for-react-and-tailwind-css",part:3,tags:["v0","guide","2025"],type:"article",desc:"Practical v0.dev workflow: prompt engineering for UI generation, iterative refinement, morphism-specific prompting strategies."},{id:52,title:"Glassmorphism Website — v0 by Vercel (example)",url:"https://v0.app/chat/glassmorphism-website-p6sbNtTTT9e",part:3,tags:["v0","glassmorphism","example"],type:"tool",desc:"Live v0.dev glassmorphism output. Shows what v0 produces from a glass prompt — use as baseline for more specific prompts."},{id:53,title:"Base44 vs Lovable: Features and Pricing — Tech.co",url:"https://tech.co/ai/vibe-coding/base44-vs-lovable",part:3,tags:["lovable","ai-tool","comparison"],type:"article",desc:"Lovable uniquely offers morphism style presets (glassmorphism, neumorphism, neo-brutalism) at project creation — the only tool with explicit morphism awareness."},{id:54,title:"Cursor AI for Development — Brian Treese",url:"https://briantree.se/cursor-ai-for-better-angular-development/",part:3,tags:["cursor","ai-tool","workflow"],type:"article",desc:"Cursor IDE workflow guide. The Cmd+K inline editing pattern that works best for morphism CSS refinement."},{id:55,title:"What is Bolt.new AI — Prismetric",url:"https://www.prismetric.com/what-is-bolt-ai/",part:3,tags:["bolt","ai-tool","review"],type:"article",desc:"bolt.new review. Faster for full-stack scaffolding but rougher design output. Best for initial project structure, not final morphism styling."},{id:56,title:"10 AI Prompts for Glowing UI Effects — StackFindOver",url:"https://blog.stackfindover.com/ai-prompts-for-glowing-ui-effects/",part:3,tags:["ai-prompts","glow","glassmorphism"],type:"article",desc:"Prompt templates for glow: glassmorphism edge glow, neon text, dark-mode accent glow, hover transitions. Directly applicable to DVPE block prompts."},{id:57,title:"Best Glassmorphism AI Prompts — DocsBot",url:"https://docsbot.ai/prompts/tags?tag=Glassmorphism",part:3,tags:["ai-prompts","glassmorphism","collection"],type:"tool",desc:"Large collection of glassmorphism prompts across ChatGPT, Claude, and Gemini. Covers dark mode, dashboards, mobile UI, gaming overlays."},{id:58,title:"CSS Garden Challenge: Testing AI Design Skills — John Turner",url:"https://johndturner.com/blog/css-garden-challenge-test-ai-design-skills/",part:3,tags:["ai-tool","design","benchmark"],type:"article",desc:"Systematic benchmark of AI tools at generating CSS designs. Reveals which models handle glassmorphism best and where they fail."},{id:59,title:"Awesome Gemini AI Prompts — GitHub",url:"https://github.com/ZeroLu/awesome-gemini-ai",part:3,tags:["ai-prompts","gemini","design"],type:"github",desc:"Includes a detailed system prompt with glassmorphism, neon accents, bento grids, shader backgrounds. Most comprehensive AI design meta-prompt template."},{id:70,title:"How to Choose Between Next.js and Vite.js — SoftwareLogic",url:"https://softwarelogic.co/en/blog/how-to-choose-between-nextjs-and-vitejs-for-projects",part:4,tags:["vite","nextjs","framework","comparison"],type:"article",desc:"Key insight: backdrop-filter effects are 100% client-side GPU operations — SSR provides zero benefit. Vite's faster HMR wins for visual iteration."},{id:71,title:"GSAP vs Motion: A Detailed Comparison — motion.dev",url:"https://motion.dev/docs/gsap-vs-motion",part:4,tags:["motion","gsap","animation","performance"],type:"docs",desc:"Motion runs 2.5x faster for unknown-value animations and 6x faster for type-switching. MIT-licensed. Hardware-accelerated via Web Animations API."},{id:72,title:"Reduce Bundle Size of Framer Motion — motion.dev",url:"https://motion.dev/docs/react-reduce-bundle-size",part:4,tags:["motion","performance","bundle-size"],type:"docs",desc:"LazyMotion reduces initial bundle from 34kb to ~4.6kb. Essential for keeping DVPE's animation library under 10kb."},{id:73,title:"Design Tokens — Style Dictionary",url:"https://styledictionary.com/info/tokens/",part:4,tags:["tokens","style-dictionary","design-system"],type:"docs",desc:"Style Dictionary v4. Forward-compatible with W3C DTCG spec. Transform morphism tokens to CSS custom properties, Tailwind config, platform outputs."},{id:74,title:"W3C Design Tokens Specification v1 — DesignZig",url:"https://designzig.com/design-tokens-specification-reaches-first-stable-version-with-w3c-community-group/",part:4,tags:["tokens","w3c","standard"],type:"article",desc:"DTCG Design Tokens spec reaching v1 stable (October 2025). Defines standard JSON format that Style Dictionary and Tokens Studio implement."},{id:75,title:"Style Dictionary — GitHub",url:"https://github.com/style-dictionary/style-dictionary",part:4,tags:["tokens","style-dictionary","tool"],type:"github",desc:"Style Dictionary v4 source. Cross-platform design token build system. Industry standard for token management."},{id:76,title:"Intro to Design Tokens — Tokens Studio",url:"https://docs.tokens.studio/fundamentals/design-tokens",part:4,tags:["tokens","figma","design-system"],type:"docs",desc:"Bridges Figma tokens to code via @tokens-studio/sd-transforms. The Figma-to-code pipeline for morphism design systems."},{id:77,title:"sd-transforms — Tokens Studio GitHub",url:"https://github.com/tokens-studio/sd-transforms",part:4,tags:["tokens","style-dictionary","figma"],type:"github",desc:"Custom Style Dictionary transforms for Tokens Studio exports. Handles shadow, border, typography token types."},{id:78,title:"backdrop-filter: blur() — Tailwind CSS Docs",url:"https://tailwindcss.com/docs/backdrop-filter-blur",part:4,tags:["tailwind","glassmorphism","css"],type:"docs",desc:"Tailwind's first-class glassmorphism utilities: backdrop-blur-sm through 3xl, arbitrary values. No plugins needed."},{id:79,title:"High Performance box-shadow — CodePen",url:"https://codepen.io/emanuelbaran/pen/gwYLYo",part:4,tags:["performance","shadows","technique"],type:"tool",desc:"Live demo of the ::after pseudo-element trick for performant shadow animation. Crucial for neon glow hover states."},{id:80,title:"37 CSS backdrop-filter Examples — FreeFrontend",url:"https://freefrontend.com/css-backdrop-filter-examples/",part:4,tags:["glassmorphism","examples","inspiration"],type:"tool",desc:"Curated 37 backdrop-filter CodePen demos. Frosted glass modals, morphing cards, progressive blur, cosmic effects."},{id:81,title:"CSS backdrop-filter for frosted glass — modern.css",url:"https://modern-css.com/frosted-glass-effect-without-opacity-hacks/",part:4,tags:["glassmorphism","css","modern"],type:"tutorial",desc:"Clean approach to frosted glass without legacy hacks. Blur applies to everything rendered behind, not just static backgrounds."},{id:82,title:"CSS Backdrop-Filter Blur with Overflow Hidden Fix — 2026 Guide",url:"https://copyprogramming.com/howto/transitioning-backdrop-filter-blur-on-an-element-with-overflow-hidden-parent-is-not-working",part:4,tags:["glassmorphism","debugging","stacking-context"],type:"tutorial",desc:"Solves the #1 glassmorphism bug: blur disappears with overflow: hidden parent. Zero-pixel filter workaround, performance-safe animation patterns."}];
+
+const PARTS = {
+  1: { label: "Core Morphisms", color: "#00E5FF" },
+  2: { label: "Emerging Trends", color: "#00FF88" },
+  3: { label: "AI Workflow", color: "#FFA000" },
+  4: { label: "Tools & Performance", color: "#B400FF" },
+};
+const TYPE_ICONS = { docs:"📘", tutorial:"🔧", article:"📝", tool:"⚡", github:"🔗" };
+const TYPE_LABELS = { docs:"Documentation", tutorial:"Tutorial", article:"Article", tool:"Tool / Generator", github:"GitHub / Issue" };
+
+// ============================================================
+// STATE
+// ============================================================
+let state = { search: "", part: null, type: null, tags: [], expanded: null };
+
+// ============================================================
+// RENDER
+// ============================================================
+function getAllTags() {
+  const s = new Set();
+  SOURCES.forEach(src => src.tags.forEach(t => s.add(t)));
+  return [...s].sort();
+}
+
+function getFiltered() {
+  return SOURCES.filter(s => {
+    if (state.part && s.part !== state.part) return false;
+    if (state.type && s.type !== state.type) return false;
+    if (state.tags.length > 0 && !state.tags.some(t => s.tags.includes(t))) return false;
+    if (state.search) {
+      const q = state.search.toLowerCase();
+      return s.title.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q) || s.tags.some(t => t.includes(q));
+    }
+    return true;
+  });
+}
+
+function render() {
+  const filtered = getFiltered();
+
+  // Count
+  document.getElementById('countDisplay').textContent = `${filtered.length} / ${SOURCES.length}`;
+
+  // Part filters
+  const partEl = document.getElementById('partFilters');
+  let partHtml = '';
+  for (const [k, p] of Object.entries(PARTS)) {
+    const ki = parseInt(k);
+    const active = state.part === ki;
+    const count = SOURCES.filter(s => s.part === ki).length;
+    const style = active
+      ? `background:${p.color}15;border-color:${p.color}40;color:${p.color}`
+      : '';
+    partHtml += `<button class="btn${active ? '' : ''}" style="${style}" onclick="togglePart(${ki})">Part ${k}: ${p.label} <span style="margin-left:6px;opacity:0.5">${count}</span></button>`;
+  }
+  const hasFilters = state.search || state.part || state.type || state.tags.length;
+  if (hasFilters) partHtml += `<button class="btn clear" onclick="clearAll()">✕ Clear all</button>`;
+  partEl.innerHTML = partHtml;
+
+  // Type filters
+  const typeEl = document.getElementById('typeFilters');
+  let typeHtml = '';
+  for (const [k, label] of Object.entries(TYPE_LABELS)) {
+    const active = state.type === k;
+    typeHtml += `<button class="type-btn${active ? ' active' : ''}" onclick="toggleType('${k}')">${TYPE_ICONS[k]} ${label}</button>`;
+  }
+  typeEl.innerHTML = typeHtml;
+
+  // Tag filters
+  const tagEl = document.getElementById('tagFilters');
+  let tagHtml = '';
+  getAllTags().forEach(tag => {
+    const active = state.tags.includes(tag);
+    tagHtml += `<button class="tag-btn${active ? ' active' : ''}" onclick="toggleTag('${tag}')">${tag}</button>`;
+  });
+  tagEl.innerHTML = tagHtml;
+
+  // Source list
+  const listEl = document.getElementById('sourceList');
+  const emptyEl = document.getElementById('emptyState');
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  let html = '';
+  filtered.forEach(src => {
+    const part = PARTS[src.part];
+    const isExp = state.expanded === src.id;
+    const pc30 = part.color + '30';
+    const pc08 = part.color + '13';
+    const pc10 = part.color + '18';
+    const pc25 = part.color + '40';
+
+    html += `<div class="source-card${isExp ? ' expanded' : ''}" style="--part-color-30:${pc30};--part-color-08:${pc08}" onclick="toggleExpand(${src.id})">
+      <div class="card-top">
+        <span class="card-icon">${TYPE_ICONS[src.type]}</span>
+        <div class="card-body">
+          <div class="card-title">${esc(src.title)}</div>
+          <div class="card-meta">
+            <span class="part-badge" style="background:${pc10};color:${part.color};border:1px solid ${part.color}20">Part ${src.part}</span>
+            <span class="type-label">${TYPE_LABELS[src.type]}</span>
+          </div>
+        </div>
+        <span class="card-arrow">▼</span>
+      </div>
+      <div class="card-expanded">
+        <p class="card-desc">${esc(src.desc)}</p>
+        <div class="card-tags">${src.tags.map(t =>
+          `<span class="card-tag${state.tags.includes(t) ? ' active' : ''}" onclick="event.stopPropagation();toggleTag('${t}')">${t}</span>`
+        ).join('')}</div>
+        <a href="${src.url}" target="_blank" rel="noopener noreferrer" class="open-btn"
+           onclick="event.stopPropagation()"
+           style="background:${pc10};border:1px solid ${pc25};color:${part.color}">
+          Open resource →
+        </a>
+      </div>
+    </div>`;
+  });
+  listEl.innerHTML = html;
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ============================================================
+// INTERACTIONS
+// ============================================================
+function togglePart(p) { state.part = state.part === p ? null : p; render(); }
+function toggleType(t) { state.type = state.type === t ? null : t; render(); }
+function toggleTag(t) {
+  const i = state.tags.indexOf(t);
+  if (i >= 0) state.tags.splice(i, 1); else state.tags.push(t);
+  render();
+}
+function toggleExpand(id) { state.expanded = state.expanded === id ? null : id; render(); }
+function clearAll() { state = { search: "", part: null, type: null, tags: [], expanded: null }; document.getElementById('searchInput').value = ''; render(); }
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  state.search = e.target.value;
+  render();
+});
+
+// ============================================================
+// INIT
+// ============================================================
+render();
+</script>
+</body>
+</html>

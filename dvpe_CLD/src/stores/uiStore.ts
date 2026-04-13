@@ -6,14 +6,32 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ViewportState } from '@/types';
+import type { AIProvider } from '@/codegen/advancedExportService';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type PanelId = 'library' | 'inspector' | 'console' | 'minimap';
+export type PanelId = 'library' | 'inspector' | 'console' | 'minimap' | 'experimentator';
 export type Theme = 'dark' | 'light' | 'system';
+export type LayoutStyle = 'original' | 'glass' | 'experiment';
 export type GridMode = 'dots' | 'lines' | 'none';
+
+export interface DesignSettings {
+  glowIntensity: number;
+  glowSpread: number;
+  baseTransparency: number;
+  borderWidth: number;
+  borderRadius: number;
+  neonSaturation: number;
+  glassTint: number;
+}
+
+export interface DesignPreset {
+  id: string;
+  name: string;
+  settings: DesignSettings;
+}
 
 interface PanelState {
   visible: boolean;
@@ -36,8 +54,9 @@ interface UIState {
   gridMode: GridMode;
   snapToGrid: boolean;
 
-  // Theme
+  // Theme & Layout
   theme: Theme;
+  layoutStyle: LayoutStyle;
   reducedMotion: boolean;
   highContrast: boolean;
 
@@ -66,6 +85,14 @@ interface UIState {
 
   // Drag state for block creation
   draggingBlockId: string | null;
+
+  // Design Experimentator
+  designSettings: DesignSettings;
+  customPresets: DesignPreset[];
+
+  // AI Export
+  aiProvider: AIProvider;
+  aiModel: string;
 }
 
 interface UIActions {
@@ -88,8 +115,9 @@ interface UIActions {
   setGridMode: (mode: GridMode) => void;
   setSnapToGrid: (snap: boolean) => void;
 
-  // Theme
+  // Theme & Layout
   setTheme: (theme: Theme) => void;
+  setLayoutStyle: (layout: LayoutStyle) => void;
   setReducedMotion: (reduced: boolean) => void;
   setHighContrast: (high: boolean) => void;
 
@@ -116,6 +144,17 @@ interface UIActions {
 
   // Block drag
   setDraggingBlock: (blockId: string | null) => void;
+
+  // Design Experimentator
+  updateDesignSettings: (settings: Partial<DesignSettings>) => void;
+  resetDesignSettings: () => void;
+  saveDesignPreset: (name: string) => void;
+  loadDesignPreset: (presetId: string) => void;
+  deleteDesignPreset: (presetId: string) => void;
+
+  // AI Export
+  setAIProvider: (provider: AIProvider) => void;
+  setAIModel: (model: string) => void;
 }
 
 // ============================================================================
@@ -128,6 +167,7 @@ const initialState: UIState = {
     inspector: { visible: true, width: 320 },
     console: { visible: false, height: 200 },
     minimap: { visible: true },
+    experimentator: { visible: false, width: 280 },
   },
   viewport: { x: 0, y: 0, zoom: 1 },
   minZoom: 0.1,
@@ -137,6 +177,7 @@ const initialState: UIState = {
   gridMode: 'dots',
   snapToGrid: true,
   theme: 'dark',
+  layoutStyle: 'original',
   reducedMotion: false,
   highContrast: false,
   inspectedBlockId: null,
@@ -155,6 +196,18 @@ const initialState: UIState = {
     end: null,
   },
   draggingBlockId: null,
+  designSettings: {
+    glowIntensity: 0.4,
+    glowSpread: 160,
+    baseTransparency: 0.08,
+    borderWidth: 1,
+    borderRadius: 16,
+    neonSaturation: 1.0,
+    glassTint: 0.15,
+  },
+  customPresets: [],
+  aiProvider: 'gemini' as AIProvider,
+  aiModel: 'gemini-2.0-flash',
 };
 
 // ============================================================================
@@ -253,9 +306,10 @@ export const useUIStore = create<UIState & UIActions>()(
       setGridMode: (mode) => set({ gridMode: mode }),
       setSnapToGrid: (snap) => set({ snapToGrid: snap }),
 
-      // === Theme ===
+      // === Theme & Layout ===
 
       setTheme: (theme) => set({ theme }),
+      setLayoutStyle: (layout) => set({ layoutStyle: layout }),
       setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       setHighContrast: (high) => set({ highContrast: high }),
 
@@ -337,6 +391,49 @@ export const useUIStore = create<UIState & UIActions>()(
 
       // === Block Drag ===
       setDraggingBlock: (blockId) => set({ draggingBlockId: blockId }),
+
+      // === Design Experimentator ===
+      updateDesignSettings: (settings) => {
+        set((state) => ({
+          designSettings: { ...state.designSettings, ...settings },
+          layoutStyle: 'experiment', // Auto-switch to experiment layout when tweaking
+        }));
+      },
+
+      resetDesignSettings: () => {
+        set({ designSettings: initialState.designSettings });
+      },
+
+      saveDesignPreset: (name) => {
+        const { designSettings, customPresets } = get();
+        const newPreset: DesignPreset = {
+          id: `preset-${Date.now()}`,
+          name,
+          settings: { ...designSettings },
+        };
+        set({ customPresets: [...customPresets, newPreset] });
+      },
+
+      loadDesignPreset: (presetId) => {
+        const { customPresets } = get();
+        const preset = customPresets.find((p) => p.id === presetId);
+        if (preset) {
+          set({ 
+            designSettings: { ...preset.settings },
+            layoutStyle: 'experiment'
+          });
+        }
+      },
+
+      deleteDesignPreset: (presetId) => {
+        set((state) => ({
+          customPresets: state.customPresets.filter((p) => p.id !== presetId),
+        }));
+      },
+
+      // === AI Export ===
+      setAIProvider: (provider) => set({ aiProvider: provider }),
+      setAIModel: (model) => set({ aiModel: model }),
     }),
     {
       name: 'dvpe-ui-state',
@@ -348,8 +445,13 @@ export const useUIStore = create<UIState & UIActions>()(
         gridMode: state.gridMode,
         snapToGrid: state.snapToGrid,
         theme: state.theme,
+        layoutStyle: state.layoutStyle,
         reducedMotion: state.reducedMotion,
         highContrast: state.highContrast,
+        designSettings: state.designSettings,
+        customPresets: state.customPresets,
+        aiProvider: state.aiProvider,
+        aiModel: state.aiModel,
       }),
     }
   )
@@ -362,6 +464,7 @@ export const useUIStore = create<UIState & UIActions>()(
 export const selectPanels = (state: UIState) => state.panels;
 export const selectViewport = (state: UIState) => state.viewport;
 export const selectTheme = (state: UIState) => state.theme;
+export const selectLayoutStyle = (state: UIState) => state.layoutStyle;
 export const selectGridEnabled = (state: UIState) => state.gridEnabled;
 export const selectSnapToGrid = (state: UIState) => state.snapToGrid;
 export const selectInspectedBlockId = (state: UIState) => state.inspectedBlockId;

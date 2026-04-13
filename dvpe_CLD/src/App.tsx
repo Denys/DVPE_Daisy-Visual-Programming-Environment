@@ -8,6 +8,8 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Toaster, toast } from 'sonner';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import { Palette, Loader2 } from 'lucide-react';
+import { advancedExportWithAI, getHardwarePrefix, type AdvancedExportOutput } from '@/codegen/advancedExportService';
 
 import { cn } from '@/lib/utils';
 import { useUIStore, usePatchStore } from '@/stores';
@@ -34,6 +36,8 @@ interface TitleBarProps {
   handleOpen: () => void;
   handleSave: () => void;
   handleExport: () => void;
+  handleAdvancedExport: () => void;
+  isAdvancedExporting: boolean;
   handleOpenShortcuts: () => void;
 }
 
@@ -44,6 +48,8 @@ const TitleBar: React.FC<TitleBarProps> = ({
   handleOpen,
   handleSave,
   handleExport,
+  handleAdvancedExport,
+  isAdvancedExporting,
   handleOpenShortcuts,
 }) => {
   const openModal = useUIStore((state) => state.openModal);
@@ -113,6 +119,32 @@ const TitleBar: React.FC<TitleBarProps> = ({
       {/* Hardware button */}
       <HelpMenu onOpenShortcuts={handleOpenShortcuts} />
 
+      {/* Theme/Layout selector */}
+      <button
+        onClick={() => {
+          const uiStore = useUIStore.getState();
+          const current = uiStore.layoutStyle;
+          let next: 'original' | 'glass' | 'experiment' = 'glass';
+          if (current === 'glass') next = 'experiment';
+          else if (current === 'experiment') next = 'original';
+          uiStore.setLayoutStyle(next);
+        }}
+        className={cn(
+          'mr-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+          'bg-surface-tertiary text-text-secondary hover:bg-surface-tertiary/80',
+          useUIStore((state) => state.layoutStyle) === 'experiment' && 'ring-1 ring-cv-primary/50 text-cv-primary bg-cv-primary/10',
+          'flex items-center gap-2'
+        )}
+      >
+        <Palette className="w-4 h-4" />
+        {(() => {
+          const style = useUIStore((state) => state.layoutStyle);
+          if (style === 'original') return 'Original Style';
+          if (style === 'glass') return 'Stitch Neon';
+          return 'Experimentator';
+        })()}
+      </button>
+
       {/* Hardware button */}
       <button
         onClick={() => openModal('architecture')}
@@ -126,21 +158,43 @@ const TitleBar: React.FC<TitleBarProps> = ({
         Hardware
       </button>
 
-      {/* Export button */}
-      <button
-        onClick={handleExport}
-        className={cn(
-          'px-3 py-1.5 rounded-md text-sm font-medium',
-          'bg-audio-primary/20 text-audio-primary',
-          'hover:bg-audio-primary/30 transition-colors',
-          'flex items-center gap-2'
-        )}
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-        </svg>
-        Export C++
-      </button>
+      {/* Export button group */}
+      <div className="flex items-center rounded-md overflow-hidden border border-audio-primary/30">
+        <button
+          onClick={handleExport}
+          disabled={isAdvancedExporting}
+          className={cn(
+            'px-3 py-1.5 text-sm font-medium',
+            'bg-audio-primary/20 text-audio-primary',
+            'hover:bg-audio-primary/30 transition-colors',
+            'flex items-center gap-2 border-r border-audio-primary/20',
+            isAdvancedExporting && 'opacity-50 cursor-not-allowed'
+          )}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          Export C++
+        </button>
+        <button
+          onClick={handleAdvancedExport}
+          disabled={isAdvancedExporting}
+          title="Generate C++ and apply AI correction pass (Noderr + Daisy QAE)"
+          className={cn(
+            'px-3 py-1.5 text-sm font-medium',
+            'bg-cv-primary/15 text-cv-primary',
+            'hover:bg-cv-primary/25 transition-colors',
+            'flex items-center gap-1.5',
+            isAdvancedExporting && 'opacity-70 cursor-not-allowed'
+          )}
+        >
+          {isAdvancedExporting
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            : <span className="text-base leading-none">⚡</span>
+          }
+          {isAdvancedExporting ? 'AI Processing…' : 'Advanced'}
+        </button>
+      </div>
     </div>
   );
 };
@@ -211,6 +265,9 @@ const App: React.FC = () => {
   const [showCodePreview, setShowCodePreview] = React.useState(false);
   const [showUIDesigner, setShowUIDesigner] = React.useState(false);
   const [generatedCode, setGeneratedCode] = React.useState<{ mainCpp: string; makefile: string; errors: string[] } | null>(null);
+  const [aiCorrectedCode, setAiCorrectedCode] = React.useState<AdvancedExportOutput | null>(null);
+  const [isAdvancedExporting, setIsAdvancedExporting] = React.useState(false);
+  const [codePreviewTab, setCodePreviewTab] = React.useState<'raw' | 'ai'>('raw');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // File Handlers
@@ -342,6 +399,63 @@ const App: React.FC = () => {
     const result = previewCode(patchGraph);
     setGeneratedCode(result);
     setShowCodePreview(true);
+  };
+  // ===== Advanced Export =====
+  const handleAdvancedExport = async () => {
+    if (isAdvancedExporting) return;
+    setIsAdvancedExporting(true);
+    setAiCorrectedCode(null);
+    setCodePreviewTab('raw');
+
+    try {
+      const { previewCode } = await import('@/codegen');
+      const patchGraph = {
+        blocks,
+        connections,
+        metadata: {
+          name: metadata.name,
+          blockSize: metadata.blockSize || 48,
+          sampleRate: metadata.sampleRate || 48000,
+        },
+      };
+      const raw = previewCode(patchGraph);
+      setGeneratedCode(raw);
+
+      const hw = (metadata.targetHardware ?? 'custom') as string;
+      const prefix = getHardwarePrefix(hw);
+      const baseName = (metadata.name || 'Untitled_Patch').replace(/[^a-z0-9]/gi, '_');
+      const projectName = `${prefix}_${baseName}`;
+
+      const { aiProvider, aiModel } = useUIStore.getState();
+
+      toast.loading('Sending to AI for Daisy/Noderr correction pass…', { id: 'adv-export' });
+
+      const corrected = await advancedExportWithAI({
+        mainCpp: raw.mainCpp,
+        makefile: raw.makefile,
+        projectName,
+        targetHardware: hw,
+        provider: aiProvider,
+        modelId: aiModel,
+      });
+
+      setAiCorrectedCode(corrected);
+      setCodePreviewTab('ai');
+      setShowCodePreview(true);
+      toast.success(
+        `AI corrected ${corrected.linesChanged} lines — review and download below`,
+        { id: 'adv-export' }
+      );
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Advanced Export failed', { id: 'adv-export' });
+      // Still show raw code preview on error
+      if (generatedCode) {
+        setCodePreviewTab('raw');
+        setShowCodePreview(true);
+      }
+    } finally {
+      setIsAdvancedExporting(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -694,6 +808,8 @@ const App: React.FC = () => {
         handleOpen={handleOpen}
         handleSave={handleSave}
         handleExport={handleExport}
+        handleAdvancedExport={handleAdvancedExport}
+        isAdvancedExporting={isAdvancedExporting}
         handleOpenShortcuts={() => openModal('shortcuts')}
       />
 
@@ -808,7 +924,14 @@ const App: React.FC = () => {
           <div className="bg-surface-secondary rounded-lg border border-border w-[80vw] max-w-4xl max-h-[80vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h3 className="text-lg font-semibold text-text-primary">Generated C++ Code</h3>
+              <div>
+                <h3 className="text-lg font-semibold text-text-primary">Generated C++ Code</h3>
+                {aiCorrectedCode && (
+                  <p className="text-xs text-cv-primary mt-0.5">
+                    ✨ AI corrected {aiCorrectedCode.linesChanged} lines · Noderr + Daisy QAE applied
+                  </p>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownload}
@@ -827,6 +950,34 @@ const App: React.FC = () => {
               </div>
             </div>
 
+            {/* Tab switcher (only shown when AI result exists) */}
+            {aiCorrectedCode && (
+              <div className="flex border-b border-border bg-surface-primary px-4">
+                <button
+                  onClick={() => setCodePreviewTab('raw')}
+                  className={cn(
+                    'px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 mr-2',
+                    codePreviewTab === 'raw'
+                      ? 'text-audio-primary border-audio-primary'
+                      : 'text-text-tertiary border-transparent hover:text-text-secondary'
+                  )}
+                >
+                  Raw (DVPE)
+                </button>
+                <button
+                  onClick={() => setCodePreviewTab('ai')}
+                  className={cn(
+                    'px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2',
+                    codePreviewTab === 'ai'
+                      ? 'text-cv-primary border-cv-primary'
+                      : 'text-text-tertiary border-transparent hover:text-text-secondary'
+                  )}
+                >
+                  ✨ AI Corrected
+                </button>
+              </div>
+            )}
+
             {/* Modal Content */}
             <div className="flex-1 overflow-auto p-4">
               {generatedCode.errors.length > 0 ? (
@@ -840,7 +991,10 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <pre className="bg-surface-primary rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto whitespace-pre">
-                  {generatedCode.mainCpp}
+                  {codePreviewTab === 'ai' && aiCorrectedCode
+                    ? aiCorrectedCode.mainCpp
+                    : generatedCode.mainCpp
+                  }
                 </pre>
               )}
             </div>

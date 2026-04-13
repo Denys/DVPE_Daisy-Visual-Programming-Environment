@@ -10,7 +10,6 @@ import {
     Copy,
     Download,
     Trash2,
-    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +51,7 @@ const MENU_ITEMS: ContextMenuAction[] = [
 export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
     isOpen,
     position,
-    blockId,
+    blockId: _blockId,
     blockName,
     onAction,
     onClose,

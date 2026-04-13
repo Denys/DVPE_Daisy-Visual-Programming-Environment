@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DVPE Glassmorphism Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-base: #0a0e1a;
+  --bg-lighter: #0f1923;
+  --panel-bg: rgba(10, 14, 26, 0.88);
+  --panel-border: rgba(255,255,255,0.08);
+  --text-primary: rgba(255,255,255,0.92);
+  --text-secondary: rgba(255,255,255,0.55);
+  --text-label: rgba(255,255,255,0.70);
+  --cyan: 0, 229, 255;
+  --green: 0, 255, 136;
+  --purple: 180, 0, 255;
+  --orange: 255, 160, 0;
+  --yellow: 255, 230, 0;
+  --accent: rgba(0, 229, 255, 0.8);
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========== TOP NAV ========== */
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(10,14,26,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  z-index: 100;
+  flex-shrink: 0;
+}
+.topnav h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0,229,255,0.9);
+  letter-spacing: 0.5px;
+}
+.topnav .sep { color: rgba(255,255,255,0.2); }
+.topnav .subtitle { font-size: 12px; color: var(--text-secondary); }
+
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+.tab-btn.active {
+  color: rgba(0,229,255,0.95);
+  background: rgba(0,229,255,0.08);
+  border-color: rgba(0,229,255,0.2);
+}
+
+/* ========== MAIN LAYOUT ========== */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ========== CONTROLS PANEL ========== */
+.controls-panel {
+  width: 320px;
+  min-width: 320px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--panel-border);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.controls-panel::-webkit-scrollbar { width: 4px; }
+.controls-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.control-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.control-section h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.control-row:last-child { margin-bottom: 0; }
+
+.control-row label {
+  font-size: 11px;
+  color: var(--text-label);
+  min-width: 100px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.control-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  outline: none;
+}
+.control-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0,229,255,0.8);
+  border: 2px solid rgba(0,229,255,0.3);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0,229,255,0.3);
+}
+
+.control-row .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(0,229,255,0.8);
+  min-width: 42px;
+  text-align: right;
+}
+
+.color-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.color-chip {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.color-chip:hover { transform: scale(1.15); }
+.color-chip.active { border-color: white; box-shadow: 0 0 10px var(--chip-glow); }
+.color-chip::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Category preset buttons */
+.preset-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.preset-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.preset-btn:hover {
+  border-color: rgba(0,229,255,0.3);
+  color: var(--text-primary);
+}
+
+/* ========== CANVAS AREA ========== */
+.canvas-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.canvas-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.wire-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.blocks-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+}
+
+/* Module block */
+.module-block {
+  position: absolute;
+  min-width: 180px;
+  cursor: grab;
+  transition: box-shadow 0.25s, border-color 0.25s;
+  user-select: none;
+}
+.module-block:active { cursor: grabbing; }
+.module-block .block-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.module-block .block-header .icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+.module-block .block-body {
+  padding: 12px;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+/* Knob */
+.knob-container { text-align: center; }
+.knob {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(60,60,80,0.8), rgba(20,20,35,0.9));
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  position: relative;
+  margin: 0 auto 4px;
+}
+.knob::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 12px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 1px;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%) rotate(var(--knob-angle, -120deg));
+  transform-origin: bottom center;
+}
+.knob-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.knob-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-label);
+}
+
+/* Ports */
+.port {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.port.input { left: -5px; }
+.port.output { right: -5px; }
+
+/* ========== GUIDE PANEL ========== */
+.guide-panel {
+  width: 380px;
+  min-width: 380px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  border-left: 1px solid var(--panel-border);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.guide-panel::-webkit-scrollbar { width: 4px; }
+.guide-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.guide-panel.hidden { display: none; }
+
+.guide-content {
+  padding: 20px 18px;
+}
+.guide-content h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0,229,255,0.9);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0,229,255,0.15);
+}
+.guide-content h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 18px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.guide-content p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-label);
+  margin-bottom: 10px;
+}
+.guide-content code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: rgba(0,229,255,0.06);
+  color: rgba(0,229,255,0.85);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,229,255,0.1);
+}
+.guide-content .term-block {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.guide-content .term-block .term-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0,229,255,0.9);
+  margin-bottom: 4px;
+}
+.guide-content .term-block .term-syntax {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,160,0,0.8);
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  background: rgba(255,160,0,0.04);
+  border-radius: 4px;
+  border: 1px solid rgba(255,160,0,0.08);
+}
+.guide-content .term-block .term-desc {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-label);
+}
+.guide-content .term-block .term-visual {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.guide-content .term-block .term-swatch {
+  width: 50px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+/* CSS output panel */
+.css-output {
+  position: relative;
+}
+.css-output pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--text-label);
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 14px;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+.css-output pre .prop { color: rgba(0,229,255,0.8); }
+.css-output pre .val { color: rgba(255,160,0,0.85); }
+.css-output pre .comment { color: rgba(255,255,255,0.25); }
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,229,255,0.2);
+  background: rgba(0,229,255,0.08);
+  color: rgba(0,229,255,0.8);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.copy-btn:hover { background: rgba(0,229,255,0.15); }
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1100px) {
+  .guide-panel { display: none; }
+}
+@media (max-width: 800px) {
+  .controls-panel { width: 260px; min-width: 260px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <h1>DVPE</h1>
+  <span class="sep">›</span>
+  <span class="subtitle">Glassmorphism Playground</span>
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="playground">Playground</button>
+    <button class="tab-btn" data-tab="terminology">Terminology</button>
+    <button class="tab-btn" data-tab="prompts">AI Prompts</button>
+    <button class="tab-btn" data-tab="css">CSS Output</button>
+  </div>
+</nav>
+
+<div class="main-layout">
+  <!-- LEFT: Controls -->
+  <aside class="controls-panel" id="controlsPanel">
+    <!-- Populated by JS -->
+  </aside>
+
+  <!-- CENTER: Canvas preview -->
+  <div class="canvas-area" id="canvasArea">
+    <canvas class="canvas-bg" id="canvasBg"></canvas>
+    <svg class="wire-layer" id="wireLayer"></svg>
+    <div class="blocks-layer" id="blocksLayer"></div>
+  </div>
+
+  <!-- RIGHT: Guide / CSS Output -->
+  <aside class="guide-panel" id="guidePanel">
+    <!-- Populated by JS based on active tab -->
+  </aside>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const STATE = {
+  // Block glass
+  blockBgOpacity: 0.40,
+  blockBlur: 8,
+  blockBorderAlpha: 0.30,
+  blockGlowAlpha: 0.12,
+  blockGlowSpread: 20,
+  blockShadowAlpha: 0.30,
+  blockRimAlpha: 0.06,
+  blockRadius: 12,
+
+  // Chrome glass (sidebar/inspector)
+  chromeBgOpacity: 0.80,
+  chromeBlur: 16,
+
+  // Background
+  bgGridOpacity: 0.03,
+  bgGridSize: 40,
+  bgBaseColor: '#0a0e1a',
+
+  // Wires
+  wireWidth: 2,
+  wireGlowBlur: 6,
+  wireGlowAlpha: 0.50,
+
+  // Active category
+  activeCategory: 'source',
+
+  // Category colors (r,g,b strings)
+  categories: {
+    source:   { rgb: '0,229,255',   hex: '#00E5FF', label: 'Source',   icon: '∿' },
+    filter:   { rgb: '0,255,136',   hex: '#00FF88', label: 'Filter',   icon: '⩔' },
+    effect:   { rgb: '180,0,255',   hex: '#B400FF', label: 'Effect',   icon: '◎' },
+    envelope: { rgb: '255,160,0',   hex: '#FFA000', label: 'Envelope', icon: '⏣' },
+    io:       { rgb: '255,230,0',   hex: '#FFE600', label: 'I/O',      icon: '⇌' },
+  }
+};
+
+// Block positions
+const BLOCKS = [
+  { id: 'osc', cat: 'source', label: 'OSCILLATOR', x: 120, y: 80, knobs: [{l:'FREQ',v:'440Hz',a:-30},{l:'AMP',v:'0.80',a:45}] },
+  { id: 'flt', cat: 'filter', label: 'MOOG FILTER', x: 400, y: 60, knobs: [{l:'CUTOFF',v:'1200Hz',a:60},{l:'RESO',v:'0.70',a:20}] },
+  { id: 'env', cat: 'envelope', label: 'ADSR', x: 140, y: 280, knobs: [{l:'ATT',v:'0.01s',a:-90},{l:'DEC',v:'0.3s',a:-20},{l:'REL',v:'0.5s',a:30}] },
+  { id: 'out', cat: 'io', label: 'OUTPUT', x: 640, y: 160, knobs: [{l:'GAIN',v:'1.00',a:0}] },
+];
+
+// Wire connections: [fromBlockId, toBlockId]
+const WIRES = [
+  ['osc', 'flt'],
+  ['flt', 'out'],
+  ['env', 'flt'],
+];
+
+// ============================================================
+// CONTROLS PANEL BUILDER
+// ============================================================
+function buildControls() {
+  const panel = document.getElementById('controlsPanel');
+  panel.innerHTML = `
+    <div class="control-section">
+      <h3>Category Color</h3>
+      <div class="color-chips" id="catChips"></div>
+    </div>
+
+    <div class="control-section">
+      <h3>Block Glass</h3>
+      ${slider('blockBgOpacity', 'BG Opacity', 0, 1, 0.01, v => v.toFixed(2))}
+      ${slider('blockBlur', 'Blur', 0, 24, 1, v => v + 'px')}
+      ${slider('blockBorderAlpha', 'Border Alpha', 0, 1, 0.01, null)}
+      ${slider('blockGlowAlpha', 'Glow Alpha', 0, 0.5, 0.01, null)}
+      ${slider('blockGlowSpread', 'Glow Spread', 0, 60, 1, v => v + 'px')}
+      ${slider('blockShadowAlpha', 'Shadow Alpha', 0, 1, 0.01, null)}
+      ${slider('blockRimAlpha', 'Rim Alpha', 0, 0.2, 0.005, null)}
+      ${slider('blockRadius', 'Radius', 0, 30, 1, v => v + 'px')}
+    </div>
+
+    <div class="control-section">
+      <h3>Connection Wires</h3>
+      ${slider('wireWidth', 'Width', 1, 6, 0.5, v => v + 'px')}
+      ${slider('wireGlowBlur', 'Glow Blur', 0, 20, 1, v => v + 'px')}
+      ${slider('wireGlowAlpha', 'Glow Alpha', 0, 1, 0.05, null)}
+    </div>
+
+    <div class="control-section">
+      <h3>Background</h3>
+      ${slider('bgGridOpacity', 'Grid Opacity', 0, 0.1, 0.005, null)}
+      ${slider('bgGridSize', 'Grid Size', 10, 80, 1, v => v + 'px')}
+    </div>
+
+    <div class="control-section">
+      <h3>Chrome Panels</h3>
+      ${slider('chromeBgOpacity', 'BG Opacity', 0.3, 1, 0.01, v => v.toFixed(2))}
+      ${slider('chromeBlur', 'Blur', 0, 30, 1, v => v + 'px')}
+    </div>
+
+    <div class="control-section">
+      <h3>Presets</h3>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="applyPreset('wire-visible')">Wire-Visible Glass</button>
+        <button class="preset-btn" onclick="applyPreset('heavy-glass')">Heavy Glass</button>
+        <button class="preset-btn" onclick="applyPreset('liquid-glass')">Liquid Glass</button>
+        <button class="preset-btn" onclick="applyPreset('neon-max')">Neon Maximum</button>
+        <button class="preset-btn" onclick="applyPreset('subtle')">Subtle</button>
+      </div>
+    </div>
+  `;
+
+  // Build category chips
+  const chips = document.getElementById('catChips');
+  Object.entries(STATE.categories).forEach(([key, cat]) => {
+    const chip = document.createElement('div');
+    chip.className = 'color-chip' + (key === STATE.activeCategory ? ' active' : '');
+    chip.style.background = cat.hex;
+    chip.style.setProperty('--chip-glow', cat.hex + '80');
+    chip.dataset.label = cat.label;
+    chip.dataset.cat = key;
+    chip.onclick = () => {
+      STATE.activeCategory = key;
+      document.querySelectorAll('.color-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      render();
+    };
+    chips.appendChild(chip);
+  });
+
+  // Attach slider listeners
+  panel.querySelectorAll('input[type="range"]').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const key = e.target.dataset.key;
+      STATE[key] = parseFloat(e.target.value);
+      const fmt = e.target.dataset.fmt;
+      const valEl = e.target.nextElementSibling;
+      if (fmt === 'px') valEl.textContent = STATE[key] + 'px';
+      else if (fmt === 'f2') valEl.textContent = STATE[key].toFixed(2);
+      else valEl.textContent = STATE[key].toFixed(fmt === 'f3' ? 3 : 2);
+      render();
+    });
+  });
+}
+
+function slider(key, label, min, max, step, fmtFn) {
+  const val = STATE[key];
+  let fmt = 'f2';
+  let display = val.toFixed(2);
+  if (fmtFn) {
+    display = fmtFn(val);
+    if (display.endsWith('px')) fmt = 'px';
+    else fmt = 'f2';
+  }
+  return `<div class="control-row">
+    <label>${label}</label>
+    <input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-key="${key}" data-fmt="${fmt}">
+    <span class="val">${display}</span>
+  </div>`;
+}
+
+// ============================================================
+// PRESETS
+// ============================================================
+function applyPreset(name) {
+  const presets = {
+    'wire-visible': { blockBgOpacity:0.35, blockBlur:6, blockBorderAlpha:0.30, blockGlowAlpha:0.12, blockGlowSpread:20, blockShadowAlpha:0.25, blockRimAlpha:0.06, blockRadius:12, wireGlowBlur:8, wireGlowAlpha:0.60 },
+    'heavy-glass': { blockBgOpacity:0.75, blockBlur:16, blockBorderAlpha:0.15, blockGlowAlpha:0.05, blockGlowSpread:10, blockShadowAlpha:0.40, blockRimAlpha:0.08, blockRadius:14, wireGlowBlur:4, wireGlowAlpha:0.30 },
+    'liquid-glass': { blockBgOpacity:0.25, blockBlur:12, blockBorderAlpha:0.20, blockGlowAlpha:0.08, blockGlowSpread:15, blockShadowAlpha:0.20, blockRimAlpha:0.10, blockRadius:16, wireGlowBlur:6, wireGlowAlpha:0.45 },
+    'neon-max': { blockBgOpacity:0.30, blockBlur:6, blockBorderAlpha:0.55, blockGlowAlpha:0.30, blockGlowSpread:35, blockShadowAlpha:0.30, blockRimAlpha:0.04, blockRadius:10, wireGlowBlur:12, wireGlowAlpha:0.80 },
+    'subtle': { blockBgOpacity:0.50, blockBlur:10, blockBorderAlpha:0.12, blockGlowAlpha:0.04, blockGlowSpread:8, blockShadowAlpha:0.35, blockRimAlpha:0.03, blockRadius:12, wireGlowBlur:3, wireGlowAlpha:0.25 },
+  };
+  const p = presets[name];
+  if (!p) return;
+  Object.assign(STATE, p);
+  buildControls();
+  render();
+}
+
+// ============================================================
+// BACKGROUND RENDERER
+// ============================================================
+function renderBackground() {
+  const canvas = document.getElementById('canvasBg');
+  const area = document.getElementById('canvasArea');
+  canvas.width = area.offsetWidth;
+  canvas.height = area.offsetHeight;
+  const ctx = canvas.getContext('2d');
+
+  // Base gradient
+  const grd = ctx.createRadialGradient(
+    canvas.width * 0.4, canvas.height * 0.3, 0,
+    canvas.width * 0.4, canvas.height * 0.3, canvas.width * 0.8
+  );
+  grd.addColorStop(0, '#0f1923');
+  grd.addColorStop(1, STATE.bgBaseColor);
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Grid
+  if (STATE.bgGridOpacity > 0.001) {
+    ctx.strokeStyle = `rgba(0,229,255,${STATE.bgGridOpacity})`;
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += STATE.bgGridSize) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += STATE.bgGridSize) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+  }
+}
+
+// ============================================================
+// WIRE RENDERER
+// ============================================================
+function renderWires() {
+  const svg = document.getElementById('wireLayer');
+  const area = document.getElementById('canvasArea');
+  svg.setAttribute('width', area.offsetWidth);
+  svg.setAttribute('height', area.offsetHeight);
+
+  let defs = `<defs>`;
+  Object.entries(STATE.categories).forEach(([key, cat]) => {
+    defs += `<filter id="glow-${key}" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="${STATE.wireGlowBlur}" result="b"/>
+      <feFlood flood-color="rgba(${cat.rgb},${STATE.wireGlowAlpha})" result="c"/>
+      <feComposite in="c" in2="b" operator="in" result="g"/>
+      <feMerge><feMergeNode in="g"/><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>`;
+  });
+  defs += `</defs>`;
+
+  let paths = '';
+  WIRES.forEach(([fromId, toId]) => {
+    const fromBlock = BLOCKS.find(b => b.id === fromId);
+    const toBlock = BLOCKS.find(b => b.id === toId);
+    if (!fromBlock || !toBlock) return;
+
+    const fromX = fromBlock.x + 180; // right edge
+    const fromY = fromBlock.y + 60;
+    const toX = toBlock.x;
+    const toY = toBlock.y + 60;
+    const dx = Math.abs(toX - fromX) * 0.4;
+
+    const cat = fromBlock.cat;
+    const rgb = STATE.categories[cat].rgb;
+    paths += `<path d="M${fromX},${fromY} C${fromX+dx},${fromY} ${toX-dx},${toY} ${toX},${toY}"
+      fill="none" stroke="rgba(${rgb},0.8)" stroke-width="${STATE.wireWidth}"
+      filter="url(#glow-${cat})" />`;
+  });
+
+  svg.innerHTML = defs + paths;
+}
+
+// ============================================================
+// BLOCK RENDERER
+// ============================================================
+function renderBlocks() {
+  const layer = document.getElementById('blocksLayer');
+  layer.innerHTML = '';
+
+  BLOCKS.forEach(block => {
+    const cat = STATE.categories[block.cat];
+    const el = document.createElement('div');
+    el.className = 'module-block';
+    el.style.left = block.x + 'px';
+    el.style.top = block.y + 'px';
+    el.style.background = `rgba(10,14,26,${STATE.blockBgOpacity})`;
+    el.style.backdropFilter = `blur(${STATE.blockBlur}px)`;
+    el.style.webkitBackdropFilter = `blur(${STATE.blockBlur}px)`;
+    el.style.border = `1px solid rgba(${cat.rgb},${STATE.blockBorderAlpha})`;
+    el.style.borderRadius = STATE.blockRadius + 'px';
+    el.style.boxShadow = [
+      `0 0 ${STATE.blockGlowSpread}px rgba(${cat.rgb},${STATE.blockGlowAlpha})`,
+      `0 4px 16px rgba(0,0,0,${STATE.blockShadowAlpha})`,
+      `inset 0 1px 0 rgba(255,255,255,${STATE.blockRimAlpha})`,
+    ].join(', ');
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'block-header';
+    header.style.color = cat.hex;
+    header.innerHTML = `<span class="icon" style="background:rgba(${cat.rgb},0.15);color:${cat.hex}">${cat.icon}</span> ${block.label}`;
+    el.appendChild(header);
+
+    // Body with knobs
+    const body = document.createElement('div');
+    body.className = 'block-body';
+    block.knobs.forEach(k => {
+      body.innerHTML += `<div class="knob-container">
+        <div class="knob" style="--knob-angle:${k.a}deg"></div>
+        <div class="knob-label">${k.l}</div>
+        <div class="knob-value">${k.v}</div>
+      </div>`;
+    });
+    el.appendChild(body);
+
+    // Ports
+    const portIn = document.createElement('div');
+    portIn.className = 'port input';
+    portIn.style.borderColor = cat.hex;
+    portIn.style.background = `rgba(${cat.rgb},0.3)`;
+    portIn.style.boxShadow = `0 0 6px rgba(${cat.rgb},0.3)`;
+    el.appendChild(portIn);
+
+    const portOut = document.createElement('div');
+    portOut.className = 'port output';
+    portOut.style.borderColor = cat.hex;
+    portOut.style.background = `rgba(${cat.rgb},0.3)`;
+    portOut.style.boxShadow = `0 0 6px rgba(${cat.rgb},0.3)`;
+    el.appendChild(portOut);
+
+    // Dragging
+    let drag = false, offX, offY;
+    el.addEventListener('mousedown', (e) => {
+      drag = true;
+      offX = e.clientX - block.x;
+      offY = e.clientY - block.y;
+      el.style.zIndex = 25;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!drag) return;
+      block.x = e.clientX - offX;
+      block.y = e.clientY - offY;
+      el.style.left = block.x + 'px';
+      el.style.top = block.y + 'px';
+      renderWires();
+    });
+    window.addEventListener('mouseup', () => {
+      if (drag) { drag = false; el.style.zIndex = 20; }
+    });
+
+    layer.appendChild(el);
+  });
+}
+
+// ============================================================
+// GUIDE CONTENT
+// ============================================================
+function getGuideContent(tab) {
+  if (tab === 'terminology') return `
+<div class="guide-content">
+  <h2>CSS Terminology for Glassmorphism</h2>
+  <p>Every value on the left panel maps to a specific CSS property. Here's what each one means and does visually.</p>
+
+  <div class="term-block">
+    <div class="term-name">Opacity (alpha)</div>
+    <div class="term-syntax">rgba(10, 14, 26, <strong>0.40</strong>)</div>
+    <div class="term-desc">
+      The 4th number in <code>rgba()</code> — ranges from <code>0.0</code> (fully invisible) to <code>1.0</code> (fully opaque). This is the <strong>most critical parameter</strong> for wire-through-block visibility.<br><br>
+      <strong>0.0–0.20</strong> = Nearly invisible surface, wires fully visible<br>
+      <strong>0.30–0.45</strong> = The sweet spot — glass surface visible, wires glow bleeds through<br>
+      <strong>0.50–0.70</strong> = Heavier glass, wires barely visible<br>
+      <strong>0.75–1.0</strong> = Opaque panel, use for sidebar/inspector only
+    </div>
+    <div class="term-visual">
+      <div class="term-swatch" style="background:rgba(10,14,26,0.2);border-color:rgba(0,229,255,0.3)"></div>
+      <span style="font-size:10px;color:var(--text-secondary)">0.2</span>
+      <div class="term-swatch" style="background:rgba(10,14,26,0.4);border-color:rgba(0,229,255,0.3)"></div>
+      <span style="font-size:10px;color:var(--text-secondary)">0.4</span>
+      <div class="term-swatch" style="background:rgba(10,14,26,0.7);border-color:rgba(0,229,255,0.3)"></div>
+      <span style="font-size:10px;color:var(--text-secondary)">0.7</span>
+      <div class="term-swatch" style="background:rgba(10,14,26,1.0);border-color:rgba(0,229,255,0.3)"></div>
+      <span style="font-size:10px;color:var(--text-secondary)">1.0</span>
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">px (pixels)</div>
+    <div class="term-syntax">backdrop-filter: blur(<strong>8px</strong>)</div>
+    <div class="term-desc">
+      Unit of measurement on screen. 1px = 1 physical dot on a standard display (on Retina/HiDPI, the browser scales automatically).<br><br>
+      Used for: blur radius, border width, border-radius, shadow spread, gap sizes.<br><br>
+      <strong>blur 0px</strong> = No blur, fully sharp (transparent sheet, not glass)<br>
+      <strong>blur 4–8px</strong> = Light frosting — content behind softened but recognizable<br>
+      <strong>blur 12–16px</strong> = Heavy frost — content behind is color shapes only<br>
+      <strong>blur 20px+</strong> = Almost opaque visually, extremely GPU-heavy
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">backdrop-filter: blur()</div>
+    <div class="term-syntax">backdrop-filter: blur(8px);</div>
+    <div class="term-desc">
+      Applies a Gaussian blur to everything <strong>behind</strong> the element (not the element itself). This is what creates the "frosted glass" effect.<br><br>
+      <strong>How it works:</strong> The browser captures a bitmap of content behind the element, applies a blur kernel, then composites the result. This is why it's GPU-intensive — it's re-rendering on every frame if content moves behind it.<br><br>
+      <strong>Requirement:</strong> The element must have a semi-transparent background (<code>rgba</code> with alpha < 1.0) for the blur to be visible. If background is fully opaque, blur is invisible.
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">box-shadow</div>
+    <div class="term-syntax">box-shadow: <strong>0 0 20px</strong> rgba(0,229,255, 0.12);</div>
+    <div class="term-desc">
+      Adds shadow/glow around an element. The 4 values are:<br><br>
+      <code>offset-x</code> — horizontal shift (0 = centered)<br>
+      <code>offset-y</code> — vertical shift (0 = centered)<br>
+      <code>blur-radius</code> — how soft/spread the shadow is (20px = wide glow)<br>
+      <code>color</code> — shadow color with alpha for intensity<br><br>
+      <strong>For neon glow:</strong> use <code>0 0 [spread]px</code> with a bright color at low alpha. The <code>0 0</code> means no offset — glow radiates equally in all directions.<br><br>
+      <strong>For depth shadow:</strong> use <code>0 4px 16px rgba(0,0,0,0.3)</code> — offset-y of 4px creates a "floating above" look.<br><br>
+      <strong>Multiple shadows:</strong> Comma-separate them. First listed renders on top.<br><br>
+      <code>inset</code> prefix = shadow renders <strong>inside</strong> the element (used for rim light effect).
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">rgba() color</div>
+    <div class="term-syntax">rgba(<strong>0, 229, 255</strong>, 0.30)</div>
+    <div class="term-desc">
+      Color with transparency. Four values:<br>
+      <code>R</code> = Red (0–255)<br>
+      <code>G</code> = Green (0–255)<br>
+      <code>B</code> = Blue (0–255)<br>
+      <code>A</code> = Alpha/opacity (0.0–1.0)<br><br>
+      The RGB values define the hue. The Alpha controls how transparent that color is. This is used for borders, backgrounds, shadows — everywhere you need a color that lets content show through.
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">border-radius</div>
+    <div class="term-syntax">border-radius: <strong>12px</strong>;</div>
+    <div class="term-desc">
+      Rounds the corners of an element.<br>
+      <strong>0px</strong> = Sharp square corners<br>
+      <strong>8–14px</strong> = Subtle rounding (technical/professional feel)<br>
+      <strong>16–24px</strong> = Soft/friendly (mobile app feel)<br>
+      <strong>50%</strong> = Full circle (for square elements)<br><br>
+      For DVPE blocks: 10–14px keeps the technical modular synthesizer aesthetic. Higher values (20px+) start looking like consumer app cards.
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">z-index (layer order)</div>
+    <div class="term-syntax">z-index: <strong>20</strong>;</div>
+    <div class="term-desc">
+      Controls which element renders on top of which. Higher number = closer to viewer.<br><br>
+      <strong>DVPE layer stack:</strong><br>
+      z: 0 — Background (gradient + grid)<br>
+      z: 10 — Wire SVG layer (connections with glow)<br>
+      z: 20 — Module blocks (glass panels)<br>
+      z: 30 — Block content (knobs, labels)<br>
+      z: 40 — UI chrome (sidebar, inspector)<br><br>
+      <strong>Critical:</strong> Wires at z:10 and blocks at z:20 means wire glow is <em>behind</em> the glass. Because the glass is semi-transparent, the glow bleeds through — this is the whole effect.
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">SVG filter (wire glow)</div>
+    <div class="term-syntax">filter="url(#glow-source)"</div>
+    <div class="term-desc">
+      SVG filters are GPU-processed image effects applied to SVG elements. For wire glow:<br><br>
+      <code>feGaussianBlur stdDeviation="6"</code> — how far the glow spreads (in SVG units ≈ px)<br>
+      <code>feFlood flood-color</code> — the glow color<br>
+      <code>flood-opacity</code> — glow intensity (0.0–1.0)<br><br>
+      <strong>stdDeviation</strong> works like blur radius: higher = wider, softer glow. Values 4–8 are typical for wire glow. Above 12 gets very diffuse and expensive.
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">radial-gradient</div>
+    <div class="term-syntax">radial-gradient(at 40% 30%, #0f1923, #0a0e1a)</div>
+    <div class="term-desc">
+      Creates a circular color transition. The <code>at X% Y%</code> sets the center point. Used for DVPE's background to create subtle depth variation — lighter in the upper-left, darker at edges.<br><br>
+      Also used for knob surfaces: <code>radial-gradient(circle at 35% 35%, ...)</code> creates a highlight spot simulating a light source.
+    </div>
+  </div>
+
+  <div class="term-block">
+    <div class="term-name">repeating-linear-gradient (grid)</div>
+    <div class="term-syntax">repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(...) 40px)</div>
+    <div class="term-desc">
+      Creates repeated parallel lines. Two of these (0deg + 90deg) make a grid.<br>
+      The pattern says: transparent for 39px, then a 1px line of color, then repeat. The <code>40px</code> total = grid cell size.
+    </div>
+  </div>
+</div>`;
+
+  if (tab === 'prompts') return `
+<div class="guide-content">
+  <h2>AI Prompt Templates</h2>
+  <p>Copy these into Claude, Cursor, v0.dev, or any AI tool. Values update live from the playground sliders.</p>
+
+  <h3>Full Block Specification</h3>
+  <div class="css-output">
+    <button class="copy-btn" onclick="copyText('prompt1')">Copy</button>
+    <pre id="prompt1">Apply glassmorphism to module blocks:
+- background: rgba(10, 14, 26, ${STATE.blockBgOpacity.toFixed(2)})
+- backdrop-filter: blur(${STATE.blockBlur}px)
+- border: 1px solid rgba(CATEGORY_COLOR, ${STATE.blockBorderAlpha.toFixed(2)})
+- border-radius: ${STATE.blockRadius}px
+- box-shadow:
+    0 0 ${STATE.blockGlowSpread}px rgba(CATEGORY_COLOR, ${STATE.blockGlowAlpha.toFixed(2)}),
+    0 4px 16px rgba(0,0,0,${STATE.blockShadowAlpha.toFixed(2)}),
+    inset 0 1px 0 rgba(255,255,255,${STATE.blockRimAlpha.toFixed(3)})
+
+CRITICAL: Keep bg opacity at ${STATE.blockBgOpacity.toFixed(2)} so wire
+glow (rendered behind blocks) bleeds through the glass.
+
+Category colors:
+- Source: #00E5FF (cyan)
+- Filter: #00FF88 (green)
+- Effect: #B400FF (purple)
+- Envelope: #FFA000 (orange)
+- I/O: #FFE600 (yellow)</pre>
+  </div>
+
+  <h3>Wire Glow Specification</h3>
+  <div class="css-output">
+    <button class="copy-btn" onclick="copyText('prompt2')">Copy</button>
+    <pre id="prompt2">Connection wires (SVG, z-index BELOW blocks):
+- stroke-width: ${STATE.wireWidth}px
+- color: matches source port category
+- SVG glow filter: feGaussianBlur stdDeviation=${STATE.wireGlowBlur},
+  flood-opacity=${STATE.wireGlowAlpha.toFixed(2)}
+- Wire layer z-index: 10, blocks z-index: 20
+- Glow must be visible through glass blocks</pre>
+  </div>
+
+  <h3>Background Specification</h3>
+  <div class="css-output">
+    <button class="copy-btn" onclick="copyText('prompt3')">Copy</button>
+    <pre id="prompt3">Background: radial-gradient centered at 40% 30%,
+from #0f1923 to #0a0e1a.
+Grid overlay: repeating-linear-gradient,
+color rgba(0,229,255,${STATE.bgGridOpacity.toFixed(3)}),
+spacing ${STATE.bgGridSize}px, line width 1px.</pre>
+  </div>
+
+  <h3>Quick Fix: "Wires Not Visible Through Blocks"</h3>
+  <div class="css-output">
+    <button class="copy-btn" onclick="copyText('prompt4')">Copy</button>
+    <pre id="prompt4">The wire glow is not visible through blocks.
+Fix:
+1. Reduce .module-block background opacity to ${STATE.blockBgOpacity.toFixed(2)}
+2. Reduce backdrop-filter blur to ${STATE.blockBlur}px
+3. Ensure wire SVG layer z-index (10) is BELOW
+   blocks z-index (20)
+4. Increase wire glow: stdDeviation=${STATE.wireGlowBlur},
+   flood-opacity=${STATE.wireGlowAlpha.toFixed(2)}</pre>
+  </div>
+
+  <h3>"Never Say → Say Instead" Quick Reference</h3>
+  <div class="css-output">
+    <pre>❌ "Make it glassy"
+✅ "background rgba(10,14,26,${STATE.blockBgOpacity.toFixed(2)}), backdrop-filter blur(${STATE.blockBlur}px)"
+
+❌ "Add a glow"
+✅ "box-shadow 0 0 ${STATE.blockGlowSpread}px rgba(0,229,255,${STATE.blockGlowAlpha.toFixed(2)})"
+
+❌ "Make it transparent"
+✅ "bg opacity ${STATE.blockBgOpacity.toFixed(2)}, wire layer z:10 visible through block z:20"
+
+❌ "Neon border"
+✅ "border 1px solid rgba(0,229,255,${STATE.blockBorderAlpha.toFixed(2)}) + glow shadow"
+
+❌ "Dark background"
+✅ "radial-gradient #0f1923 → #0a0e1a, grid at rgba(0,229,255,${STATE.bgGridOpacity.toFixed(3)})"</pre>
+  </div>
+</div>`;
+
+  if (tab === 'css') return `
+<div class="guide-content">
+  <h2>Generated CSS</h2>
+  <p>Live CSS output from current slider values. Copy directly into your project.</p>
+
+  <h3>Block Glass (Canvas Modules)</h3>
+  <div class="css-output">
+    <button class="copy-btn" onclick="copyText('css1')">Copy</button>
+    <pre id="css1"><span class="comment">/* Glass block — category color via --cat-rgb variable */</span>
+<span class="prop">.module-block</span> {
+  <span class="prop">background</span>: <span class="val">rgba(10, 14, 26, ${STATE.blockBgOpacity.toFixed(2)})</span>;
+  <span class="prop">backdrop-filter</span>: <span class="val">blur(${STATE.blockBlur}px)</span>;
+  <span class="prop">-webkit-backdrop-filter</span>: <span class="val">blur(${STATE.blockBlur}px)</span>;
+  <span class="prop">border</span>: <span class="val">1px solid rgba(var(--cat-rgb), ${STATE.blockBorderAlpha.toFixed(2)})</span>;
+  <span class="prop">border-radius</span>: <span class="val">${STATE.blockRadius}px</span>;
+  <span class="prop">box-shadow</span>:
+    <span class="val">0 0 ${STATE.blockGlowSpread}px rgba(var(--cat-rgb), ${STATE.blockGlowAlpha.toFixed(2)})</span>,
+    <span class="val">0 4px 16px rgba(0, 0, 0, ${STATE.blockShadowAlpha.toFixed(2)})</span>,
+    <span class="val">inset 0 1px 0 rgba(255, 255, 255, ${STATE.blockRimAlpha.toFixed(3)})</span>;
+}</pre>
+  </div>
+
+  <h3>Wire Glow (SVG Filter)</h3>
+  <div class="css-output">
+    <button class="copy-btn" onclick="copyText('css2')">Copy</button>
+    <pre id="css2"><span class="comment">&lt;!-- SVG filter for wire glow --&gt;</span>
+&lt;<span class="prop">filter</span> id="wire-glow" x="-100%" y="-100%"
+       width="300%" height="300%"&gt;
+  &lt;<span class="prop">feGaussianBlur</span> in="SourceGraphic"
+    <span class="prop">stdDeviation</span>="<span class="val">${STATE.wireGlowBlur}</span>" result="b"/&gt;
+  &lt;<span class="prop">feFlood</span>
+    <span class="prop">flood-color</span>="<span class="val">rgba(var(--cat-rgb), 1)</span>"
+    <span class="prop">flood-opacity</span>="<span class="val">${STATE.wireGlowAlpha.toFixed(2)}</span>"
+    result="c"/&gt;
+  &lt;<span class="prop">feComposite</span> in="c" in2="b"
+    operator="in" result="g"/&gt;
+  &lt;<span class="prop">feMerge</span>&gt;
+    &lt;feMergeNode in="g"/&gt;
+    &lt;feMergeNode in="g"/&gt;
+    &lt;feMergeNode in="SourceGraphic"/&gt;
+  &lt;/feMerge&gt;
+&lt;/filter&gt;
+
+<span class="comment">&lt;!-- Wire path usage --&gt;</span>
+&lt;<span class="prop">path</span> stroke="<span class="val">rgba(var(--cat-rgb), 0.8)</span>"
+  <span class="prop">stroke-width</span>="<span class="val">${STATE.wireWidth}</span>"
+  filter="url(#wire-glow)" /&gt;</pre>
+  </div>
+
+  <h3>Background</h3>
+  <div class="css-output">
+    <button class="copy-btn" onclick="copyText('css3')">Copy</button>
+    <pre id="css3"><span class="prop">.canvas-background</span> {
+  <span class="prop">background</span>:
+    <span class="val">repeating-linear-gradient(0deg,
+      transparent, transparent ${STATE.bgGridSize - 1}px,
+      rgba(0,229,255,${STATE.bgGridOpacity.toFixed(3)}) ${STATE.bgGridSize - 1}px,
+      rgba(0,229,255,${STATE.bgGridOpacity.toFixed(3)}) ${STATE.bgGridSize}px)</span>,
+    <span class="val">repeating-linear-gradient(90deg,
+      transparent, transparent ${STATE.bgGridSize - 1}px,
+      rgba(0,229,255,${STATE.bgGridOpacity.toFixed(3)}) ${STATE.bgGridSize - 1}px,
+      rgba(0,229,255,${STATE.bgGridOpacity.toFixed(3)}) ${STATE.bgGridSize}px)</span>,
+    <span class="val">radial-gradient(ellipse at 40% 30%,
+      #0f1923 0%, ${STATE.bgBaseColor} 70%)</span>;
+}</pre>
+  </div>
+
+  <h3>Design Tokens (CSS Custom Properties)</h3>
+  <div class="css-output">
+    <button class="copy-btn" onclick="copyText('css4')">Copy</button>
+    <pre id="css4"><span class="prop">:root</span> {
+  <span class="comment">/* Category colors (use as: rgba(var(--cat-source), alpha) */</span>
+  <span class="prop">--cat-source</span>:   <span class="val">0, 229, 255</span>;
+  <span class="prop">--cat-filter</span>:   <span class="val">0, 255, 136</span>;
+  <span class="prop">--cat-effect</span>:   <span class="val">180, 0, 255</span>;
+  <span class="prop">--cat-envelope</span>: <span class="val">255, 160, 0</span>;
+  <span class="prop">--cat-io</span>:       <span class="val">255, 230, 0</span>;
+
+  <span class="comment">/* Block glass */</span>
+  <span class="prop">--glass-bg-opacity</span>:    <span class="val">${STATE.blockBgOpacity.toFixed(2)}</span>;
+  <span class="prop">--glass-blur</span>:          <span class="val">${STATE.blockBlur}px</span>;
+  <span class="prop">--glass-border-alpha</span>:  <span class="val">${STATE.blockBorderAlpha.toFixed(2)}</span>;
+  <span class="prop">--glass-glow-alpha</span>:    <span class="val">${STATE.blockGlowAlpha.toFixed(2)}</span>;
+  <span class="prop">--glass-glow-spread</span>:   <span class="val">${STATE.blockGlowSpread}px</span>;
+  <span class="prop">--glass-shadow-alpha</span>:  <span class="val">${STATE.blockShadowAlpha.toFixed(2)}</span>;
+  <span class="prop">--glass-rim-alpha</span>:     <span class="val">${STATE.blockRimAlpha.toFixed(3)}</span>;
+  <span class="prop">--glass-radius</span>:        <span class="val">${STATE.blockRadius}px</span>;
+
+  <span class="comment">/* Wire glow */</span>
+  <span class="prop">--wire-width</span>:      <span class="val">${STATE.wireWidth}px</span>;
+  <span class="prop">--wire-glow-blur</span>:  <span class="val">${STATE.wireGlowBlur}</span>;
+  <span class="prop">--wire-glow-alpha</span>: <span class="val">${STATE.wireGlowAlpha.toFixed(2)}</span>;
+
+  <span class="comment">/* Background */</span>
+  <span class="prop">--bg-grid-opacity</span>: <span class="val">${STATE.bgGridOpacity.toFixed(3)}</span>;
+  <span class="prop">--bg-grid-size</span>:    <span class="val">${STATE.bgGridSize}px</span>;
+}</pre>
+  </div>
+</div>`;
+
+  // Default: playground instructions
+  return `
+<div class="guide-content">
+  <h2>Playground Guide</h2>
+  <p>Drag the sliders on the left to tune glassmorphism parameters. The canvas updates in real-time. Drag blocks to see wire glow behavior.</p>
+
+  <h3>What to look for</h3>
+  <p><strong>Wire glow through blocks:</strong> The cyan/green/orange wire glow should be faintly visible through the glass block surfaces. If you can't see it, reduce BG Opacity and/or Blur.</p>
+  <p><strong>Neon border:</strong> The colored border + outer glow shadow creates the "neon" edge. Increase Border Alpha and Glow Alpha to make it pop. Increase Glow Spread for wider halo.</p>
+  <p><strong>Depth:</strong> The depth shadow (Shadow Alpha) makes blocks feel elevated above the background. The rim light (Rim Alpha) adds a subtle top edge highlight.</p>
+
+  <h3>Quick workflow</h3>
+  <p>1. Use <strong>Presets</strong> at the bottom of the controls to jump to a starting point</p>
+  <p>2. Fine-tune with sliders until the look matches your vision</p>
+  <p>3. Switch to <strong>CSS Output</strong> tab to get copy-paste code</p>
+  <p>4. Switch to <strong>AI Prompts</strong> tab to get ready-made prompts with your exact values</p>
+  <p>5. Switch to <strong>Terminology</strong> tab to understand what each parameter does</p>
+
+  <h3>Category colors</h3>
+  <p>Click the color chips at the top of controls to switch the active category. All blocks update to show the selected color. In your actual DVPE, each block uses its own category color.</p>
+
+  <h3>The key insight</h3>
+  <p>The <strong>wire-glow-through-block</strong> effect requires:<br>
+  • Block BG opacity ≤ 0.45<br>
+  • Block blur ≤ 10px<br>
+  • Wire glow intensity ≥ 0.40<br><br>
+  AI tools default to opacity 0.7+ and blur 16px+, which kills this effect. The exact values from this playground, exported as CSS or AI prompts, solve that.</p>
+</div>`;
+}
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+let activeTab = 'playground';
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeTab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateGuide();
+  });
+});
+
+function updateGuide() {
+  const panel = document.getElementById('guidePanel');
+  panel.innerHTML = getGuideContent(activeTab);
+}
+
+// ============================================================
+// COPY HELPER
+// ============================================================
+function copyText(id) {
+  const el = document.getElementById(id);
+  const text = el.textContent || el.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.parentElement.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ============================================================
+// RENDER ORCHESTRATOR
+// ============================================================
+function render() {
+  renderBackground();
+  renderWires();
+  renderBlocks();
+  updateGuide();
+
+  // Update chrome panels to reflect slider values
+  document.getElementById('controlsPanel').style.background = `rgba(10,14,26,${STATE.chromeBgOpacity})`;
+  document.getElementById('controlsPanel').style.backdropFilter = `blur(${STATE.chromeBlur}px)`;
+  document.getElementById('guidePanel').style.background = `rgba(10,14,26,${STATE.chromeBgOpacity})`;
+  document.getElementById('guidePanel').style.backdropFilter = `blur(${STATE.chromeBlur}px)`;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+buildControls();
+render();
+
+// Resize handler
+window.addEventListener('resize', () => {
+  renderBackground();
+  renderWires();
+});
+</script>
+</body>
+</html>

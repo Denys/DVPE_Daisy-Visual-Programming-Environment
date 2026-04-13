@@ -50,6 +50,9 @@ interface PatchState {
 
   // Dirty flag
   isDirty: boolean;
+
+  // Load counter — incremented on each loadPatch to signal Canvas to re-initialize nodes
+  loadCount: number;
 }
 
 interface PatchActions {
@@ -145,6 +148,7 @@ const initialState: PatchState = {
   selectedBlockIds: [],
   selectedConnectionIds: [],
   isDirty: false,
+  loadCount: 0,
 };
 
 // ============================================================================
@@ -786,6 +790,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
             state.isDirty = false;
+            state.loadCount = (state.loadCount ?? 0) + 1;
           });
 
           // Save initial state to history

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>DVPE — Noise Toaster Redesign</title>
+    <style>
+        :root {
+            --bg: #0b0908;
+            --bg2: #1a1410;
+            --panel: rgba(22, 19, 17, .94);
+            --line: rgba(230, 200, 155, .22);
+            --line2: rgba(255, 239, 210, .42);
+            --ink: #f5ead7;
+            --soft: #d0c1a8;
+            --muted: #8b7a66;
+
+            /* Signal Types */
+            --gold: #efad57;
+            /* audio */
+            --teal: #73d2c8;
+            /* mod / cv */
+            --rust: #ff8d5b;
+            /* control / gate */
+
+            --field: #9fd7ff;
+            --fixed: #b6a38c;
+            --future: #c6a0ff;
+
+            --display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+            --body: "Trebuchet MS", "Franklin Gothic Medium", "Arial Narrow", sans-serif;
+            --mono: Consolas, "Lucida Console", monospace;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 18% 16%, rgba(239, 173, 87, .16), transparent 24%),
+                radial-gradient(circle at 82% 14%, rgba(115, 210, 200, .12), transparent 22%),
+                linear-gradient(145deg, #241a14 0, #0f0e0d 48%, #060606 100%);
+            color: var(--ink);
+            font-family: var(--body);
+            font-size: 12px;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: .18;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, .02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, .02) 1px, transparent 1px);
+            background-size: 28px 28px;
+            z-index: 0;
+        }
+
+        /* ── TOPBAR ──────────────────────────────────────────────── */
+        .topbar {
+            height: 44px;
+            flex-shrink: 0;
+            background: rgba(11, 9, 8, 0.96);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            padding: 0 22px;
+            gap: 12px;
+            z-index: 200;
+            font-family: var(--body);
+        }
+
+        .logo {
+            font-family: var(--display);
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: .05em;
+            color: var(--gold);
+        }
+
+        .breadcrumb {
+            color: var(--muted);
+            font-size: 14px;
+            padding-top: 1px;
+        }
+
+        .patch-name {
+            font-family: var(--display);
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--rust);
+            box-shadow: 0 0 8px var(--rust);
+            animation: blink 2.2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .45
+            }
+        }
+
+        .sep {
+            flex: 1
+        }
+
+        .meta {
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: .06em;
+        }
+
+        /* ── DIAGRAM WRAPPER ─────────────────────────────────────── */
+        .diagram-wrap {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            z-index: 5;
+        }
+
+        .canvas {
+            position: relative;
+            width: 1480px;
+            height: 970px;
+        }
+
+        /* ── WIRE SVG ────────────────────────────────────────────── */
+        .wire-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: visible;
+        }
+
+        /* ── NODES LAYER ─────────────────────────────────────────── */
+        .nodes {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+        }
+
+        /* ── BLOCK BASE (Redesigned) ─────────────────────────────── */
+        .blk {
+            position: absolute;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, .12);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, .25);
+            backdrop-filter: blur(9px);
+            -webkit-backdrop-filter: blur(9px);
+            cursor: pointer;
+            transition: transform .16s ease, box-shadow .16s ease;
+            user-select: none;
+        }
+
+        .blk:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 44px rgba(0, 0, 0, .35);
+        }
+
+        /* Gradients derived from reference */
+        .performance {
+            background: linear-gradient(160deg, rgba(159, 215, 255, .16), rgba(18, 28, 37, .9))
+        }
+
+        .vco {
+            background: linear-gradient(160deg, rgba(239, 173, 87, .18), rgba(41, 29, 16, .9))
+        }
+
+        .lfo,
+        .vcf {
+            background: linear-gradient(160deg, rgba(115, 210, 200, .17), rgba(16, 32, 34, .92))
+        }
+
+        .areg,
+        .vca {
+            background: linear-gradient(160deg, rgba(255, 141, 91, .15), rgba(40, 24, 18, .92))
+        }
+
+        .noise,
+        .output {
+            background: linear-gradient(160deg, rgba(205, 179, 138, .14), rgba(34, 27, 21, .92))
+        }
+
+        /* block header */
+        .bh {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 15px 8px;
+        }
+
+        .bh-title {
+            font-family: var(--display);
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: .02em;
+            color: #fff4e4;
+            flex: 1;
+        }
+
+        /* block body */
+        .bb {
+            padding: 0 15px 10px;
+        }
+
+        /* ── PORTS (Redesigned) ──────────────────────────────────── */
+        .ports {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 6px 14px;
+        }
+
+        .pcol {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .port {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: crosshair;
+        }
+
+        .pd {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 1px solid rgba(0, 0, 0, 0.5);
+            transition: box-shadow .2s;
+        }
+
+        .pd.audio {
+            background: var(--gold);
+        }
+
+        .pd.mod {
+            background: var(--teal);
+        }
+
+        .pd.control {
+            background: var(--rust);
+        }
+
+        /* Port labels */
+        .pn {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: #e9c98f;
+            text-transform: uppercase;
+            letter-spacing: .16em;
+        }
+
+        .meta-info {
+            margin: 6px 0 12px;
+            color: #fff2dc;
+            line-height: 1.45;
+            font-size: 11px;
+        }
+
+        .knobs-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            padding: 5px 0 6px;
+        }
+
+        .knob-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .kl {
+            font-family: var(--mono);
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: .05em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="topbar">
+        <div class="logo">DVPE</div>
+        <div class="breadcrumb">›</div>
+        <div class="patch-name">
+            <div class="live-dot"></div>Noise Toaster Field Edition
+        </div>
+        <div class="sep"></div>
+        <div class="meta">Redesigned Block Engine</div>
+    </div>
+
+    <div class="diagram-wrap" id="dw">
+        <div class="canvas" id="cv">
+            <!-- ── WIRE SVG ── -->
+            <svg class="wire-svg" id="ws" xmlns="http://www.w3.org/2000/svg">
+            </svg>
+
+            <!-- ── NODES ─────────────────────────────────────────────────── -->
+            <div class="nodes">
+
+                <!-- PERFORMANCE LOGIC -->
+                <div class="blk performance" id="b-perf" style="left:80px;top:100px;width:240px">
+                    <div class="bh"><span class="bh-title">Field Performance Logic</span></div>
+                    <div class="bb">
+                        <div class="meta-info">A1..A8 note select + trigger<br>SW1 manual gate<br>SW2 panic</div>
+                    </div>
+                    <div class="ports">
+                        <div class="pcol"></div>
+                        <div class="pcol" style="align-items:flex-end">
+                            <div class="port"><span class="pn">NOTE</span>
+                                <div class="pd control"></div>
+                            </div>
+                            <div class="port"><span class="pn">TRIG</span>
+                                <div class="pd control"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WHITE NOISE -->
+                <div class="blk noise" id="b-noise" style="left:80px;top:400px;width:200px">
+                    <div class="bh"><span class="bh-title">White Noise</span></div>
+                    <div class="bb">
+                        <div class="meta-info">Fixed 18% blend<br>Pre-filter source</div>
+                    </div>
+                    <div class="ports">
+                        <div></div>
+                        <div class="port"><span class="pn">OUT</span>
+                            <div class="pd audio"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VCO -->
+                <div class="blk vco" id="b-vco" style="left:420px;top:80px;width:240px">
+                    <div class="bh"><span class="bh-title">VCO</span></div>
+                    <div class="bb">
+                        <div class="meta-info">Saw / Square / Triangle<br>K1 Freq | K2 LFO | K3 AREG<br>B1 cycle</div>
+                    </div>
+                    <div class="ports">
+                        <div class="pcol">
+                            <div class="port">
+                                <div class="pd control"></div><span class="pn">NOTE</span>
+                            </div>
+                            <div class="port">
+                                <div class="pd mod"></div><span class="pn">LFO</span>
+                            </div>
+                            <div class="port">
+                                <div class="pd mod"></div><span class="pn">ENV</span>
+                            </div>
+                        </div>
+                        <div class="pcol" style="align-items:flex-end">
+                            <div class="port"><span class="pn">OUT</span>
+                                <div class="pd audio"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AREG -->
+                <div class="blk areg" id="b-areg" style="left:420px;top:320px;width:240px">
+                    <div class="bh"><span class="bh-title">AREG</span></div>
+                    <div class="bb">
+                        <div class="meta-info">K7 Attack | K8 Release<br>B4 Repeat / Manual<br>Pitch + filter + VCA role
+                        </div>
+                    </div>
+                    <div class="ports">
+                        <div class="pcol">
+                            <div class="port">
+                                <div class="pd control"></div><span class="pn">TRIG</span>
+                            </div>
+                        </div>
+                        <div class="pcol" style="align-items:flex-end">
+                            <div class="port"><span class="pn">ENV</span>
+                                <div class="pd mod"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VCF -->
+                <div class="blk vcf" id="b-vcf" style="left:420px;top:540px;width:260px">
+                    <div class="bh"><span class="bh-title">VCF</span></div>
+                    <div class="bb">
+                        <div class="meta-info">SVF low-pass<br>K4 Cutoff | K5 Res | K6 Mod<br>B3 = LFO / AREG / Off
+                        </div>
+                        <div class="knobs-row">
+                            <div class="knob-wrap"><canvas class="knob-c" data-v="0.4" data-col="#73d2c8" width="34"
+                                    height="34"></canvas><span class="kl">CUTOFF</span></div>
+                            <div class="knob-wrap"><canvas class="knob-c" data-v="0.6" data-col="#73d2c8" width="34"
+                                    height="34"></canvas><span class="kl">RES</span></div>
+                        </div>
+                    </div>
+                    <div class="ports">
+                        <div class="pcol">
+                            <div class="port">
+                                <div class="pd audio"></div><span class="pn">OSC</span>
+                            </div>
+                            <div class="port">
+                                <div class="pd audio"></div><span class="pn">NOISE</span>
+                            </div>
+                            <div class="port">
+                                <div class="pd mod"></div><span class="pn">MOD</span>
+                            </div>
+                        </div>
+                        <div class="pcol" style="align-items:flex-end">
+                            <div class="port"><span class="pn">LPF</span>
+                                <div class="pd audio"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LFO -->
+                <div class="blk lfo" id="b-lfo" style="left:820px;top:100px;width:220px">
+                    <div class="bh"><span class="bh-title">LFO</span></div>
+                    <div class="bb">
+                        <div class="meta-info">Fixed 2.2 Hz<br>Sine / Square / Triangle<br>B2 cycle</div>
+                    </div>
+                    <div class="ports">
+                        <div></div>
+                        <div class="pcol" style="align-items:flex-end">
+                            <div class="port"><span class="pn">MOD</span>
+                                <div class="pd mod"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VCA -->
+                <div class="blk vca" id="b-vca" style="left:820px;top:540px;width:200px">
+                    <div class="bh"><span class="bh-title">VCA</span></div>
+                    <div class="bb">
+                        <div class="meta-info">AREG driven or bypassed<br>B5 bypass</div>
+                    </div>
+                    <div class="ports">
+                        <div class="pcol">
+                            <div class="port">
+                                <div class="pd audio"></div><span class="pn">IN</span>
+                            </div>
+                            <div class="port">
+                                <div class="pd mod"></div><span class="pn">ENV</span>
+                            </div>
+                        </div>
+                        <div class="pcol" style="align-items:flex-end">
+                            <div class="port"><span class="pn">OUT</span>
+                                <div class="pd audio"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OUTPUT -->
+                <div class="blk output" id="b-out" style="left:1100px;top:540px;width:200px">
+                    <div class="bh"><span class="bh-title">Output Stage</span></div>
+                    <div class="bb">
+                        <div class="meta-info">Stereo mirrored out<br>Fixed 72% level</div>
+                    </div>
+                    <div class="ports" style="margin-top:10px">
+                        <div class="pcol">
+                            <div class="port">
+                                <div class="pd audio"></div><span class="pn">LEFT</span>
+                            </div>
+                            <div class="port">
+                                <div class="pd audio"></div><span class="pn">RIGHT</span>
+                            </div>
+                        </div>
+                        <div></div>
+                    </div>
+                </div>
+
+            </div><!-- /nodes -->
+        </div><!-- /canvas -->
+    </div><!-- /diagram-wrap -->
+
+    <script>
+        // Visual rendering logic inherited from DVPE but adapted for the redesigned wire CSS
+        const WIRES = [
+            // Performance Logic -> VCO / AREG
+            { from: 'b-perf', fromIdx: 0, to: 'b-vco', toIdx: 0, t: 'control' },  // NOTE
+            { from: 'b-perf', fromIdx: 1, to: 'b-areg', toIdx: 0, t: 'control' }, // TRIG
+
+            // Modulators to VCO
+            { from: 'b-lfo', fromIdx: 0, to: 'b-vco', toIdx: 1, t: 'mod' }, // LFO -> VCO LFO IN
+            { from: 'b-areg', fromIdx: 0, to: 'b-vco', toIdx: 2, t: 'mod' }, // AREG -> VCO ENV IN
+
+            // Audios to VCF
+            { from: 'b-vco', fromIdx: 0, to: 'b-vcf', toIdx: 0, t: 'audio' }, // VCO -> VCF OSC IN
+            { from: 'b-noise', fromIdx: 0, to: 'b-vcf', toIdx: 1, t: 'audio' }, // NOISE -> VCF NOISE IN
+
+            // Modulators to VCF and VCA
+            { from: 'b-lfo', fromIdx: 0, to: 'b-vcf', toIdx: 2, t: 'mod' }, // LFO -> VCF MOD
+            { from: 'b-areg', fromIdx: 0, to: 'b-vca', toIdx: 1, t: 'mod' }, // AREG -> VCA ENV IN
+
+            // Main Audio Chain
+            { from: 'b-vcf', fromIdx: 0, to: 'b-vca', toIdx: 0, t: 'audio' }, // VCF -> VCA
+            { from: 'b-vca', fromIdx: 0, to: 'b-out', toIdx: 0, t: 'audio' }, // VCA -> OUT LEFT
+            { from: 'b-vca', fromIdx: 0, to: 'b-out', toIdx: 1, t: 'audio' }  // VCA -> OUT RIGHT
+        ];
+
+        // Coordinates extraction
+        function getPortCenter(blockId, isOut, portIdx) {
+            const block = document.getElementById(blockId);
+            const pcols = block.querySelectorAll('.pcol');
+            let portElements = [];
+
+            if (pcols.length >= 2) {
+                portElements = pcols[isOut ? 1 : 0].querySelectorAll('.port');
+            } else if (pcols.length === 1) {
+                portElements = pcols[0].querySelectorAll('.port');
+            } else {
+                // If no pcol is used, just grab all `.port`
+                portElements = block.querySelectorAll('.port');
+            }
+
+            let portElement = portElements[portIdx] || portElements[0];
+
+            const box = portElement.querySelector('.pd').getBoundingClientRect();
+            const cbox = document.getElementById('cv').getBoundingClientRect();
+
+            return {
+                x: box.left + box.width / 2 - cbox.left,
+                y: box.top + box.height / 2 - cbox.top
+            };
+        }
+        const WCOL = { audio: 'var(--gold)', mod: 'var(--teal)', control: 'var(--rust)' };
+
+        function drawWires() {
+            const svg = document.getElementById('ws');
+
+            WIRES.forEach(w => {
+                const pc1 = getPortCenter(w.from, true, w.fromIdx);
+                const pc2 = getPortCenter(w.to, false, w.toIdx);
+
+                const dx = pc2.x - pc1.x;
+                const str = Math.max(60, Math.abs(dx) * 0.42);
+                const cx1 = pc1.x + str;
+                const cy1 = pc1.y;
+                const cx2 = pc2.x - str;
+                const cy2 = pc2.y;
+
+                const d = `M${pc1.x},${pc1.y} C${cx1},${cy1} ${cx2},${cy2} ${pc2.x},${pc2.y}`;
+                const col = WCOL[w.t];
+
+                const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                p.setAttribute('d', d);
+                p.setAttribute('stroke', col);
+
+                // Style dashed lines to mimic the original analog reference chart
+                if (w.t === 'audio') {
+                    p.setAttribute('stroke-width', '3.5');
+                } else if (w.t === 'mod') {
+                    p.setAttribute('stroke-width', '3');
+                    p.setAttribute('stroke-dasharray', '8 10');
+                } else if (w.t === 'control') {
+                    p.setAttribute('stroke-width', '2.7');
+                    p.setAttribute('stroke-dasharray', '3 11');
+                    p.setAttribute('stroke-linecap', 'round');
+                }
+
+                p.setAttribute('fill', 'none');
+                p.setAttribute('opacity', '0.85');
+                svg.appendChild(p);
+            });
+        }
+
+        function drawKnob(c) {
+            const v = parseFloat(c.dataset.v) || 0.5;
+            const col = c.dataset.col || '#73d2c8';
+            const ctx = c.getContext('2d');
+            const W = c.width, H = c.height;
+            const cx = W / 2, cy = H / 2;
+            const r = Math.min(W, H) / 2 - 2;
+            const sa = 0.75 * Math.PI, ea = 2.25 * Math.PI;
+            const va = sa + v * (ea - sa);
+
+            ctx.clearRect(0, 0, W, H);
+            ctx.beginPath(); ctx.arc(cx, cy, r, sa, ea);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+
+            ctx.beginPath(); ctx.arc(cx, cy, r, sa, va);
+            ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+
+            ctx.beginPath(); ctx.arc(cx, cy, r - 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
+
+            const ix = cx + Math.cos(va) * (r - 7), iy = cy + Math.sin(va) * (r - 7);
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ix, iy);
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Wait a tiny bit for layout to settle before drawing lines
+            setTimeout(() => {
+                drawWires();
+                document.querySelectorAll('.knob-c').forEach(drawKnob);
+            }, 100);
+        });
+    </script>
+</body>
+
+</html>
