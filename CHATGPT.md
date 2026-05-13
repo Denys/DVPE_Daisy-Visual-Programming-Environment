@@ -4,6 +4,8 @@
 
 ---
 
+Read `AGENTS.md` first, then `LATEST_PROJECTS.md`.
+
 ## Platform Identification
 
 You are in ChatGPT/Codex mode when the environment provides:
@@ -223,4 +225,3 @@ During execution:
 At session end:
 - Sync `CHECKPOINT.md` and monitoring docs if project state changed
 - Confirm no secrets/temp artifacts are introduced
-

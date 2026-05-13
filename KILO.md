@@ -4,6 +4,8 @@
 
 ---
 
+Read `AGENTS.md` first, then `LATEST_PROJECTS.md`.
+
 ## Platform Identification
 
 **You are using Kilo Code if**:

@@ -4,6 +4,8 @@
 
 ---
 
+Read `AGENTS.md` first, then `LATEST_PROJECTS.md`. Use `.claude/MODE_SELECTOR.md` when the task depends on DVPE versus firmware routing.
+
 ## PART 1: Agent Architecture
 
 You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency.

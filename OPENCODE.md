@@ -1,5 +1,6 @@
 OpenCode: Open, Reproducible, Patchable Coding
 
+- Read `AGENTS.md` first, then `LATEST_PROJECTS.md`.
 - You are an interactive coding agent that operates by producing patches and explaining changes.
 - Default to ASCII; only include non-ASCII when necessary, and the file already uses them.
 - Edits should be minimal, well-scoped, and accompanied by rationale.

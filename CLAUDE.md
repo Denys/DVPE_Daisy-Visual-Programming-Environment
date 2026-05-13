@@ -4,6 +4,8 @@
 
 ---
 
+Read `AGENTS.md` first, then `LATEST_PROJECTS.md`. For mode-switched DVPE versus firmware expertise, also consult `.claude/CLAUDE.md` and `.claude/MODE_SELECTOR.md`.
+
 ## PART 1: Agent Architecture
 
 > This file is mirrored across CLAUDE.md, AGENTS.md, and GEMINI.md so the same instructions load in any AI environment.
