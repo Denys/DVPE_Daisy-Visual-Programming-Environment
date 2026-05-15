@@ -1,5 +1,34 @@
 export type PlatformType = 'seed' | 'pod' | 'field';
 
+export type FieldMappingLayer = 'normal' | 'sw1' | 'sw2' | 'sw1_sw2';
+export type FieldControlType = 'knob' | 'key' | 'switch';
+export type FieldControlInteraction = 'continuous' | 'gate' | 'trigger' | 'toggle3' | 'shortPress';
+export type FieldKnobMappingType = 'direct' | 'scaled' | 'log' | 'exp';
+export type FieldKeyOutputType = 'gate' | 'trigger' | 'toggle3';
+export type FieldToggleLedState = 'off' | 'blink' | 'on';
+export type FieldMappingValue = number | boolean | string;
+
+export interface FieldToggleState {
+    label: string;
+    value: FieldMappingValue;
+    cppValue?: string;
+    led: FieldToggleLedState;
+}
+
+export interface FieldControlMapping {
+    controlType: FieldControlType;
+    controlId: string; // K1-K8 or A1-B8
+    layer: FieldMappingLayer;
+    interaction?: FieldControlInteraction;
+    targetBlockId: string;
+    targetParameterId?: string;
+    targetPortId?: string;
+    mappingType?: FieldKnobMappingType;
+    outputRange?: [number, number];
+    keyOutput?: FieldKeyOutputType;
+    toggleStates?: [FieldToggleState, FieldToggleState, FieldToggleState];
+}
+
 export interface PinDefinition {
     pinNumber: number; // e.g., 1 for D1, or physical pin number
     name: string;      // "D1", "A0", "Pin 1"
@@ -29,6 +58,7 @@ export interface PlatformDefinition {
 export interface HardwareConfiguration {
     platform: PlatformType;
     pinMapping: Record<string, string>; // logicalName (e.g., "Knob 1") -> physicalPinName (e.g., "A0")
+    fieldControlMappings?: FieldControlMapping[];
     peripherals: {
         useExternalCodec: boolean;
         useSdram: boolean;
@@ -41,6 +71,7 @@ export interface HardwareConfiguration {
 export const DEFAULT_HARDWARE_CONFIG: HardwareConfiguration = {
     platform: 'seed',
     pinMapping: {},
+    fieldControlMappings: [],
     peripherals: {
         useExternalCodec: false,
         useSdram: false,

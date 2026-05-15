@@ -18,7 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import ParameterSlider from './ParameterSlider';
-import { AI_MODELS, getAIKey, setAIKey, type AIProvider } from '@/codegen/advancedExportService';
+import { AI_MODELS, getAIKey, normalizeAIModel, setAIKey, type AIProvider } from '@/codegen/advancedExportService';
 
 export const DesignExperimentator: React.FC = () => {
   const { 
@@ -45,6 +45,13 @@ export const DesignExperimentator: React.FC = () => {
   useEffect(() => {
     setApiKeyInput(getAIKey(aiProvider));
   }, [aiProvider]);
+
+  useEffect(() => {
+    const normalizedModel = normalizeAIModel(aiProvider, aiModel);
+    if (normalizedModel !== aiModel) {
+      setAIModel(normalizedModel);
+    }
+  }, [aiProvider, aiModel, setAIModel]);
 
   const handleKeyBlur = () => {
     setAIKey(aiProvider, apiKeyInput);
@@ -182,7 +189,7 @@ export const DesignExperimentator: React.FC = () => {
                   onChange={(e) => {
                     const p = e.target.value as AIProvider;
                     setAIProvider(p);
-                    setAIModel(AI_MODELS[p][0].id);
+                    setAIModel(normalizeAIModel(p, ''));
                   }}
                   className="w-full px-3 py-1.5 rounded bg-surface-primary border border-border text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-cv-primary"
                 >

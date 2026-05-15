@@ -1,18 +1,32 @@
-import React, { useState } from 'react';
-import { X, Cpu, Settings, Grid } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Cpu, Settings, Grid, SlidersHorizontal } from 'lucide-react';
 import { usePatchStore } from '@/stores/patchStore';
 import { useUIStore } from '@/stores/uiStore';
 import { PlatformSelector } from './PlatformSelector';
 import { PinMapper } from './PinMapper';
 import { PeripheralConfig } from './PeripheralConfig';
+import { FieldMappingPanel } from './FieldMappingPanel';
 import { HardwareConfiguration } from '@/types/hardware';
+import { BlockRegistry } from '@/core/blocks/BlockRegistry';
+import { BlockDefinition } from '@/types';
 
-type Tab = 'platform' | 'pins' | 'peripherals';
+type Tab = 'platform' | 'pins' | 'field' | 'peripherals';
 
 export const ArchitectureWindow: React.FC = () => {
-    const { hardwareConfig, setHardwareConfig } = usePatchStore();
+    const { hardwareConfig, setHardwareConfig, blocks, connections } = usePatchStore();
     const { closeModal } = useUIStore();
     const [activeTab, setActiveTab] = useState<Tab>('platform');
+
+    const blockDefs = useMemo(() => {
+        const defs = new Map<string, BlockDefinition>();
+        blocks.forEach((block) => {
+            const def = BlockRegistry.get(block.definitionId);
+            if (def) {
+                defs.set(block.definitionId, def);
+            }
+        });
+        return defs;
+    }, [blocks]);
 
     const handleClose = () => {
         closeModal();
@@ -85,6 +99,16 @@ export const ArchitectureWindow: React.FC = () => {
                             <Settings size={18} />
                             Peripherals
                         </button>
+                        <button
+                            onClick={() => setActiveTab('field')}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'field'
+                                ? 'bg-yellow-500 text-slate-900'
+                                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                                }`}
+                        >
+                            <SlidersHorizontal size={18} />
+                            Field Mapping
+                        </button>
                     </div>
 
                     {/* Content Area */}
@@ -113,6 +137,15 @@ export const ArchitectureWindow: React.FC = () => {
                             <PeripheralConfig
                                 config={hardwareConfig}
                                 onUpdate={handlePeripheralUpdate}
+                            />
+                        )}
+                        {activeTab === 'field' && (
+                            <FieldMappingPanel
+                                mappings={hardwareConfig.fieldControlMappings ?? []}
+                                blocks={blocks}
+                                blockDefs={blockDefs}
+                                connections={connections}
+                                onChange={(fieldControlMappings) => setHardwareConfig({ fieldControlMappings })}
                             />
                         )}
                     </div>

@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ViewportState } from '@/types';
-import type { AIProvider } from '@/codegen/advancedExportService';
+import { getDefaultAIModel, type AIProvider } from '@/codegen/advancedExportService';
 
 // ============================================================================
 // TYPES
@@ -207,7 +207,7 @@ const initialState: UIState = {
   },
   customPresets: [],
   aiProvider: 'gemini' as AIProvider,
-  aiModel: 'gemini-2.0-flash',
+  aiModel: getDefaultAIModel('gemini'),
 };
 
 // ============================================================================

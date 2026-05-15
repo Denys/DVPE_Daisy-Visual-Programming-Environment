@@ -9,7 +9,7 @@ import { Toaster, toast } from 'sonner';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { Palette, Loader2 } from 'lucide-react';
-import { advancedExportWithAI, getHardwarePrefix, type AdvancedExportOutput } from '@/codegen/advancedExportService';
+import { advancedExportWithAI, getHardwarePrefix, normalizeAIModel, type AdvancedExportOutput } from '@/codegen/advancedExportService';
 
 import { cn } from '@/lib/utils';
 import { useUIStore, usePatchStore } from '@/stores';
@@ -427,6 +427,7 @@ const App: React.FC = () => {
       const projectName = `${prefix}_${baseName}`;
 
       const { aiProvider, aiModel } = useUIStore.getState();
+      const normalizedModel = normalizeAIModel(aiProvider, aiModel);
 
       toast.loading('Sending to AI for Daisy/Noderr correction pass…', { id: 'adv-export' });
 
@@ -436,7 +437,7 @@ const App: React.FC = () => {
         projectName,
         targetHardware: hw,
         provider: aiProvider,
-        modelId: aiModel,
+        modelId: normalizedModel,
       });
 
       setAiCorrectedCode(corrected);

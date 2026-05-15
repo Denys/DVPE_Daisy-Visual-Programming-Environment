@@ -308,6 +308,43 @@ export interface ConnectionValidation {
 }
 
 // ============================================================================
+// POLY VOICE BLANKET
+// ============================================================================
+
+export type PolyVoiceAllocatorPolicy = 'reuse_free_oldest';
+
+/**
+ * Canvas directive that marks visible blocks as a polyphonic voice template.
+ * Codegen clones memberBlockIds per voice and sums audio leaving the blanket.
+ */
+export interface PolyVoiceBlanket {
+  /** Unique directive identifier */
+  id: string;
+  /** Display label shown on the canvas */
+  label?: string;
+  /** Top-left canvas position */
+  position: {
+    x: number;
+    y: number;
+  };
+  /** Rectangle size on the canvas */
+  size: {
+    width: number;
+    height: number;
+  };
+  /** Number of cloned voices */
+  voiceCount: number;
+  /** Daisy Field keyboard octave */
+  octave: number;
+  /** Voice allocation policy */
+  allocator: PolyVoiceAllocatorPolicy;
+  /** Explicit block ids scoped by this blanket */
+  memberBlockIds: string[];
+  /** Whether this blanket is selected */
+  selected?: boolean;
+}
+
+// ============================================================================
 // PATCH / PROJECT
 // ============================================================================
 
@@ -346,6 +383,8 @@ export interface PatchGraph {
   /** All connections */
   /** All connections */
   connections: Connection[];
+  /** Polyphonic canvas directives */
+  polyVoiceBlankets?: PolyVoiceBlanket[];
   /** Hardware configuration */
   hardwareConfig?: HardwareConfiguration;
 }

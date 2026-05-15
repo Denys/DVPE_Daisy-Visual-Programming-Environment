@@ -11,11 +11,19 @@ import {
     SignalType,
     PortDirection,
     HardwareConfiguration,
+    FieldControlMapping,
+    FieldMappingLayer,
+    PolyVoiceBlanket,
 } from '@/types';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import { GraphAnalyzer, ProcessingOrder } from '@/core/graph/GraphAnalyzer';
 import { HardwareMappingAnalyzer, HardwareMapping } from './analyzers/HardwareMappingAnalyzer';
 import { CustomBlockDefinition } from '@/types/customBlock';
+import {
+    buildFieldMappingConflictErrors,
+    getFieldKeyIndex,
+    getFieldKnobIndex,
+} from '@/core/fieldMapping';
 
 // ============================================================================
 // TYPES
@@ -31,6 +39,7 @@ export interface PatchMetadata {
 export interface PatchGraph {
     blocks: BlockInstance[];
     connections: Connection[];
+    polyVoiceBlankets?: PolyVoiceBlanket[];
     metadata: PatchMetadata;
     hardwareConfig?: HardwareConfiguration;
 }
@@ -47,6 +56,11 @@ interface GenerationContext {
     blockDefs: Map<string, BlockDefinition>;
     instancePrefix: string;
     inputOverrides: Map<string, string>; // key: `${targetBlockId}:${targetPortId}`
+}
+
+interface CustomPortEndpoint {
+    blockId: string;
+    portId: string;
 }
 
 // ============================================================================
@@ -93,6 +107,39 @@ export class CodeGenerator {
                 mainCpp: '',
                 makefile: '',
                 errors: [this.processingOrder.error || 'Invalid graph'],
+                warnings: [],
+            };
+        }
+
+        const fieldMappingErrors = buildFieldMappingConflictErrors(
+            this.patch.hardwareConfig?.fieldControlMappings,
+            this.patch.connections
+        );
+        if (fieldMappingErrors.length > 0) {
+            return {
+                mainCpp: '',
+                makefile: '',
+                errors: fieldMappingErrors,
+                warnings: [],
+            };
+        }
+
+        const polyVoiceGroupErrors = this.validatePolyVoiceGroups();
+        if (polyVoiceGroupErrors.length > 0) {
+            return {
+                mainCpp: '',
+                makefile: '',
+                errors: polyVoiceGroupErrors,
+                warnings: [],
+            };
+        }
+
+        const polyVoiceBlanketErrors = this.validatePolyVoiceBlankets();
+        if (polyVoiceBlanketErrors.length > 0) {
+            return {
+                mainCpp: '',
+                makefile: '',
+                errors: polyVoiceBlanketErrors,
                 warnings: [],
             };
         }
@@ -171,7 +218,152 @@ float midi_gate_global = 0.0f;`);
             parts.push(this.generatePolyGrainletVoiceClass());
         }
 
+        if (this.usesPolyVoiceAllocator()) {
+            parts.push(this.generatePolyVoiceGroupAllocatorClass());
+        }
+
         return parts.join('\n');
+    }
+
+    private generatePolyVoiceGroupAllocatorClass(): string {
+        return `
+// ============================================================================
+// POLY VOICE GROUP ALLOCATOR
+// ============================================================================
+template <size_t NumVoices>
+class PolyVoiceGroupAllocator {
+  public:
+    void Init() {
+        note_counter_ = 0;
+        for(size_t i = 0; i < NumVoices; ++i) {
+            voices_[i].active = false;
+            voices_[i].gate = false;
+            voices_[i].key_index = -1;
+            voices_[i].freq_hz = 0.0f;
+            voices_[i].age = 0;
+        }
+    }
+
+    void UpdateKeys(DaisyField& field, int octave) {
+        for(size_t i = 0; i < kNumPlayableKeys; ++i) {
+            const size_t key_index = PlayableKeyAt(i);
+            if(field.KeyboardRisingEdge(key_index)) {
+                const float midi_note = KeyToMidi(key_index, octave);
+                NoteOn(key_index, mtof(midi_note));
+            }
+            if(field.KeyboardFallingEdge(key_index)) {
+                NoteOff(key_index);
+            }
+        }
+    }
+
+    float GetFrequency(size_t voice_index) const {
+        if(voice_index >= NumVoices || !voices_[voice_index].active) {
+            return 0.0f;
+        }
+        return voices_[voice_index].freq_hz;
+    }
+
+    bool GetGate(size_t voice_index) const {
+        return voice_index < NumVoices && voices_[voice_index].active && voices_[voice_index].gate;
+    }
+
+    float GetPanOffset(size_t voice_index, float spread) const {
+        if(voice_index >= NumVoices || voices_[voice_index].key_index < 0) {
+            return 0.0f;
+        }
+        const float key_position = KeyPan(static_cast<size_t>(voices_[voice_index].key_index), spread);
+        return key_position * 0.5f;
+    }
+
+  private:
+    struct Voice {
+        bool active;
+        bool gate;
+        int key_index;
+        float freq_hz;
+        uint32_t age;
+    };
+
+    static constexpr size_t kNumPlayableKeys = 13;
+
+    static size_t PlayableKeyAt(size_t playable_index) {
+        static const size_t playable_keys[kNumPlayableKeys] = {
+            0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 12, 13, 14,
+        };
+        return playable_keys[playable_index];
+    }
+
+    static float KeyToMidi(size_t key_index, int octave) {
+        static const float scale[16] = {
+            0.0f, 2.0f, 4.0f, 5.0f,
+            7.0f, 9.0f, 11.0f, 12.0f,
+            0.0f, 1.0f, 3.0f, 0.0f,
+            6.0f, 8.0f, 10.0f, 0.0f,
+        };
+        return 24.0f + (12.0f * static_cast<float>(octave)) + scale[key_index];
+    }
+
+    static float KeyPan(size_t key_index, float spread) {
+        const float key_position = (static_cast<float>(key_index) / 14.0f) * 2.0f - 1.0f;
+        return fclamp(key_position * fclamp(spread, 0.0f, 1.0f), -1.0f, 1.0f);
+    }
+
+    Voice* FindVoiceForKey(size_t key_index) {
+        for(size_t i = 0; i < NumVoices; ++i) {
+            if(voices_[i].active && voices_[i].key_index == static_cast<int>(key_index)) {
+                return &voices_[i];
+            }
+        }
+        return nullptr;
+    }
+
+    Voice* FindFreeVoice() {
+        for(size_t i = 0; i < NumVoices; ++i) {
+            if(!voices_[i].active || !voices_[i].gate) {
+                return &voices_[i];
+            }
+        }
+        return nullptr;
+    }
+
+    Voice* FindOldestVoice() {
+        Voice* oldest = &voices_[0];
+        for(size_t i = 1; i < NumVoices; ++i) {
+            if(voices_[i].age < oldest->age) {
+                oldest = &voices_[i];
+            }
+        }
+        return oldest;
+    }
+
+    void NoteOn(size_t key_index, float freq_hz) {
+        Voice* voice = FindVoiceForKey(key_index);
+        if(voice == nullptr) {
+            voice = FindFreeVoice();
+        }
+        if(voice == nullptr) {
+            voice = FindOldestVoice();
+        }
+        if(voice != nullptr) {
+            voice->key_index = static_cast<int>(key_index);
+            voice->freq_hz = freq_hz;
+            voice->gate = true;
+            voice->active = true;
+            voice->age = ++note_counter_;
+        }
+    }
+
+    void NoteOff(size_t key_index) {
+        Voice* voice = FindVoiceForKey(key_index);
+        if(voice != nullptr) {
+            voice->gate = false;
+        }
+    }
+
+    Voice voices_[NumVoices];
+    uint32_t note_counter_;
+};`;
     }
 
     private generatePolyGrainletVoiceClass(): string {
@@ -486,7 +678,16 @@ private:
 
         lines.push('// DSP Modules');
 
+        const blanketMemberIds = this.getPolyVoiceBlanketMemberIds();
+        this.getPolyVoiceBlankets().forEach(blanket => {
+            const instanceName = this.getPolyVoiceBlanketInstanceName(blanket);
+            lines.push(`PolyVoiceGroupAllocator<${this.getPolyVoiceBlanketVoiceCount(blanket)}> ${instanceName}_voices;`);
+            this.generatePolyVoiceBlanketDeclarations(blanket, lines);
+        });
+
         this.patch.blocks.forEach(block => {
+            if (blanketMemberIds.has(block.id)) return;
+
             const def = this.blockDefs.get(block.definitionId);
             if (!def) return;
 
@@ -494,7 +695,12 @@ private:
 
             // Phase 13.3: custom blocks are flattened into internal modules
             if (this.isCustomBlockDefinition(def)) {
-                this.generateCustomDeclarations(instanceName, def, lines);
+                if (this.isPolyVoiceGroupDefinition(def)) {
+                    lines.push(`PolyVoiceGroupAllocator<${this.getPolyVoiceCount(block)}> ${instanceName}_voices;`);
+                    this.generatePolyVoiceGroupDeclarations(instanceName, def, lines, this.getPolyVoiceCount(block));
+                } else {
+                    this.generateCustomDeclarations(instanceName, def, lines);
+                }
                 return;
             }
 
@@ -531,7 +737,13 @@ private:
         lines.push('');
         lines.push('// Signal Variables');
 
+        this.getPolyVoiceBlankets().forEach(blanket => {
+            this.generatePolyVoiceBlanketSignalDeclarations(blanket, lines);
+        });
+
         this.patch.blocks.forEach(block => {
+            if (blanketMemberIds.has(block.id)) return;
+
             const def = this.blockDefs.get(block.definitionId);
             if (!def) return;
 
@@ -539,7 +751,11 @@ private:
 
             // Phase 13.3: include flattened internal signal variables
             if (this.isCustomBlockDefinition(def)) {
-                this.generateCustomSignalDeclarations(instanceName, def, lines);
+                if (this.isPolyVoiceGroupDefinition(def)) {
+                    this.generatePolyVoiceGroupSignalDeclarations(instanceName, def, lines, this.getPolyVoiceCount(block));
+                } else {
+                    this.generateCustomSignalDeclarations(instanceName, def, lines);
+                }
             }
 
             def.ports
@@ -638,6 +854,11 @@ private:
 
         // Read knobs
         lines.push('    // Read hardware controls');
+        if (this.hasFieldControlMappings()) {
+            lines.push('    const bool field_sw1_held = hw.GetSwitch(DaisyField::SW_1)->Pressed();');
+            lines.push('    const bool field_sw2_held = hw.GetSwitch(DaisyField::SW_2)->Pressed();');
+            lines.push('    const int field_mapping_layer = field_sw1_held && field_sw2_held ? 3 : (field_sw2_held ? 2 : (field_sw1_held ? 1 : 0));');
+        }
 
         // Handle Knobs
         if (platform === 'seed') {
@@ -708,7 +929,22 @@ private:
         lines.push('    for (size_t i = 0; i < size; i++) {');
 
         // Generate processing code for each block in order
+        const generatedBlankets = new Set<string>();
         this.processingOrder.blocks.forEach(blockId => {
+            const blanket = this.getPolyVoiceBlanketForMember(blockId);
+            if (blanket) {
+                if (!generatedBlankets.has(blanket.id)) {
+                    generatedBlankets.add(blanket.id);
+                    const code = this.generatePolyVoiceBlanketProcessing(blanket);
+                    if (code.length > 0) {
+                        lines.push('');
+                        lines.push(`        // ${blanket.label || 'Poly Voice Blanket'}`);
+                        code.forEach(line => lines.push('        ' + line));
+                    }
+                }
+                return;
+            }
+
             const block = this.patch.blocks.find(b => b.id === blockId);
             if (!block) return;
 
@@ -744,6 +980,9 @@ private:
 
         // Custom Block Handling (Phase 13.3 - flattening)
         if (this.isCustomBlockDefinition(def)) {
+            if (this.isPolyVoiceGroupDefinition(def)) {
+                return this.generatePolyVoiceGroupProcessing(block, def);
+            }
             return this.generateCustomBlockProcessing(block, def);
         }
 
@@ -1225,16 +1464,22 @@ private:
     }
 
     private generateAdsrCode(block: BlockInstance, name: string): string[] {
-        const gateIn = this.getInputConnection(block.id, 'gate');
-        const gateVar = gateIn ? this.getSourceVariable(gateIn) : 'false';
+        const gateVar = this.getInputExpression(block, 'gate', 'false');
+        const attack = this.getParameterExpression(block, 'attack', 0.01);
+        const decay = this.getParameterExpression(block, 'decay', 0.1);
+        const sustain = this.getParameterExpression(block, 'sustain', 0.7);
+        const release = this.getParameterExpression(block, 'release', 0.3);
         return [
+            `${name}.SetTime(ADSR_SEG_ATTACK, ${attack});`,
+            `${name}.SetTime(ADSR_SEG_DECAY, ${decay});`,
+            `${name}.SetSustainLevel(${sustain});`,
+            `${name}.SetTime(ADSR_SEG_RELEASE, ${release});`,
             `cv_${name}_out = ${name}.Process(${gateVar});`
         ];
     }
 
     private generateAdEnvCode(block: BlockInstance, name: string): string[] {
-        const trigIn = this.getInputConnection(block.id, 'trig');
-        const trigVar = trigIn ? this.getSourceVariable(trigIn) : 'false';
+        const trigVar = this.getInputExpression(block, 'trig', 'false');
         return [
             `if (${trigVar}) ${name}.Trigger();`,
             `cv_${name}_out = ${name}.Process();`
@@ -1337,8 +1582,8 @@ private:
             const knobNum = channel + 1;
             valueExpr = `hw.knob${knobNum}.Value()`;
         } else if (platform === 'field') {
-            // Field uses hw.knob[i] array
-            valueExpr = `hw.knob[${channel}].Value()`;
+            const safeChannel = Math.min(Math.max(0, channel), 7);
+            valueExpr = `hw.GetKnobValue(DaisyField::KNOB_${safeChannel + 1})`;
         }
 
         return [`cv_${name}_out = ${this.formatFloat(min)} + (${valueExpr} * ${this.formatFloat(range)});`];
@@ -1361,9 +1606,15 @@ private:
     }
 
     private generateGateTriggerInCode(block: BlockInstance, name: string): string[] {
-        const channel = parseInt(block.parameterValues['channel'] as string) || 0;
+        const platform = this.getTargetPlatform();
+        if (platform === 'field') {
+            return [
+                `gate_${name}_gate = hw.gate_in.State();`,
+                `gate_${name}_trig = hw.gate_in.Trig();`,
+            ];
+        }
 
-        // Daisy Field has 2 gate inputs, mapped to index 0 and 1
+        const channel = parseInt(block.parameterValues['channel'] as string) || 0;
         return [
             `gate_${name}_gate = hw.GateInput[${channel}].State();`,
             `gate_${name}_trig = hw.GateInput[${channel}].Trig();`,
@@ -1917,6 +2168,10 @@ private:
         return (def as CustomBlockDefinition).isCustom === true;
     }
 
+    private isPolyVoiceGroupDefinition(def: BlockDefinition): def is CustomBlockDefinition {
+        return this.isCustomBlockDefinition(def) && def.id === 'poly_voice_group';
+    }
+
     /**
      * Check if a custom block is a code module (has custom C++ code)
      */
@@ -2028,6 +2283,615 @@ private:
         return overrides;
     }
 
+    private validatePolyVoiceGroups(): string[] {
+        const errors: string[] = [];
+
+        this.patch.blocks.forEach(block => {
+            const def = this.blockDefs.get(block.definitionId);
+            if (block.definitionId === 'poly_voice_group' && !def) {
+                errors.push(`poly_voice_group block "${block.id}" is not registered as a custom block`);
+                return;
+            }
+
+            if (!def || !this.isPolyVoiceGroupDefinition(def)) {
+                return;
+            }
+
+            if (this.getTargetPlatform() !== 'field') {
+                errors.push(`poly_voice_group block "${block.id}" currently supports Daisy Field targets only`);
+            }
+
+            if (!def.internalPatch?.blocks?.length) {
+                errors.push(`poly_voice_group block "${block.id}" requires a non-empty internalPatch`);
+                return;
+            }
+
+            ['pitch_cv', 'gate'].forEach(portId => {
+                const port = def.ports.find(candidate => candidate.id === portId && candidate.direction === PortDirection.INPUT);
+                if (!port) {
+                    errors.push(`poly_voice_group block "${block.id}" is missing required input port "${portId}"`);
+                }
+                if (!def.exposedPorts[portId]) {
+                    errors.push(`poly_voice_group block "${block.id}" is missing exposed mapping for "${portId}"`);
+                }
+            });
+
+            const outputMappings = this.getPolyVoiceGroupOutputMappings(def);
+            if (!outputMappings.left && !outputMappings.right) {
+                errors.push(`poly_voice_group block "${block.id}" requires at least one exposed audio output mapping`);
+            }
+
+            const internalIds = new Set(def.internalPatch.blocks.map(internalBlock => internalBlock.id));
+            Object.entries(def.exposedPorts).forEach(([exposedId, mapping]) => {
+                if (!internalIds.has(mapping.blockId)) {
+                    errors.push(`poly_voice_group block "${block.id}" exposed port "${exposedId}" maps to missing internal block "${mapping.blockId}"`);
+                    return;
+                }
+
+                const internalBlock = def.internalPatch.blocks.find(candidate => candidate.id === mapping.blockId);
+                const internalDef = internalBlock ? BlockRegistry.get(internalBlock.definitionId) : undefined;
+                if (!internalDef) {
+                    errors.push(`poly_voice_group block "${block.id}" exposed port "${exposedId}" maps through unknown internal definition "${internalBlock?.definitionId}"`);
+                    return;
+                }
+
+                if (!internalDef.ports.some(port => port.id === mapping.portId)) {
+                    errors.push(`poly_voice_group block "${block.id}" exposed port "${exposedId}" maps to missing internal port "${mapping.portId}"`);
+                }
+            });
+
+            def.internalPatch.blocks.forEach(internalBlock => {
+                if (!BlockRegistry.get(internalBlock.definitionId)) {
+                    errors.push(`poly_voice_group block "${block.id}" cannot clone unknown internal block definition "${internalBlock.definitionId}"`);
+                }
+            });
+        });
+
+        return errors;
+    }
+
+    private getPolyVoiceBlankets(): PolyVoiceBlanket[] {
+        return this.patch.polyVoiceBlankets || [];
+    }
+
+    private getPolyVoiceBlanketInstanceName(blanket: PolyVoiceBlanket): string {
+        return this.sanitizeIdentifier(blanket.id);
+    }
+
+    private getPolyVoiceBlanketVoiceCount(blanket: PolyVoiceBlanket): number {
+        const requested = Number(blanket.voiceCount ?? 8);
+        if (!Number.isFinite(requested)) {
+            return 8;
+        }
+        return Math.min(16, Math.max(1, Math.round(requested)));
+    }
+
+    private getPolyVoiceBlanketMemberIds(): Set<string> {
+        const ids = new Set<string>();
+        this.getPolyVoiceBlankets().forEach(blanket => {
+            blanket.memberBlockIds.forEach(memberId => ids.add(memberId));
+        });
+        return ids;
+    }
+
+    private getPolyVoiceBlanketForMember(blockId: string): PolyVoiceBlanket | undefined {
+        return this.getPolyVoiceBlankets().find(blanket => blanket.memberBlockIds.includes(blockId));
+    }
+
+    private getPolyVoiceBlanketInternalPatch(blanket: PolyVoiceBlanket): Pick<PatchGraph, 'blocks' | 'connections'> {
+        const memberIds = new Set(blanket.memberBlockIds);
+        return {
+            blocks: this.patch.blocks.filter(block => memberIds.has(block.id)),
+            connections: this.patch.connections.filter(connection =>
+                memberIds.has(connection.sourceBlockId) &&
+                memberIds.has(connection.targetBlockId)
+            ),
+        };
+    }
+
+    private getPolyVoiceBlanketInputCrossings(blanket: PolyVoiceBlanket): Connection[] {
+        const memberIds = new Set(blanket.memberBlockIds);
+        return this.patch.connections.filter(connection =>
+            !memberIds.has(connection.sourceBlockId) &&
+            memberIds.has(connection.targetBlockId)
+        );
+    }
+
+    private getPolyVoiceBlanketOutputCrossings(blanket: PolyVoiceBlanket): Connection[] {
+        const memberIds = new Set(blanket.memberBlockIds);
+        return this.patch.connections.filter(connection =>
+            memberIds.has(connection.sourceBlockId) &&
+            !memberIds.has(connection.targetBlockId) &&
+            connection.type === SignalType.AUDIO
+        );
+    }
+
+    private getPortDefinition(blockId: string, portId: string): { block?: BlockInstance; def?: BlockDefinition; port?: ReturnType<BlockDefinition['ports']['find']> } {
+        const block = this.patch.blocks.find(candidate => candidate.id === blockId);
+        const def = block ? this.blockDefs.get(block.definitionId) : undefined;
+        const port = def?.ports.find(candidate => candidate.id === portId);
+        return { block, def, port };
+    }
+
+    private inferPolyVoiceBlanketPitchEndpoint(blanket: PolyVoiceBlanket): CustomPortEndpoint | undefined {
+        const members = this.getPolyVoiceBlanketInternalPatch(blanket).blocks;
+        const candidates = members.filter(block => {
+            const def = this.blockDefs.get(block.definitionId);
+            return def?.id === 'grainlet_oscillator' && def.ports.some(port => port.id === 'freq_cv');
+        });
+        if (candidates.length !== 1) {
+            return undefined;
+        }
+        return { blockId: candidates[0].id, portId: 'freq_cv' };
+    }
+
+    private inferPolyVoiceBlanketGateEndpoint(blanket: PolyVoiceBlanket): CustomPortEndpoint | undefined {
+        const members = this.getPolyVoiceBlanketInternalPatch(blanket).blocks;
+        const candidates = members.filter(block => {
+            const def = this.blockDefs.get(block.definitionId);
+            return def?.id === 'adsr' && def.ports.some(port => port.id === 'gate');
+        });
+        if (candidates.length !== 1) {
+            return undefined;
+        }
+        return { blockId: candidates[0].id, portId: 'gate' };
+    }
+
+    private getPolyVoiceBlanketOutputMappings(blanket: PolyVoiceBlanket): { left?: CustomPortEndpoint; right?: CustomPortEndpoint } {
+        const crossings = this.getPolyVoiceBlanketOutputCrossings(blanket);
+        const audioCrossings = crossings.filter(connection => {
+            const { port } = this.getPortDefinition(connection.sourceBlockId, connection.sourcePortId);
+            return port?.signalType === SignalType.AUDIO && port.direction === PortDirection.OUTPUT;
+        });
+
+        const left = audioCrossings.find(connection => connection.sourcePortId === 'left' || connection.targetPortId === 'left' || connection.targetPortId === 'in_l');
+        const right = audioCrossings.find(connection => connection.sourcePortId === 'right' || connection.targetPortId === 'right' || connection.targetPortId === 'in_r');
+
+        if (left && right) {
+            return {
+                left: { blockId: left.sourceBlockId, portId: left.sourcePortId },
+                right: { blockId: right.sourceBlockId, portId: right.sourcePortId },
+            };
+        }
+
+        const mono = left || right || audioCrossings[0];
+        if (!mono) {
+            return {};
+        }
+
+        const endpoint = { blockId: mono.sourceBlockId, portId: mono.sourcePortId };
+        return { left: endpoint, right: endpoint };
+    }
+
+    private validatePolyVoiceBlankets(): string[] {
+        const errors: string[] = [];
+        const seenMemberIds = new Map<string, string>();
+
+        this.getPolyVoiceBlankets().forEach(blanket => {
+            const label = `poly_voice_blanket "${blanket.id}"`;
+
+            if (this.getTargetPlatform() !== 'field') {
+                errors.push(`${label} currently supports Daisy Field targets only`);
+            }
+
+            if (!blanket.memberBlockIds.length) {
+                errors.push(`${label} requires at least one member block`);
+                return;
+            }
+
+            const memberIds = new Set(blanket.memberBlockIds);
+            blanket.memberBlockIds.forEach(memberId => {
+                if (!this.patch.blocks.some(block => block.id === memberId)) {
+                    errors.push(`${label} references missing member block "${memberId}"`);
+                }
+
+                const otherBlanket = seenMemberIds.get(memberId);
+                if (otherBlanket && otherBlanket !== blanket.id) {
+                    errors.push(`${label} overlaps member block "${memberId}" already used by poly_voice_blanket "${otherBlanket}"`);
+                }
+                seenMemberIds.set(memberId, blanket.id);
+            });
+
+            this.getPolyVoiceBlanketInternalPatch(blanket).blocks.forEach(block => {
+                if (!this.blockDefs.get(block.definitionId)) {
+                    errors.push(`${label} cannot clone unknown member block definition "${block.definitionId}"`);
+                }
+            });
+
+            this.getPolyVoiceBlanketInputCrossings(blanket).forEach(connection => {
+                if (connection.type === SignalType.AUDIO) {
+                    errors.push(`${label} does not support audio input crossing into member block "${connection.targetBlockId}" in V1`);
+                }
+
+                if (!memberIds.has(connection.targetBlockId)) {
+                    errors.push(`${label} has invalid input crossing target "${connection.targetBlockId}"`);
+                }
+            });
+
+            const pitchEndpoint = this.inferPolyVoiceBlanketPitchEndpoint(blanket);
+            if (!pitchEndpoint) {
+                errors.push(`${label} requires exactly one grainlet_oscillator member with freq_cv for pitch inference`);
+            }
+
+            const gateEndpoint = this.inferPolyVoiceBlanketGateEndpoint(blanket);
+            if (!gateEndpoint) {
+                errors.push(`${label} requires exactly one adsr member with gate for voice gate inference`);
+            }
+
+            const outputs = this.getPolyVoiceBlanketOutputMappings(blanket);
+            if (!outputs.left && !outputs.right) {
+                errors.push(`${label} requires at least one audio output crossing from inside to outside`);
+            }
+        });
+
+        return errors;
+    }
+
+    private getPolyVoiceGroupOutputMappings(customDef: CustomBlockDefinition): { left?: CustomPortEndpoint; right?: CustomPortEndpoint } {
+        const audioOutputPorts = customDef.ports.filter(port =>
+            port.direction === PortDirection.OUTPUT &&
+            port.signalType === SignalType.AUDIO &&
+            customDef.exposedPorts[port.id]
+        );
+
+        const leftPort = audioOutputPorts.find(port => port.id === 'left');
+        const rightPort = audioOutputPorts.find(port => port.id === 'right');
+
+        if (leftPort && rightPort) {
+            return {
+                left: customDef.exposedPorts[leftPort.id],
+                right: customDef.exposedPorts[rightPort.id],
+            };
+        }
+
+        if (leftPort) {
+            const endpoint = customDef.exposedPorts[leftPort.id];
+            return { left: endpoint, right: endpoint };
+        }
+
+        if (rightPort) {
+            const endpoint = customDef.exposedPorts[rightPort.id];
+            return { left: endpoint, right: endpoint };
+        }
+
+        const monoPort = audioOutputPorts[0];
+        if (!monoPort) {
+            return {};
+        }
+
+        const endpoint = customDef.exposedPorts[monoPort.id];
+        return { left: endpoint, right: endpoint };
+    }
+
+    private buildPolyVoiceGroupInputOverrides(
+        customBlock: BlockInstance,
+        customDef: CustomBlockDefinition,
+        allocatorName: string,
+        voiceIndex: number
+    ): Map<string, string> {
+        const overrides = new Map<string, string>();
+
+        customDef.ports
+            .filter(port => port.direction === PortDirection.INPUT)
+            .forEach(port => {
+                const mapping = customDef.exposedPorts[port.id];
+                if (!mapping) return;
+
+                let value: string;
+                if (port.id === 'pitch_cv') {
+                    value = `${allocatorName}.GetFrequency(${voiceIndex})`;
+                } else if (port.id === 'gate') {
+                    value = `${allocatorName}.GetGate(${voiceIndex})`;
+                } else {
+                    const conn = this.getInputConnection(customBlock.id, port.id);
+                    value = conn
+                        ? this.getSourceVariable(conn)
+                        : this.getDefaultValueForSignalType(port.signalType);
+
+                    if (port.id === 'spread_cv') {
+                        value = `${allocatorName}.GetPanOffset(${voiceIndex}, ${value})`;
+                    }
+                }
+
+                overrides.set(`${mapping.blockId}:${mapping.portId}`, value);
+            });
+
+        return overrides;
+    }
+
+    private getInternalProcessingOrderConsideringAllConnections(internalPatch: Pick<PatchGraph, 'blocks' | 'connections'>): string[] {
+        const adjacency = new Map<string, Set<string>>();
+        const inDegree = new Map<string, number>();
+
+        internalPatch.blocks.forEach(block => {
+            adjacency.set(block.id, new Set());
+            inDegree.set(block.id, 0);
+        });
+
+        internalPatch.connections.forEach(connection => {
+            if (!adjacency.has(connection.sourceBlockId) || !inDegree.has(connection.targetBlockId)) {
+                return;
+            }
+
+            const targets = adjacency.get(connection.sourceBlockId)!;
+            if (!targets.has(connection.targetBlockId)) {
+                targets.add(connection.targetBlockId);
+                inDegree.set(connection.targetBlockId, (inDegree.get(connection.targetBlockId) || 0) + 1);
+            }
+        });
+
+        const result: string[] = [];
+        const remaining = new Set(internalPatch.blocks.map(block => block.id));
+
+        while (remaining.size > 0) {
+            let ready = Array.from(remaining).filter(blockId => (inDegree.get(blockId) || 0) === 0);
+            if (ready.length === 0) {
+                ready = [Array.from(remaining)[0]];
+            }
+
+            ready.forEach(blockId => {
+                result.push(blockId);
+                remaining.delete(blockId);
+                adjacency.get(blockId)?.forEach(target => {
+                    inDegree.set(target, (inDegree.get(target) || 0) - 1);
+                });
+            });
+        }
+
+        return result;
+    }
+
+    private generatePolyVoiceGroupProcessing(block: BlockInstance, customDef: CustomBlockDefinition): string[] {
+        const internalPatch = customDef.internalPatch;
+        if (!internalPatch?.blocks?.length) {
+            return [];
+        }
+
+        const instanceName = this.getInstanceName(block);
+        const allocatorName = `${instanceName}_voices`;
+        const voiceCount = this.getPolyVoiceCount(block);
+        const internalDefs = this.createInternalDefsMap(internalPatch);
+        const internalOrder = this.getInternalProcessingOrderConsideringAllConnections(internalPatch);
+        const parameterOverrides = this.buildCustomParameterOverrides(block, customDef);
+        const outputMappings = this.getPolyVoiceGroupOutputMappings(customDef);
+
+        const lines: string[] = [
+            `sig_${instanceName}_left = 0.0f;`,
+            `sig_${instanceName}_right = 0.0f;`,
+        ];
+
+        for (let voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++) {
+            const voicePrefix = `${instanceName}__v${voiceIndex}`;
+            const inputOverrides = this.buildPolyVoiceGroupInputOverrides(block, customDef, allocatorName, voiceIndex);
+
+            const voiceLines = this.withGenerationContext(
+                {
+                    patch: internalPatch,
+                    blockDefs: internalDefs,
+                    instancePrefix: voicePrefix,
+                    inputOverrides,
+                },
+                () => {
+                    const nestedLines: string[] = [];
+
+                    internalOrder.forEach(internalBlockId => {
+                        const internalBlock = internalPatch.blocks.find(candidate => candidate.id === internalBlockId);
+                        if (!internalBlock) return;
+
+                        const internalDef = internalDefs.get(internalBlock.definitionId);
+                        if (!internalDef) return;
+
+                        const overrides = parameterOverrides.get(internalBlock.id);
+                        const effectiveBlock: BlockInstance = overrides
+                            ? {
+                                ...internalBlock,
+                                parameterValues: { ...internalBlock.parameterValues, ...overrides },
+                            }
+                            : internalBlock;
+
+                        nestedLines.push(...this.generateBlockProcessing(effectiveBlock, internalDef));
+                    });
+
+                    return nestedLines;
+                }
+            );
+
+            lines.push(`// poly_voice_group voice ${voiceIndex}`);
+            lines.push(...voiceLines);
+
+            const leftSource = outputMappings.left
+                ? this.getCustomInternalSourceVariable(voicePrefix, internalPatch, internalDefs, outputMappings.left.blockId, outputMappings.left.portId)
+                : '0.0f';
+            const rightSource = outputMappings.right
+                ? this.getCustomInternalSourceVariable(voicePrefix, internalPatch, internalDefs, outputMappings.right.blockId, outputMappings.right.portId)
+                : leftSource;
+
+            lines.push(`sig_${instanceName}_left += ${leftSource};`);
+            lines.push(`sig_${instanceName}_right += ${rightSource};`);
+        }
+
+        lines.push(`sig_${instanceName}_left = fclamp(sig_${instanceName}_left, -1.0f, 1.0f);`);
+        lines.push(`sig_${instanceName}_right = fclamp(sig_${instanceName}_right, -1.0f, 1.0f);`);
+
+        return lines;
+    }
+
+    private createPolyVoiceBlanketPseudoDefinition(blanket: PolyVoiceBlanket): CustomBlockDefinition {
+        return {
+            isCustom: true,
+            internalPatch: this.getPolyVoiceBlanketInternalPatch(blanket) as PatchGraph,
+            exposedPorts: {},
+            exposedParameters: {},
+        } as CustomBlockDefinition;
+    }
+
+    private generatePolyVoiceBlanketDeclarations(blanket: PolyVoiceBlanket, lines: string[]): void {
+        const pseudoDef = this.createPolyVoiceBlanketPseudoDefinition(blanket);
+        const instanceName = this.getPolyVoiceBlanketInstanceName(blanket);
+        const voiceCount = this.getPolyVoiceBlanketVoiceCount(blanket);
+
+        for (let voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++) {
+            this.generateCustomDeclarations(`${instanceName}__v${voiceIndex}`, pseudoDef, lines);
+        }
+    }
+
+    private generatePolyVoiceBlanketSignalDeclarations(blanket: PolyVoiceBlanket, lines: string[]): void {
+        const pseudoDef = this.createPolyVoiceBlanketPseudoDefinition(blanket);
+        const instanceName = this.getPolyVoiceBlanketInstanceName(blanket);
+        const voiceCount = this.getPolyVoiceBlanketVoiceCount(blanket);
+
+        lines.push(`float sig_${instanceName}_left = 0.0f;`);
+        lines.push(`float sig_${instanceName}_right = 0.0f;`);
+
+        for (let voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++) {
+            this.generateCustomSignalDeclarations(`${instanceName}__v${voiceIndex}`, pseudoDef, lines);
+        }
+    }
+
+    private buildPolyVoiceBlanketInputOverrides(
+        blanket: PolyVoiceBlanket,
+        allocatorName: string,
+        voiceIndex: number
+    ): Map<string, string> {
+        const overrides = new Map<string, string>();
+
+        this.getPolyVoiceBlanketInputCrossings(blanket)
+            .filter(connection => connection.type !== SignalType.AUDIO)
+            .forEach(connection => {
+                const sourceValue = this.getSourceVariable(connection);
+                const value = connection.targetPortId === 'pan_cv'
+                    ? `${allocatorName}.GetPanOffset(${voiceIndex}, ${sourceValue})`
+                    : sourceValue;
+                overrides.set(`${connection.targetBlockId}:${connection.targetPortId}`, value);
+            });
+
+        const pitchEndpoint = this.inferPolyVoiceBlanketPitchEndpoint(blanket);
+        if (pitchEndpoint) {
+            overrides.set(`${pitchEndpoint.blockId}:${pitchEndpoint.portId}`, `${allocatorName}.GetFrequency(${voiceIndex})`);
+        }
+
+        const gateEndpoint = this.inferPolyVoiceBlanketGateEndpoint(blanket);
+        if (gateEndpoint) {
+            overrides.set(`${gateEndpoint.blockId}:${gateEndpoint.portId}`, `${allocatorName}.GetGate(${voiceIndex})`);
+        }
+
+        return overrides;
+    }
+
+    private generatePolyVoiceBlanketProcessing(blanket: PolyVoiceBlanket): string[] {
+        const internalPatch = this.getPolyVoiceBlanketInternalPatch(blanket);
+        if (!internalPatch.blocks.length) {
+            return [];
+        }
+
+        const instanceName = this.getPolyVoiceBlanketInstanceName(blanket);
+        const allocatorName = `${instanceName}_voices`;
+        const voiceCount = this.getPolyVoiceBlanketVoiceCount(blanket);
+        const internalDefs = this.createInternalDefsMap(internalPatch);
+        const internalOrder = this.getInternalProcessingOrderConsideringAllConnections(internalPatch);
+        const outputMappings = this.getPolyVoiceBlanketOutputMappings(blanket);
+
+        const lines: string[] = [
+            `sig_${instanceName}_left = 0.0f;`,
+            `sig_${instanceName}_right = 0.0f;`,
+        ];
+
+        for (let voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++) {
+            const voicePrefix = `${instanceName}__v${voiceIndex}`;
+            const inputOverrides = this.buildPolyVoiceBlanketInputOverrides(blanket, allocatorName, voiceIndex);
+
+            const voiceLines = this.withGenerationContext(
+                {
+                    patch: internalPatch,
+                    blockDefs: internalDefs,
+                    instancePrefix: voicePrefix,
+                    inputOverrides,
+                },
+                () => {
+                    const nestedLines: string[] = [];
+
+                    internalOrder.forEach(internalBlockId => {
+                        const internalBlock = internalPatch.blocks.find(candidate => candidate.id === internalBlockId);
+                        if (!internalBlock) return;
+
+                        const internalDef = internalDefs.get(internalBlock.definitionId);
+                        if (!internalDef) return;
+
+                        nestedLines.push(...this.generateBlockProcessing(internalBlock, internalDef));
+                    });
+
+                    return nestedLines;
+                }
+            );
+
+            lines.push(`// poly_voice_blanket ${blanket.id} voice ${voiceIndex}`);
+            lines.push(...voiceLines);
+
+            const leftSource = outputMappings.left
+                ? this.getCustomInternalSourceVariable(voicePrefix, internalPatch, internalDefs, outputMappings.left.blockId, outputMappings.left.portId)
+                : '0.0f';
+            const rightSource = outputMappings.right
+                ? this.getCustomInternalSourceVariable(voicePrefix, internalPatch, internalDefs, outputMappings.right.blockId, outputMappings.right.portId)
+                : leftSource;
+
+            lines.push(`sig_${instanceName}_left += ${leftSource};`);
+            lines.push(`sig_${instanceName}_right += ${rightSource};`);
+        }
+
+        lines.push(`sig_${instanceName}_left = fclamp(sig_${instanceName}_left, -1.0f, 1.0f);`);
+        lines.push(`sig_${instanceName}_right = fclamp(sig_${instanceName}_right, -1.0f, 1.0f);`);
+
+        return lines;
+    }
+
+    private generatePolyVoiceBlanketInitialization(blanket: PolyVoiceBlanket, lines: string[]): void {
+        const instanceName = this.getPolyVoiceBlanketInstanceName(blanket);
+        const pseudoDef = this.createPolyVoiceBlanketPseudoDefinition(blanket);
+        const pseudoBlock = {
+            id: blanket.id,
+            definitionId: 'poly_voice_blanket',
+            position: blanket.position,
+            parameterValues: {},
+        } as BlockInstance;
+
+        lines.push(`    ${instanceName}_voices.Init();`);
+
+        const voiceCount = this.getPolyVoiceBlanketVoiceCount(blanket);
+        for (let voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++) {
+            this.generateCustomBlockInitialization(`${instanceName}__v${voiceIndex}`, pseudoBlock, pseudoDef, lines);
+        }
+    }
+
+    private getPolyVoiceBlanketOutputSignalForConnection(conn: Connection): string | undefined {
+        const blanket = this.getPolyVoiceBlanketForMember(conn.sourceBlockId);
+        if (!blanket || blanket.memberBlockIds.includes(conn.targetBlockId)) {
+            return undefined;
+        }
+
+        const instanceName = this.getPolyVoiceBlanketInstanceName(blanket);
+        const outputs = this.getPolyVoiceBlanketOutputMappings(blanket);
+        const isLeft = outputs.left?.blockId === conn.sourceBlockId && outputs.left?.portId === conn.sourcePortId;
+        const isRight = outputs.right?.blockId === conn.sourceBlockId && outputs.right?.portId === conn.sourcePortId;
+
+        if (isRight && (conn.sourcePortId === 'right' || conn.targetPortId === 'right' || conn.targetPortId === 'in_r')) {
+            return `sig_${instanceName}_right`;
+        }
+
+        if (isLeft && (conn.sourcePortId === 'left' || conn.targetPortId === 'left' || conn.targetPortId === 'in_l')) {
+            return `sig_${instanceName}_left`;
+        }
+
+        if (isRight) {
+            return `sig_${instanceName}_right`;
+        }
+
+        if (isLeft) {
+            return `sig_${instanceName}_left`;
+        }
+
+        return undefined;
+    }
+
     private getCustomInternalSourceVariable(
         instancePrefix: string,
         internalPatch: Pick<PatchGraph, 'blocks' | 'connections'>,
@@ -2128,7 +2992,18 @@ private:
 
     private getInputValue(block: BlockInstance, inputId: string): string {
         const conn = this.getInputConnection(block.id, inputId);
-        return conn ? this.getSourceVariable(conn) : '0.0f';
+        if (conn) {
+            return this.getSourceVariable(conn);
+        }
+        return this.getFieldMappedInputExpression(block.id, inputId, '0.0f');
+    }
+
+    private getInputExpression(block: BlockInstance, inputId: string, fallback: string): string {
+        const conn = this.getInputConnection(block.id, inputId);
+        if (conn) {
+            return this.getSourceVariable(conn);
+        }
+        return this.getFieldMappedInputExpression(block.id, inputId, fallback);
     }
 
     private getParameterExpression(block: BlockInstance, paramId: string, fallback: number): string {
@@ -2149,7 +3024,144 @@ private:
             valueExpr = `${valueExpr} + ${this.getSourceVariable(cvConn)}`;
         }
 
-        return valueExpr;
+        return this.getFieldMappedParameterExpression(block.id, paramId, valueExpr);
+    }
+
+    private getFieldControlMappings(): FieldControlMapping[] {
+        if (this.getTargetPlatform() !== 'field') {
+            return [];
+        }
+        return this.patch.hardwareConfig?.fieldControlMappings ?? [];
+    }
+
+    private hasFieldControlMappings(): boolean {
+        return this.getFieldControlMappings().length > 0;
+    }
+
+    private getFieldEffectiveMappingForLayer(
+        mappings: FieldControlMapping[],
+        controlId: string,
+        layer: FieldMappingLayer
+    ): FieldControlMapping | undefined {
+        const layerPriority: Record<FieldMappingLayer, FieldMappingLayer[]> = {
+            normal: ['normal'],
+            sw1: ['sw1', 'normal'],
+            sw2: ['sw2', 'normal'],
+            sw1_sw2: ['sw1_sw2', 'sw2', 'sw1', 'normal'],
+        };
+
+        for (const candidateLayer of layerPriority[layer]) {
+            const candidate = mappings.find(mapping =>
+                mapping.controlId === controlId && mapping.layer === candidateLayer
+            );
+            if (candidate) return candidate;
+        }
+
+        return undefined;
+    }
+
+    private getFieldLayeredExpressionForTarget(
+        controlType: FieldControlMapping['controlType'],
+        targetMatches: (mapping: FieldControlMapping) => boolean,
+        expressionForMapping: (mapping: FieldControlMapping) => string,
+        fallback: string
+    ): string {
+        const mappings = this.getFieldControlMappings().filter(mapping => mapping.controlType === controlType);
+        const controlIds = Array.from(new Set(mappings.map(mapping => mapping.controlId)));
+
+        const exprByLayer = (layer: FieldMappingLayer): string => {
+            for (const controlId of controlIds) {
+                const effective = this.getFieldEffectiveMappingForLayer(mappings, controlId, layer);
+                if (effective && targetMatches(effective)) {
+                    return expressionForMapping(effective);
+                }
+            }
+            return fallback;
+        };
+
+        const normalExpr = exprByLayer('normal');
+        const sw1Expr = exprByLayer('sw1');
+        const sw2Expr = exprByLayer('sw2');
+        const sw12Expr = exprByLayer('sw1_sw2');
+
+        if (sw1Expr === normalExpr && sw2Expr === normalExpr && sw12Expr === normalExpr) {
+            return normalExpr;
+        }
+
+        return `(field_mapping_layer == 3 ? ${sw12Expr} : field_mapping_layer == 2 ? ${sw2Expr} : field_mapping_layer == 1 ? ${sw1Expr} : ${normalExpr})`;
+    }
+
+    private getFieldMappedParameterExpression(blockId: string, paramId: string, fallback: string): string {
+        const hasTargetMapping = this.getFieldControlMappings().some(mapping =>
+            mapping.controlType === 'knob' &&
+            mapping.targetBlockId === blockId &&
+            mapping.targetParameterId === paramId
+        );
+
+        if (!hasTargetMapping) {
+            return fallback;
+        }
+
+        return this.getFieldLayeredExpressionForTarget(
+            'knob',
+            mapping => mapping.targetBlockId === blockId && mapping.targetParameterId === paramId,
+            mapping => this.generateFieldKnobMappingExpression(mapping),
+            fallback
+        );
+    }
+
+    private generateFieldKnobMappingExpression(mapping: FieldControlMapping): string {
+        const knobIndex = getFieldKnobIndex(mapping.controlId);
+        const knobExpr = `hw.GetKnobValue(DaisyField::KNOB_${knobIndex + 1})`;
+        const [min, max] = mapping.outputRange ?? [0, 1];
+        const range = Number(max) - Number(min);
+
+        switch (mapping.mappingType ?? 'direct') {
+            case 'scaled':
+                return `${this.formatFloat(min)} + (${knobExpr} * ${this.formatFloat(range)})`;
+            case 'log': {
+                const safeMin = Math.max(Number(min), 0.000001);
+                const safeMax = Math.max(Number(max), safeMin);
+                return `powf(10.0f, log10f(${this.formatFloat(safeMin)}) + (${knobExpr} * (log10f(${this.formatFloat(safeMax)}) - log10f(${this.formatFloat(safeMin)}))))`;
+            }
+            case 'exp':
+                return `${this.formatFloat(min)} + ((1.0f - powf(1.0f - ${knobExpr}, 2.0f)) * ${this.formatFloat(range)})`;
+            case 'direct':
+            default:
+                return knobExpr;
+        }
+    }
+
+    private getFieldMappedInputExpression(blockId: string, portId: string, fallback: string): string {
+        const context = this.getCurrentContext();
+        if (context) {
+            return fallback;
+        }
+
+        const hasTargetMapping = this.getFieldControlMappings().some(mapping =>
+            mapping.controlType === 'key' &&
+            mapping.targetBlockId === blockId &&
+            mapping.targetPortId === portId
+        );
+
+        if (!hasTargetMapping) {
+            return fallback;
+        }
+
+        return this.getFieldLayeredExpressionForTarget(
+            'key',
+            mapping => mapping.targetBlockId === blockId && mapping.targetPortId === portId,
+            mapping => this.generateFieldKeyExpression(mapping, portId),
+            fallback
+        );
+    }
+
+    private generateFieldKeyExpression(mapping: FieldControlMapping, portId: string): string {
+        const keyIndex = getFieldKeyIndex(mapping.controlId);
+        const output = mapping.keyOutput ?? (portId.toLowerCase().includes('gate') ? 'gate' : 'trigger');
+        return output === 'gate'
+            ? `hw.KeyboardState(${keyIndex})`
+            : `hw.KeyboardRisingEdge(${keyIndex})`;
     }
 
     private writeParameterSetters(block: BlockInstance, instanceName: string, lines: string[], excludeParams: string[] = []): void {
@@ -2183,6 +3195,8 @@ private:
                 valStr = `${valStr} + ${cvVar}`;
             }
 
+            valStr = this.getFieldMappedParameterExpression(block.id, param.id, valStr);
+
             if (param.cppSetterIndex !== undefined) {
                 lines.push(`${instanceName}.${param.cppSetter}(${valStr}, ${param.cppSetterIndex});`);
             } else {
@@ -2205,13 +3219,34 @@ private:
             return [];
         }
 
-        return this.patch.blocks
+        const lines: string[] = [];
+
+        this.patch.blocks
             .filter(block => block.definitionId === 'poly_grainlet_voice')
-            .map(block => {
+            .forEach(block => {
                 const instanceName = this.getInstanceName(block);
                 const octave = Math.min(4, Math.max(0, Math.round(Number(block.parameterValues['octave'] ?? 2))));
-                return `${instanceName}.UpdateKeys(hw, ${octave});`;
+                lines.push(`${instanceName}.UpdateKeys(hw, ${octave});`);
             });
+
+        this.patch.blocks
+            .filter(block => {
+                const def = this.blockDefs.get(block.definitionId);
+                return def ? this.isPolyVoiceGroupDefinition(def) : false;
+            })
+            .forEach(block => {
+                const instanceName = this.getInstanceName(block);
+                const octave = Math.min(4, Math.max(0, Math.round(Number(block.parameterValues['octave'] ?? 2))));
+                lines.push(`${instanceName}_voices.UpdateKeys(hw, ${octave});`);
+            });
+
+        this.getPolyVoiceBlankets().forEach(blanket => {
+            const instanceName = this.getPolyVoiceBlanketInstanceName(blanket);
+            const octave = Math.min(4, Math.max(0, Math.round(Number(blanket.octave ?? 2))));
+            lines.push(`${instanceName}_voices.UpdateKeys(hw, ${octave});`);
+        });
+
+        return lines;
     }
 
     // ===========================================================================
@@ -2413,7 +3448,17 @@ private:
         lines.push('');
         lines.push('    // Initialize DSP modules');
 
+        const initializedBlankets = new Set<string>();
         this.processingOrder.blocks.forEach(blockId => {
+            const blanket = this.getPolyVoiceBlanketForMember(blockId);
+            if (blanket) {
+                if (!initializedBlankets.has(blanket.id)) {
+                    initializedBlankets.add(blanket.id);
+                    this.generatePolyVoiceBlanketInitialization(blanket, lines);
+                }
+                return;
+            }
+
             const block = this.patch.blocks.find(b => b.id === blockId);
             if (!block) return;
 
@@ -2421,7 +3466,11 @@ private:
             if (!def) return;
 
             if (this.isCustomBlockDefinition(def)) {
-                this.generateCustomBlockInitialization(this.getInstanceName(block), block, def, lines);
+                if (this.isPolyVoiceGroupDefinition(def)) {
+                    this.generatePolyVoiceGroupInitialization(this.getInstanceName(block), block, def, lines);
+                } else {
+                    this.generateCustomBlockInitialization(this.getInstanceName(block), block, def, lines);
+                }
                 return;
             }
 
@@ -2519,6 +3568,8 @@ include $(SYSTEM_FILES_DIR)/Makefile
             'vca', 'mixer', 'add', 'multiply', 'subtract', 'divide',
             'gain', 'bypass', 'sample_delay', 'cv_to_freq', 'mux', 'demux', 'linear_vca', 'linearvca',
             'abs', 'exp', 'pow2', 'dc_source',
+            'pan', 'balance', 'softclip', 'hardclip', 'rectifier', 'slew', 'smooth', 'gate',
+            'bitcrush', 'distortion', 'stereo_mixer', 'pitch_shifter',
             'midi_note', 'midi_cc', 'cv_input', 'cv_output', 'gate_output', 'led_output'
         ];
         return skipBlocks.includes(defId);
@@ -2531,6 +3582,12 @@ include $(SYSTEM_FILES_DIR)/Makefile
             lines.push(`float cv_${instanceName}_${portId} = 0.0f;`);
         } else {
             lines.push(`float sig_${instanceName}_${portId} = 0.0f;`);
+        }
+    }
+
+    private generatePolyVoiceGroupDeclarations(instancePrefix: string, customDef: CustomBlockDefinition, lines: string[], voiceCount: number): void {
+        for (let voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++) {
+            this.generateCustomDeclarations(`${instancePrefix}__v${voiceIndex}`, customDef, lines);
         }
     }
 
@@ -2569,6 +3626,12 @@ include $(SYSTEM_FILES_DIR)/Makefile
             const className = internalDef.className.replace('daisysp::', '');
             lines.push(`${className} ${runtimeName};`);
         });
+    }
+
+    private generatePolyVoiceGroupSignalDeclarations(instancePrefix: string, customDef: CustomBlockDefinition, lines: string[], voiceCount: number): void {
+        for (let voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++) {
+            this.generateCustomSignalDeclarations(`${instancePrefix}__v${voiceIndex}`, customDef, lines);
+        }
     }
 
     private generateCustomSignalDeclarations(instancePrefix: string, customDef: CustomBlockDefinition, lines: string[], depth = 0): void {
@@ -2668,6 +3731,15 @@ include $(SYSTEM_FILES_DIR)/Makefile
         }
     }
 
+    private generatePolyVoiceGroupInitialization(instancePrefix: string, customBlock: BlockInstance, customDef: CustomBlockDefinition, lines: string[]): void {
+        lines.push(`    ${instancePrefix}_voices.Init();`);
+
+        const voiceCount = this.getPolyVoiceCount(customBlock);
+        for (let voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++) {
+            this.generateCustomBlockInitialization(`${instancePrefix}__v${voiceIndex}`, customBlock, customDef, lines);
+        }
+    }
+
     private generateCustomBlockInitialization(instancePrefix: string, customBlock: BlockInstance, customDef: CustomBlockDefinition, lines: string[], depth = 0): void {
         if (depth >= 3 || !customDef.internalPatch?.blocks?.length) return;
 
@@ -2736,6 +3808,13 @@ include $(SYSTEM_FILES_DIR)/Makefile
 
         if (conn.sourceBlockId === '__override__') {
             return context?.inputOverrides.get(conn.sourcePortId) || '0.0f';
+        }
+
+        if (!context) {
+            const blanketOutput = this.getPolyVoiceBlanketOutputSignalForConnection(conn);
+            if (blanketOutput) {
+                return blanketOutput;
+            }
         }
 
         const activePatch = this.getActivePatch();
@@ -2811,6 +3890,21 @@ include $(SYSTEM_FILES_DIR)/Makefile
         return this.patch.blocks.some(b => b.definitionId === 'poly_grainlet_voice');
     }
 
+    private usesPolyVoiceGroup(): boolean {
+        return this.patch.blocks.some(block => {
+            const def = this.blockDefs.get(block.definitionId);
+            return def ? this.isPolyVoiceGroupDefinition(def) : false;
+        });
+    }
+
+    private usesPolyVoiceBlanket(): boolean {
+        return this.getPolyVoiceBlankets().length > 0;
+    }
+
+    private usesPolyVoiceAllocator(): boolean {
+        return this.usesPolyVoiceGroup() || this.usesPolyVoiceBlanket();
+    }
+
     // ===========================================================================
     // PHASE 5: Hardware I/O
     // ===========================================================================
@@ -2839,14 +3933,22 @@ include $(SYSTEM_FILES_DIR)/Makefile
     private generateCVInputCode(block: BlockInstance, name: string): string[] {
         const channel = Number(block.parameterValues['channel'] ?? 0);
         const bipolar = block.parameterValues['bipolar'] === true;
-        // Daisy Field has 4 CV inputs: hw.cv[0] to hw.cv[3]
-        // Cap channel at 3 to avoid access violations
-        const safeChannel = Math.min(Math.max(0, channel), 3);
+        const platform = this.getTargetPlatform();
 
-        let readCode = `float sig_${name}_out = hw.cv[${safeChannel}].Value();`;
+        if (platform === 'field') {
+            const safeChannel = Math.min(Math.max(0, channel), 3);
+            let readCode = `cv_${name}_out = hw.GetCvValue(DaisyField::CV_${safeChannel + 1});`;
+            if (bipolar) {
+                readCode += ` // Unipolar to Bipolar`;
+                readCode += `\n    cv_${name}_out = (cv_${name}_out * 2.0f) - 1.0f;`;
+            }
+            return [readCode];
+        }
+
+        let readCode = `cv_${name}_out = hw.adc.GetFloat(${Math.max(0, channel)});`;
         if (bipolar) {
             readCode += ` // Unipolar to Bipolar`;
-            readCode += `\n    sig_${name}_out = (sig_${name}_out * 2.0f) - 1.0f;`;
+            readCode += `\n    cv_${name}_out = (cv_${name}_out * 2.0f) - 1.0f;`;
         }
         return [readCode];
     }
@@ -2856,25 +3958,38 @@ include $(SYSTEM_FILES_DIR)/Makefile
         const inConn = this.getInputConnection(block.id, 'in');
         const inVar = inConn ? this.getSourceVariable(inConn) : '0.0f';
 
-        // Daisy Field CV Outs (DAC) - usually on Daisy Seed DAC pins
-        // Channel 0 = DAC1, Channel 1 = DAC2
+        const platform = this.getTargetPlatform();
         const safeChannel = Math.min(Math.max(0, channel), 1);
+        const scaledValue = `(uint16_t)(fminf(1.0f, fmaxf(0.0f, ${inVar})) * 4095.0f)`;
+
+        if (platform === 'field') {
+            return [
+                `// CV Output Ch${safeChannel}`,
+                safeChannel === 0
+                    ? `hw.SetCvOut1(${scaledValue});`
+                    : `hw.SetCvOut2(${scaledValue});`
+            ];
+        }
 
         return [
             `// CV Output Ch${safeChannel}`,
-            `hw.seed.dac.WriteValue((daisy::DacHandle::Channel)${safeChannel}, (uint16_t)(fminf(1.0f, fmaxf(0.0f, ${inVar})) * 4095.0f));`
+            `hw.seed.dac.WriteValue((daisy::DacHandle::Channel)${safeChannel}, ${scaledValue});`
         ];
     }
 
     private generateGateOutputCode(block: BlockInstance, _name: string): string[] {
-        const pin = Number(block.parameterValues['pin'] ?? 0);
-        const gateConn = this.getInputConnection(block.id, 'gate');
-        const gateVar = gateConn ? this.getSourceVariable(gateConn) : '0.0f';
+        const gateVar = this.getInputExpression(block, 'gate', '0.0f');
+        const platform = this.getTargetPlatform();
 
-        // Daisy Field has 2 Gate Outputs: hw.gate_out[0] and hw.gate_out[1] (if exposed)
-        // Or using GPIO directly if DaisyField class doesn't wrap them convenienty.
-        // Checking Field docs/source: hw.gate_out[i].Write(bool).
-        const safePin = Math.min(Math.max(0, pin), 1);
+        if (platform === 'field') {
+            return [
+                `// Gate Output`,
+                `dsy_gpio_write(&hw.gate_out, ${gateVar} > 0.5f);`
+            ];
+        }
+
+        const pin = Number(block.parameterValues['pin'] ?? 0);
+        const safePin = Math.max(0, pin);
 
         return [
             `// Gate Output Pin ${safePin}`,
@@ -2916,13 +4031,19 @@ include $(SYSTEM_FILES_DIR)/Makefile
 
     private generateSwitchCode(block: BlockInstance, name: string): string[] {
         const channel = parseInt(block.parameterValues['channel'] as string) || 0;
-        // Daisy Field has 2 switches. Map to available.
+        const platform = this.getTargetPlatform();
         const safeChannel = Math.min(Math.max(0, channel), 1);
+        const pressedExpr = platform === 'field'
+            ? `hw.GetSwitch(DaisyField::SW_${safeChannel + 1})->Pressed()`
+            : `hw.switches[${safeChannel}].Pressed()`;
+        const risingExpr = platform === 'field'
+            ? `hw.GetSwitch(DaisyField::SW_${safeChannel + 1})->RisingEdge()`
+            : `hw.switches[${safeChannel}].RisingEdge()`;
 
         return [
-            `bool sw_state = hw.switches[${safeChannel}].Pressed();`,
+            `bool sw_state = ${pressedExpr};`,
             `gate_${name}_gate = sw_state;`,
-            `gate_${name}_trig = hw.switches[${safeChannel}].RisingEdge();`,
+            `gate_${name}_trig = ${risingExpr};`,
             `if (gate_${name}_trig) latch_${name} = !latch_${name};`,
             `gate_${name}_latch = latch_${name};`
         ];

@@ -16,9 +16,12 @@ import {
   ProjectMetadata,
   SignalType,
   CommentNode,
+  PolyVoiceBlanket,
 } from '@/types';
 import { HardwareConfiguration, DEFAULT_HARDWARE_CONFIG } from '@/types/hardware';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
+
+const createDefaultHardwareConfig = (): HardwareConfiguration => JSON.parse(JSON.stringify(DEFAULT_HARDWARE_CONFIG));
 
 // ============================================================================
 // TYPES
@@ -27,6 +30,7 @@ import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 interface HistoryEntry {
   blocks: BlockInstance[];
   connections: Connection[];
+  polyVoiceBlankets: PolyVoiceBlanket[];
   hardwareConfig: HardwareConfiguration;
   description: string;
 }
@@ -36,6 +40,7 @@ interface PatchState {
   blocks: BlockInstance[];
   connections: Connection[];
   comments: CommentNode[];
+  polyVoiceBlankets: PolyVoiceBlanket[];
   metadata: ProjectMetadata;
   hardwareConfig: HardwareConfiguration;
 
@@ -47,6 +52,7 @@ interface PatchState {
   // Selection
   selectedBlockIds: string[];
   selectedConnectionIds: string[];
+  selectedPolyVoiceBlanketIds: string[];
 
   // Dirty flag
   isDirty: boolean;
@@ -80,6 +86,14 @@ interface PatchActions {
   addComment: (position: { x: number; y: number }, text?: string) => CommentNode;
   removeComment: (commentId: string) => void;
   updateComment: (commentId: string, updates: Partial<Omit<CommentNode, 'id'>>) => void;
+
+  // Poly voice blanket operations
+  createPolyVoiceBlanketFromSelection: () => PolyVoiceBlanket | null;
+  addPolyVoiceBlanket: (blanket: Partial<Omit<PolyVoiceBlanket, 'id'>> & { id?: string }) => PolyVoiceBlanket;
+  removePolyVoiceBlanket: (blanketId: string) => void;
+  updatePolyVoiceBlanket: (blanketId: string, updates: Partial<Omit<PolyVoiceBlanket, 'id'>>) => void;
+  refreshPolyVoiceBlanketMembers: (blanketId: string) => void;
+  selectPolyVoiceBlanket: (blanketId: string, addToSelection?: boolean) => void;
 
   // Alignment operations
   alignBlocksLeft: () => void;
@@ -136,17 +150,56 @@ const createDefaultMetadata = (): ProjectMetadata => ({
   blockSize: 48,
 });
 
+const DEFAULT_BLOCK_BOUNDS = { width: 180, height: 100 };
+const BLANKET_PADDING = 40;
+
+const getBlockIdsInsideRect = (
+  blocks: BlockInstance[],
+  position: { x: number; y: number },
+  size: { width: number; height: number }
+): string[] => {
+  const left = position.x;
+  const top = position.y;
+  const right = position.x + size.width;
+  const bottom = position.y + size.height;
+
+  return blocks
+    .filter((block) =>
+      block.position.x >= left &&
+      block.position.x <= right &&
+      block.position.y >= top &&
+      block.position.y <= bottom
+    )
+    .map((block) => block.id);
+};
+
+const createDefaultPolyVoiceBlanket = (
+  input: Partial<Omit<PolyVoiceBlanket, 'id'>> & { id?: string }
+): PolyVoiceBlanket => ({
+  id: input.id || uuidv4(),
+  label: input.label || 'Poly Voice',
+  position: input.position || { x: 0, y: 0 },
+  size: input.size || { width: 320, height: 220 },
+  voiceCount: input.voiceCount ?? 8,
+  octave: input.octave ?? 2,
+  allocator: input.allocator || 'reuse_free_oldest',
+  memberBlockIds: input.memberBlockIds ? [...input.memberBlockIds] : [],
+  selected: input.selected,
+});
+
 const initialState: PatchState = {
   blocks: [],
   connections: [],
   comments: [],
+  polyVoiceBlankets: [],
   metadata: createDefaultMetadata(),
-  hardwareConfig: DEFAULT_HARDWARE_CONFIG,
+  hardwareConfig: createDefaultHardwareConfig(),
   history: [],
   historyIndex: -1,
   maxHistoryLength: 50,
   selectedBlockIds: [],
   selectedConnectionIds: [],
+  selectedPolyVoiceBlanketIds: [],
   isDirty: false,
   loadCount: 0,
 };
@@ -168,6 +221,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           newHistory.push({
             blocks: JSON.parse(JSON.stringify(state.blocks)),
             connections: JSON.parse(JSON.stringify(state.connections)),
+            polyVoiceBlankets: JSON.parse(JSON.stringify(state.polyVoiceBlankets)),
             hardwareConfig: JSON.parse(JSON.stringify(state.hardwareConfig)),
             description,
           });
@@ -237,6 +291,9 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             );
             // Update selection
             state.selectedBlockIds = state.selectedBlockIds.filter((id) => id !== blockId);
+            state.polyVoiceBlankets.forEach((blanket) => {
+              blanket.memberBlockIds = blanket.memberBlockIds.filter((id) => id !== blockId);
+            });
           });
 
           saveHistory('Remove block');
@@ -250,6 +307,9 @@ export const usePatchStore = create<PatchState & PatchActions>()(
               (c) => !blockIdSet.has(c.sourceBlockId) && !blockIdSet.has(c.targetBlockId)
             );
             state.selectedBlockIds = state.selectedBlockIds.filter((id) => !blockIdSet.has(id));
+            state.polyVoiceBlankets.forEach((blanket) => {
+              blanket.memberBlockIds = blanket.memberBlockIds.filter((id) => !blockIdSet.has(id));
+            });
           });
 
           saveHistory(`Remove ${blockIds.length} blocks`);
@@ -462,6 +522,93 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           saveHistory('Update comment');
         },
 
+        // === Poly Voice Blanket Operations ===
+
+        createPolyVoiceBlanketFromSelection: () => {
+          const { blocks, selectedBlockIds } = get();
+          const selectedBlocks = blocks.filter((block) => selectedBlockIds.includes(block.id));
+          if (selectedBlocks.length === 0) {
+            return null;
+          }
+
+          const minX = Math.min(...selectedBlocks.map((block) => block.position.x));
+          const minY = Math.min(...selectedBlocks.map((block) => block.position.y));
+          const maxX = Math.max(...selectedBlocks.map((block) => block.position.x + DEFAULT_BLOCK_BOUNDS.width));
+          const maxY = Math.max(...selectedBlocks.map((block) => block.position.y + DEFAULT_BLOCK_BOUNDS.height));
+
+          const blanket = createDefaultPolyVoiceBlanket({
+            position: { x: minX - BLANKET_PADDING, y: minY - BLANKET_PADDING },
+            size: {
+              width: Math.max(180, maxX - minX + BLANKET_PADDING * 2),
+              height: Math.max(140, maxY - minY + BLANKET_PADDING * 2),
+            },
+            memberBlockIds: selectedBlocks.map((block) => block.id),
+          });
+
+          set((state) => {
+            state.polyVoiceBlankets.push(blanket);
+            state.selectedPolyVoiceBlanketIds = [blanket.id];
+          });
+
+          saveHistory('Create poly voice blanket');
+          return blanket;
+        },
+
+        addPolyVoiceBlanket: (input) => {
+          const blanket = createDefaultPolyVoiceBlanket(input);
+
+          set((state) => {
+            state.polyVoiceBlankets.push(blanket);
+          });
+
+          saveHistory('Add poly voice blanket');
+          return blanket;
+        },
+
+        removePolyVoiceBlanket: (blanketId) => {
+          set((state) => {
+            state.polyVoiceBlankets = state.polyVoiceBlankets.filter((blanket) => blanket.id !== blanketId);
+            state.selectedPolyVoiceBlanketIds = state.selectedPolyVoiceBlanketIds.filter((id) => id !== blanketId);
+          });
+
+          saveHistory('Remove poly voice blanket');
+        },
+
+        updatePolyVoiceBlanket: (blanketId, updates) => {
+          set((state) => {
+            const blanket = state.polyVoiceBlankets.find((item) => item.id === blanketId);
+            if (blanket) {
+              Object.assign(blanket, updates);
+            }
+          });
+
+          saveHistory('Update poly voice blanket');
+        },
+
+        refreshPolyVoiceBlanketMembers: (blanketId) => {
+          set((state) => {
+            const blanket = state.polyVoiceBlankets.find((item) => item.id === blanketId);
+            if (!blanket) return;
+            blanket.memberBlockIds = getBlockIdsInsideRect(state.blocks, blanket.position, blanket.size);
+          });
+
+          saveHistory('Refresh poly voice blanket members');
+        },
+
+        selectPolyVoiceBlanket: (blanketId, addToSelection = false) => {
+          set((state) => {
+            if (addToSelection) {
+              if (!state.selectedPolyVoiceBlanketIds.includes(blanketId)) {
+                state.selectedPolyVoiceBlanketIds.push(blanketId);
+              }
+            } else {
+              state.selectedPolyVoiceBlanketIds = [blanketId];
+              state.selectedBlockIds = [];
+              state.selectedConnectionIds = [];
+            }
+          });
+        },
+
         // === Alignment Operations ===
 
         alignBlocksLeft: () => {
@@ -631,6 +778,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             } else {
               state.selectedBlockIds = [blockId];
               state.selectedConnectionIds = [];
+              state.selectedPolyVoiceBlanketIds = [];
             }
           });
         },
@@ -640,6 +788,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             if (replace) {
               state.selectedBlockIds = blockIds;
               state.selectedConnectionIds = [];
+              state.selectedPolyVoiceBlanketIds = [];
             } else {
               for (const id of blockIds) {
                 if (!state.selectedBlockIds.includes(id)) {
@@ -659,6 +808,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             } else {
               state.selectedBlockIds = [];
               state.selectedConnectionIds = [connectionId];
+              state.selectedPolyVoiceBlanketIds = [];
             }
           });
         },
@@ -667,6 +817,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           set((state) => {
             state.selectedBlockIds = state.blocks.map((b) => b.id);
             state.selectedConnectionIds = state.connections.map((c) => c.id);
+            state.selectedPolyVoiceBlanketIds = state.polyVoiceBlankets.map((blanket) => blanket.id);
           });
         },
 
@@ -674,13 +825,14 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           set((state) => {
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
+            state.selectedPolyVoiceBlanketIds = [];
           });
         },
 
         deleteSelection: () => {
-          const { selectedBlockIds, selectedConnectionIds } = get();
+          const { selectedBlockIds, selectedConnectionIds, selectedPolyVoiceBlanketIds } = get();
 
-          if (selectedBlockIds.length === 0 && selectedConnectionIds.length === 0) {
+          if (selectedBlockIds.length === 0 && selectedConnectionIds.length === 0 && selectedPolyVoiceBlanketIds.length === 0) {
             return;
           }
 
@@ -695,10 +847,17 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             state.connections = state.connections.filter(
               (c) => !blockIdSet.has(c.sourceBlockId) && !blockIdSet.has(c.targetBlockId)
             );
+            state.polyVoiceBlankets.forEach((blanket) => {
+              blanket.memberBlockIds = blanket.memberBlockIds.filter((id) => !blockIdSet.has(id));
+            });
+
+            const blanketIdSet = new Set(selectedPolyVoiceBlanketIds);
+            state.polyVoiceBlankets = state.polyVoiceBlankets.filter((blanket) => !blanketIdSet.has(blanket.id));
 
             // Clear selection
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
+            state.selectedPolyVoiceBlanketIds = [];
           });
 
           saveHistory('Delete selection');
@@ -714,10 +873,12 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           set((state) => {
             state.blocks = JSON.parse(JSON.stringify(previousState.blocks));
             state.connections = JSON.parse(JSON.stringify(previousState.connections));
+            state.polyVoiceBlankets = JSON.parse(JSON.stringify(previousState.polyVoiceBlankets || []));
             state.hardwareConfig = JSON.parse(JSON.stringify(previousState.hardwareConfig));
             state.historyIndex = historyIndex - 1;
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
+            state.selectedPolyVoiceBlanketIds = [];
           });
         },
 
@@ -729,10 +890,12 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           set((state) => {
             state.blocks = JSON.parse(JSON.stringify(nextState.blocks));
             state.connections = JSON.parse(JSON.stringify(nextState.connections));
+            state.polyVoiceBlankets = JSON.parse(JSON.stringify(nextState.polyVoiceBlankets || []));
             state.hardwareConfig = JSON.parse(JSON.stringify(nextState.hardwareConfig));
             state.historyIndex = historyIndex + 1;
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
+            state.selectedPolyVoiceBlanketIds = [];
           });
         },
 
@@ -745,12 +908,14 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           set((state) => {
             state.blocks = [];
             state.connections = [];
+            state.polyVoiceBlankets = [];
             state.metadata = createDefaultMetadata();
-            state.hardwareConfig = DEFAULT_HARDWARE_CONFIG;
+            state.hardwareConfig = createDefaultHardwareConfig();
             state.history = [];
             state.historyIndex = -1;
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
+            state.selectedPolyVoiceBlanketIds = [];
             state.isDirty = false;
           });
         },
@@ -759,9 +924,16 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           set((state) => {
             state.blocks = patch.blocks;
             state.connections = patch.connections;
+            state.polyVoiceBlankets = (patch.polyVoiceBlankets || []).map((blanket) =>
+              createDefaultPolyVoiceBlanket(blanket)
+            );
             state.metadata = patch.metadata;
             // Load hardware config or default if missing (backward compatibility)
-            state.hardwareConfig = patch.hardwareConfig || DEFAULT_HARDWARE_CONFIG;
+            state.hardwareConfig = {
+              ...createDefaultHardwareConfig(),
+              ...(patch.hardwareConfig || {}),
+              fieldControlMappings: patch.hardwareConfig?.fieldControlMappings ?? [],
+            };
 
             // Sync platform from metadata if missing in hardwareConfig (migration)
             if (!patch.hardwareConfig && patch.metadata.targetHardware) {
@@ -789,6 +961,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             state.historyIndex = -1;
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
+            state.selectedPolyVoiceBlanketIds = [];
             state.isDirty = false;
             state.loadCount = (state.loadCount ?? 0) + 1;
           });
@@ -801,6 +974,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           metadata: get().metadata,
           blocks: get().blocks,
           connections: get().connections,
+          polyVoiceBlankets: get().polyVoiceBlankets,
           hardwareConfig: get().hardwareConfig,
         }),
 
@@ -813,7 +987,11 @@ export const usePatchStore = create<PatchState & PatchActions>()(
 
         setHardwareConfig: (config) => {
           set((state) => {
-            state.hardwareConfig = { ...state.hardwareConfig, ...config };
+            state.hardwareConfig = {
+              ...state.hardwareConfig,
+              ...config,
+              fieldControlMappings: config.fieldControlMappings ?? state.hardwareConfig.fieldControlMappings ?? [],
+            };
 
             // Sync metadata for backward compatibility if platform changes
             if (config.platform) {
@@ -861,9 +1039,11 @@ export const usePatchStore = create<PatchState & PatchActions>()(
 
 export const selectBlocks = (state: PatchState) => state.blocks;
 export const selectConnections = (state: PatchState) => state.connections;
+export const selectPolyVoiceBlankets = (state: PatchState) => state.polyVoiceBlankets;
 export const selectMetadata = (state: PatchState) => state.metadata;
 export const selectSelectedBlockIds = (state: PatchState) => state.selectedBlockIds;
 export const selectSelectedConnectionIds = (state: PatchState) => state.selectedConnectionIds;
+export const selectSelectedPolyVoiceBlanketIds = (state: PatchState) => state.selectedPolyVoiceBlanketIds;
 export const selectIsDirty = (state: PatchState) => state.isDirty;
 export const selectHardwareConfig = (state: PatchState) => state.hardwareConfig;
 

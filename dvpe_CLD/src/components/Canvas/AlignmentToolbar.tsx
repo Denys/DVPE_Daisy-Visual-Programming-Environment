@@ -17,6 +17,7 @@ import {
     AlignHorizontalSpaceAround,
     AlignVerticalSpaceAround,
     Box,
+    Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePatchStore } from '@/stores';
@@ -73,12 +74,14 @@ const AlignmentToolbar: React.FC = () => {
     const alignBlocksCenterV = usePatchStore((state) => state.alignBlocksCenterV);
     const distributeBlocksH = usePatchStore((state) => state.distributeBlocksH);
     const distributeBlocksV = usePatchStore((state) => state.distributeBlocksV);
+    const createPolyVoiceBlanketFromSelection = usePatchStore((state) => state.createPolyVoiceBlanketFromSelection);
 
     const [showCreateDialog, setShowCreateDialog] = React.useState(false);
 
-    const showToolbar = selectedBlockIds.length >= 2;
+    const showToolbar = selectedBlockIds.length >= 1;
     const canDistribute = selectedBlockIds.length >= 3;
     const canGrup = selectedBlockIds.length >= 1; // Technically can group 1, but usually >1
+    const canAlign = selectedBlockIds.length >= 2;
 
     // Prepare patch object for dialog
     const currentPatch = React.useMemo(() => ({
@@ -108,16 +111,19 @@ const AlignmentToolbar: React.FC = () => {
                                     icon={<AlignHorizontalJustifyStart className="w-4 h-4" />}
                                     label="Align Left"
                                     onClick={alignBlocksLeft}
+                                    disabled={!canAlign}
                                 />
                                 <ToolbarButton
                                     icon={<AlignHorizontalJustifyCenter className="w-4 h-4" />}
                                     label="Align Center Horizontal"
                                     onClick={alignBlocksCenterH}
+                                    disabled={!canAlign}
                                 />
                                 <ToolbarButton
                                     icon={<AlignHorizontalJustifyEnd className="w-4 h-4" />}
                                     label="Align Right"
                                     onClick={alignBlocksRight}
+                                    disabled={!canAlign}
                                 />
                             </div>
 
@@ -130,16 +136,19 @@ const AlignmentToolbar: React.FC = () => {
                                     icon={<AlignVerticalJustifyStart className="w-4 h-4" />}
                                     label="Align Top"
                                     onClick={alignBlocksTop}
+                                    disabled={!canAlign}
                                 />
                                 <ToolbarButton
                                     icon={<AlignVerticalJustifyCenter className="w-4 h-4" />}
                                     label="Align Center Vertical"
                                     onClick={alignBlocksCenterV}
+                                    disabled={!canAlign}
                                 />
                                 <ToolbarButton
                                     icon={<AlignVerticalJustifyEnd className="w-4 h-4" />}
                                     label="Align Bottom"
                                     onClick={alignBlocksBottom}
+                                    disabled={!canAlign}
                                 />
                             </div>
 
@@ -171,6 +180,12 @@ const AlignmentToolbar: React.FC = () => {
                                     icon={<Box className="w-4 h-4" />}
                                     label="Create Custom Block"
                                     onClick={() => setShowCreateDialog(true)}
+                                    disabled={!canGrup}
+                                />
+                                <ToolbarButton
+                                    icon={<Layers className="w-4 h-4" />}
+                                    label="Create Poly Voice Blanket"
+                                    onClick={createPolyVoiceBlanketFromSelection}
                                     disabled={!canGrup}
                                 />
                             </div>
