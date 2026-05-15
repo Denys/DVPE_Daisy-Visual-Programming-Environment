@@ -25,6 +25,7 @@ export interface PatchMetadata {
     name: string;
     blockSize: number;
     sampleRate?: number;
+    targetHardware?: string;
 }
 
 export interface PatchGraph {
@@ -120,7 +121,7 @@ export class CodeGenerator {
     // ===========================================================================
 
     private generateIncludes(): string {
-        const platform = this.patch.hardwareConfig?.platform || 'seed';
+        const platform = this.getTargetPlatform();
         let header = 'daisy_seed.h';
 
         if (platform === 'pod') {
@@ -166,7 +167,187 @@ float midi_gate_global = 0.0f;`);
             parts.push(this.generateArpeggiatorClass());
         }
 
+        if (this.usesPolyGrainletVoice()) {
+            parts.push(this.generatePolyGrainletVoiceClass());
+        }
+
         return parts.join('\n');
+    }
+
+    private generatePolyGrainletVoiceClass(): string {
+        return `
+// ============================================================================
+// POLY GRAINLET VOICE CLASS
+// ============================================================================
+template <size_t NumVoices>
+class PolyGrainletVoice {
+  public:
+    void Init(float sample_rate) {
+        note_counter_ = 0;
+        for(size_t i = 0; i < NumVoices; ++i) {
+            voices_[i].osc.Init(sample_rate);
+            voices_[i].env.Init(sample_rate);
+            voices_[i].env.SetSustainLevel(0.85f);
+            voices_[i].env.SetDecayTime(0.08f);
+            voices_[i].active = false;
+            voices_[i].gate = false;
+            voices_[i].key_index = -1;
+            voices_[i].pan = 0.0f;
+            voices_[i].age = 0;
+        }
+    }
+
+    void UpdateKeys(DaisyField& field, int octave) {
+        for(size_t i = 0; i < kNumPlayableKeys; ++i) {
+            const size_t key_index = PlayableKeyAt(i);
+            if(field.KeyboardRisingEdge(key_index)) {
+                const float midi_note = KeyToMidi(key_index, octave);
+                NoteOn(key_index, mtof(midi_note));
+            }
+            if(field.KeyboardFallingEdge(key_index)) {
+                NoteOff(key_index);
+            }
+        }
+    }
+
+    void Process(float shape,
+                 float formant_hz,
+                 float bleed,
+                 float attack_s,
+                 float release_s,
+                 float spread,
+                 float output_gain,
+                 float* left,
+                 float* right) {
+        float dry_left = 0.0f;
+        float dry_right = 0.0f;
+
+        for(size_t i = 0; i < NumVoices; ++i) {
+            Voice& voice = voices_[i];
+            if(!voice.active) {
+                continue;
+            }
+
+            voice.osc.SetShape(fclamp(shape, 0.0f, 1.0f));
+            voice.osc.SetFormantFreq(fmaxf(20.0f, formant_hz));
+            voice.osc.SetBleed(fclamp(bleed, 0.0f, 1.0f));
+            voice.env.SetAttackTime(fmaxf(0.001f, attack_s));
+            voice.env.SetReleaseTime(fmaxf(0.001f, release_s));
+
+            if(voice.key_index >= 0) {
+                voice.pan = KeyPan(static_cast<size_t>(voice.key_index), spread);
+            }
+
+            const float amp = voice.env.Process(voice.gate);
+            if(!voice.gate && !voice.env.IsRunning()) {
+                voice.active = false;
+                voice.key_index = -1;
+                continue;
+            }
+
+            const float sig = voice.osc.Process() * amp;
+            const float left_gain = sqrtf(0.5f * (1.0f - voice.pan));
+            const float right_gain = sqrtf(0.5f * (1.0f + voice.pan));
+            dry_left += sig * left_gain;
+            dry_right += sig * right_gain;
+        }
+
+        *left = fclamp(dry_left * output_gain, -1.0f, 1.0f);
+        *right = fclamp(dry_right * output_gain, -1.0f, 1.0f);
+    }
+
+  private:
+    struct Voice {
+        GrainletOscillator osc;
+        Adsr env;
+        bool active;
+        bool gate;
+        int key_index;
+        float pan;
+        uint32_t age;
+    };
+
+    static constexpr size_t kNumPlayableKeys = 13;
+
+    static size_t PlayableKeyAt(size_t playable_index) {
+        static const size_t playable_keys[kNumPlayableKeys] = {
+            0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 12, 13, 14,
+        };
+        return playable_keys[playable_index];
+    }
+
+    static float KeyToMidi(size_t key_index, int octave) {
+        static const float scale[16] = {
+            0.0f, 2.0f, 4.0f, 5.0f,
+            7.0f, 9.0f, 11.0f, 12.0f,
+            0.0f, 1.0f, 3.0f, 0.0f,
+            6.0f, 8.0f, 10.0f, 0.0f,
+        };
+        return 24.0f + (12.0f * static_cast<float>(octave)) + scale[key_index];
+    }
+
+    static float KeyPan(size_t key_index, float spread) {
+        const float key_position = (static_cast<float>(key_index) / 14.0f) * 2.0f - 1.0f;
+        return fclamp(key_position * fclamp(spread, 0.0f, 1.0f), -1.0f, 1.0f);
+    }
+
+    Voice* FindVoiceForKey(size_t key_index) {
+        for(size_t i = 0; i < NumVoices; ++i) {
+            if(voices_[i].active && voices_[i].key_index == static_cast<int>(key_index)) {
+                return &voices_[i];
+            }
+        }
+        return nullptr;
+    }
+
+    Voice* FindFreeVoice() {
+        for(size_t i = 0; i < NumVoices; ++i) {
+            if(!voices_[i].active) {
+                return &voices_[i];
+            }
+        }
+        return nullptr;
+    }
+
+    Voice* FindOldestVoice() {
+        Voice* oldest = &voices_[0];
+        for(size_t i = 1; i < NumVoices; ++i) {
+            if(voices_[i].age < oldest->age) {
+                oldest = &voices_[i];
+            }
+        }
+        return oldest;
+    }
+
+    void NoteOn(size_t key_index, float freq_hz) {
+        Voice* voice = FindVoiceForKey(key_index);
+        if(voice == nullptr) {
+            voice = FindFreeVoice();
+        }
+        if(voice == nullptr) {
+            voice = FindOldestVoice();
+        }
+        if(voice != nullptr) {
+            voice->key_index = static_cast<int>(key_index);
+            voice->pan = KeyPan(key_index, 0.0f);
+            voice->gate = true;
+            voice->active = true;
+            voice->age = ++note_counter_;
+            voice->osc.SetFreq(freq_hz);
+            voice->env.Retrigger(false);
+        }
+    }
+
+    void NoteOff(size_t key_index) {
+        Voice* voice = FindVoiceForKey(key_index);
+        if(voice != nullptr) {
+            voice->gate = false;
+        }
+    }
+
+    Voice voices_[NumVoices];
+    uint32_t note_counter_;
+};`;
     }
 
     /**
@@ -278,7 +459,7 @@ private:
 
     private generateDeclarations(): string {
         const lines: string[] = [];
-        const platform = this.patch.hardwareConfig?.platform || 'seed';
+        const platform = this.getTargetPlatform();
         lines.push('// Detected Platform: ' + platform);
 
         lines.push('// Hardware');
@@ -339,7 +520,11 @@ private:
 
             const className = def.className.replace('daisysp::', '');
 
-            lines.push(`${className} ${instanceName};`);
+            if (def.id === 'poly_grainlet_voice') {
+                lines.push(`PolyGrainletVoice<${this.getPolyVoiceCount(block)}> ${instanceName};`);
+            } else {
+                lines.push(`${className} ${instanceName};`);
+            }
         });
 
         // Signal routing variables
@@ -441,7 +626,7 @@ private:
 
     private generateAudioCallback(): string {
         const lines: string[] = [];
-        const platform = this.patch.hardwareConfig?.platform || 'seed';
+        const platform = this.getTargetPlatform();
 
         lines.push('void AudioCallback(AudioHandle::InputBuffer in,');
         lines.push('                   AudioHandle::OutputBuffer out,');
@@ -511,6 +696,13 @@ private:
             });
         }
 
+        const preSampleProcessing = this.generatePreSampleProcessing();
+        if (preSampleProcessing.length > 0) {
+            lines.push('');
+            lines.push('    // Pre-sample event processing');
+            preSampleProcessing.forEach(line => lines.push('    ' + line));
+        }
+
         lines.push('');
         lines.push('    float sr = hw.AudioSampleRate();');
         lines.push('    for (size_t i = 0; i < size; i++) {');
@@ -574,6 +766,9 @@ private:
                 break;
             case 'grainlet_oscillator':
                 lines.push(...this.generateGrainletCode(block, instanceName));
+                break;
+            case 'poly_grainlet_voice':
+                lines.push(...this.generatePolyGrainletVoiceCode(block, instanceName));
                 break;
             case 'moog_ladder':
                 lines.push(...this.generateMoogLadderCode(block, instanceName));
@@ -975,8 +1170,25 @@ private:
         return [`sig_${name}_out = ${name}.Process(${syncVar});`];
     }
 
-    private generateGrainletCode(_block: BlockInstance, name: string): string[] {
-        return [`sig_${name}_out = ${name}.Process();`];
+    private generateGrainletCode(block: BlockInstance, name: string): string[] {
+        const lines: string[] = [];
+        this.writeParameterSetters(block, name, lines);
+        lines.push(`sig_${name}_out = ${name}.Process();`);
+        return lines;
+    }
+
+    private generatePolyGrainletVoiceCode(block: BlockInstance, name: string): string[] {
+        const shape = this.getParameterExpression(block, 'shape', 0.35);
+        const formant = this.getParameterExpression(block, 'formant_freq', 1200);
+        const bleed = this.getParameterExpression(block, 'bleed', 0.25);
+        const attack = this.getParameterExpression(block, 'attack', 0.01);
+        const release = this.getParameterExpression(block, 'release', 0.25);
+        const spread = this.getParameterExpression(block, 'spread', 0.4);
+        const gain = this.getParameterExpression(block, 'output_gain', 0.18);
+
+        return [
+            `${name}.Process(${shape}, ${formant}, ${bleed}, ${attack}, ${release}, ${spread}, ${gain}, &sig_${name}_left, &sig_${name}_right);`,
+        ];
     }
 
     private generateMoogLadderCode(block: BlockInstance, name: string): string[] {
@@ -1000,13 +1212,16 @@ private:
         const audioIn = this.getInputConnection(block.id, 'in');
         const inputVar = audioIn ? this.getSourceVariable(audioIn) : '0.0f';
 
-        return [
+        const lines: string[] = [];
+        this.writeParameterSetters(block, name, lines);
+        lines.push(
             `${name}.Process(${inputVar});`,
             `sig_${name}_low = ${name}.Low();`,
             `sig_${name}_high = ${name}.High();`,
             `sig_${name}_band = ${name}.Band();`,
             `sig_${name}_notch = ${name}.Notch();`,
-        ];
+        );
+        return lines;
     }
 
     private generateAdsrCode(block: BlockInstance, name: string): string[] {
@@ -1028,8 +1243,10 @@ private:
 
     private generateVcaCode(block: BlockInstance, name: string): string[] {
         // VCA is not a DaisySP class - implemented as inline multiplication
-        const audioIn = this.getInputConnection(block.id, 'in');
-        const cvIn = this.getInputConnection(block.id, 'cv');
+        const audioIn = this.getInputConnection(block.id, 'in') || this.getInputConnection(block.id, 'audio_in');
+        const cvIn = this.getInputConnection(block.id, 'gain_cv')
+            || this.getInputConnection(block.id, 'cv')
+            || this.getInputConnection(block.id, 'cv_in');
 
         const audioVar = audioIn ? this.getSourceVariable(audioIn) : '0.0f';
         const cvVar = cvIn ? this.getSourceVariable(cvIn) : '1.0f';
@@ -1071,15 +1288,22 @@ private:
     }
 
     private generateReverbCode(block: BlockInstance, name: string): string[] {
-        const audioIn = this.getInputConnection(block.id, 'in');
-        const inputVar = audioIn ? this.getSourceVariable(audioIn) : '0.0f';
+        const leftIn = this.getInputConnection(block.id, 'in_l') || this.getInputConnection(block.id, 'in');
+        const rightIn = this.getInputConnection(block.id, 'in_r');
+        const leftVar = leftIn ? this.getSourceVariable(leftIn) : '0.0f';
+        const rightVar = rightIn ? this.getSourceVariable(rightIn) : leftVar;
 
-        return [
+        const lines: string[] = [];
+        this.writeParameterSetters(block, name, lines, ['wet_dry']);
+        const wetDry = this.getParameterExpression(block, 'wet_dry', 0.3);
+
+        lines.push(
             `float revL, revR;`,
-            `${name}.Process(${inputVar}, ${inputVar}, &revL, &revR);`,
-            `sig_${name}_out_l = revL;`,
-            `sig_${name}_out_r = revR;`,
-        ];
+            `${name}.Process(${leftVar}, ${rightVar}, &revL, &revR);`,
+            `sig_${name}_out_l = (${leftVar} * (1.0f - ${wetDry})) + (revL * ${wetDry});`,
+            `sig_${name}_out_r = (${rightVar} * (1.0f - ${wetDry})) + (revR * ${wetDry});`,
+        );
+        return lines;
     }
 
     private generateCompressorCode(block: BlockInstance, name: string): string[] {
@@ -1100,7 +1324,7 @@ private:
         const max = block.parameterValues['max'] ?? 1;
         const range = (max as number) - (min as number);
 
-        const platform = this.patch.hardwareConfig?.platform || 'seed';
+        const platform = this.getTargetPlatform();
 
         let valueExpr = `hw.knob[${channel}].Value()`;
 
@@ -1147,7 +1371,7 @@ private:
     }
 
     private generateEncoderCode(_block: BlockInstance, name: string): string[] {
-        const platform = this.patch.hardwareConfig?.platform || 'seed';
+        const platform = this.getTargetPlatform();
 
         if (platform === 'pod') {
             return [
@@ -1907,6 +2131,27 @@ private:
         return conn ? this.getSourceVariable(conn) : '0.0f';
     }
 
+    private getParameterExpression(block: BlockInstance, paramId: string, fallback: number): string {
+        const def = this.getActiveBlockDefs().get(block.definitionId);
+        const param = def?.parameters.find(candidate => candidate.id === paramId);
+        const value = block.parameterValues[paramId] ?? param?.defaultValue ?? fallback;
+        let valueExpr = this.formatFloat(value);
+
+        if (param?.type === 'enum' && param.enumValues) {
+            const enumOpt = param.enumValues.find(candidate => candidate.value === value);
+            if (enumOpt?.cppValue) {
+                valueExpr = enumOpt.cppValue;
+            }
+        }
+
+        const cvConn = this.getInputConnection(block.id, `${paramId}_cv`);
+        if (cvConn && param?.cvModulatable) {
+            valueExpr = `${valueExpr} + ${this.getSourceVariable(cvConn)}`;
+        }
+
+        return valueExpr;
+    }
+
     private writeParameterSetters(block: BlockInstance, instanceName: string, lines: string[], excludeParams: string[] = []): void {
         const def = this.getActiveBlockDefs().get(block.definitionId);
         if (!def) return;
@@ -1944,6 +2189,29 @@ private:
                 lines.push(`${instanceName}.${param.cppSetter}(${valStr});`);
             }
         });
+    }
+
+    private getPolyVoiceCount(block: BlockInstance): number {
+        const requested = Number(block.parameterValues['voice_count'] ?? 8);
+        if (!Number.isFinite(requested)) {
+            return 8;
+        }
+        return Math.min(16, Math.max(1, Math.round(requested)));
+    }
+
+    private generatePreSampleProcessing(): string[] {
+        const platform = this.getTargetPlatform();
+        if (platform !== 'field') {
+            return [];
+        }
+
+        return this.patch.blocks
+            .filter(block => block.definitionId === 'poly_grainlet_voice')
+            .map(block => {
+                const instanceName = this.getInstanceName(block);
+                const octave = Math.min(4, Math.max(0, Math.round(Number(block.parameterValues['octave'] ?? 2))));
+                return `${instanceName}.UpdateKeys(hw, ${octave});`;
+            });
     }
 
     // ===========================================================================
@@ -2084,7 +2352,7 @@ private:
     private generateMain(): string {
         const lines: string[] = [];
         const blockSize = this.patch.metadata.blockSize;
-        const platform = this.patch.hardwareConfig?.platform || 'seed';
+        const platform = this.getTargetPlatform();
 
         lines.push('int main(void) {');
         lines.push('    hw.Init();');
@@ -2222,6 +2490,14 @@ include $(SYSTEM_FILES_DIR)/Makefile
     // ===========================================================================
     // HELPERS
     // ===========================================================================
+
+    private getTargetPlatform(): string {
+        const platform = this.patch.hardwareConfig?.platform || this.patch.metadata?.targetHardware || 'seed';
+        if (platform === 'pod' || platform === 'field' || platform === 'seed') {
+            return platform;
+        }
+        return 'seed';
+    }
 
     private shouldSkipDeclaration(defId: string): boolean {
         const skipBlocks = [
@@ -2529,6 +2805,10 @@ include $(SYSTEM_FILES_DIR)/Makefile
      */
     private usesArpeggiator(): boolean {
         return this.patch.blocks.some(b => b.definitionId === 'arpeggiator');
+    }
+
+    private usesPolyGrainletVoice(): boolean {
+        return this.patch.blocks.some(b => b.definitionId === 'poly_grainlet_voice');
     }
 
     // ===========================================================================
