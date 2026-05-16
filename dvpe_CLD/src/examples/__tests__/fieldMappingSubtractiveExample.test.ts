@@ -19,6 +19,9 @@ describe('Field mapping subtractive example', () => {
         expect(result.mainCpp).toContain('const int field_mapping_layer =');
         expect(result.mainCpp).toContain('hw.GetKnobValue(DaisyField::KNOB_1)');
         expect(result.mainCpp).toContain('hw.KeyboardState(0)');
-        expect(result.mainCpp).toContain('hw.KeyboardRisingEdge(8)');
+        expect(result.mainCpp).toContain('const bool field_sw1_short_press = hw.GetSwitch(DaisyField::SW_1)->RisingEdge();');
+        expect(result.mainCpp).toContain('if (field_sw1_short_press) accent_env.Trigger();');
+        expect(result.mainCpp).toContain('if (hw.KeyboardRisingEdge(9)) field_toggle_B2_normal = (field_toggle_B2_normal + 1) % 3;');
+        expect(result.mainCpp).toContain('hw.led_driver.SetLed(kFieldKeyLeds[9]');
     });
 });

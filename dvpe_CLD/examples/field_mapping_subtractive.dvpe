@@ -4,7 +4,7 @@
     "metadata": {
       "name": "Field Mapping Subtractive",
       "author": "Codex",
-      "description": "Daisy Field example patch for the Field Mapping panel. K1-K8 control a simple subtractive voice across normal, SW1, SW2, and SW1+SW2 held layers. A1 gates the amp ADSR; B1 triggers a short filter-drive accent.",
+      "description": "Daisy Field example patch for the Field Mapping panel. K1-K8 control a simple subtractive voice across normal, SW1, SW2, and SW1+SW2 held layers. A1 gates the amp ADSR; SW1 short press triggers a filter-drive accent; B2 cycles three damping values with key LED feedback.",
       "created": "2026-05-15T00:00:00.000Z",
       "modified": "2026-05-15T00:00:00.000Z",
       "version": "1.0.0",
@@ -301,20 +301,26 @@
           "keyOutput": "gate"
         },
         {
-          "controlType": "key",
-          "controlId": "B1",
+          "controlType": "switch",
+          "controlId": "SW1",
           "layer": "normal",
+          "interaction": "shortPress",
           "targetBlockId": "accent_env",
           "targetPortId": "trig",
           "keyOutput": "trigger"
         },
         {
           "controlType": "key",
-          "controlId": "A1",
-          "layer": "sw1",
-          "targetBlockId": "accent_env",
-          "targetPortId": "trig",
-          "keyOutput": "trigger"
+          "controlId": "B2",
+          "layer": "normal",
+          "targetBlockId": "reverb1",
+          "targetParameterId": "lpfreq",
+          "keyOutput": "toggle3",
+          "toggleStates": [
+            { "label": "Dark", "value": 2000, "led": "off" },
+            { "label": "Open", "value": 9000, "led": "blink" },
+            { "label": "Bright", "value": 16000, "led": "on" }
+          ]
         }
       ],
       "peripherals": {

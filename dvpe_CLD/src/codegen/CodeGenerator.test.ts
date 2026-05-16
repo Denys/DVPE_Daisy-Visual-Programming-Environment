@@ -1439,7 +1439,8 @@ describe('CodeGenerator', () => {
                 const result = generator.generate();
 
                 expect(result.errors).toEqual([]);
-                expect(result.mainCpp).toContain('if (hw.GetSwitch(DaisyField::SW_1)->RisingEdge()) env1.Trigger();');
+                expect(result.mainCpp).toContain('const bool field_sw1_short_press = hw.GetSwitch(DaisyField::SW_1)->RisingEdge();');
+                expect(result.mainCpp).toContain('if (field_sw1_short_press) env1.Trigger();');
             });
 
             it('generates key toggle3 state cycling and key LED feedback', () => {

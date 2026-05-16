@@ -35,6 +35,17 @@ interface HistoryEntry {
   description: string;
 }
 
+interface PatchClipboard {
+  blocks: BlockInstance[];
+  connections: Connection[];
+  polyVoiceBlankets: PolyVoiceBlanket[];
+}
+
+interface MoveTransaction {
+  blocks: Record<string, { x: number; y: number }>;
+  polyVoiceBlankets: Record<string, { x: number; y: number }>;
+}
+
 interface PatchState {
   // Core state
   blocks: BlockInstance[];
@@ -53,6 +64,10 @@ interface PatchState {
   selectedBlockIds: string[];
   selectedConnectionIds: string[];
   selectedPolyVoiceBlanketIds: string[];
+
+  // Clipboard and transient canvas transactions
+  clipboard: PatchClipboard | null;
+  moveTransaction: MoveTransaction | null;
 
   // Dirty flag
   isDirty: boolean;
@@ -91,7 +106,11 @@ interface PatchActions {
   createPolyVoiceBlanketFromSelection: () => PolyVoiceBlanket | null;
   addPolyVoiceBlanket: (blanket: Partial<Omit<PolyVoiceBlanket, 'id'>> & { id?: string }) => PolyVoiceBlanket;
   removePolyVoiceBlanket: (blanketId: string) => void;
-  updatePolyVoiceBlanket: (blanketId: string, updates: Partial<Omit<PolyVoiceBlanket, 'id'>>) => void;
+  updatePolyVoiceBlanket: (
+    blanketId: string,
+    updates: Partial<Omit<PolyVoiceBlanket, 'id'>>,
+    options?: { saveHistory?: boolean }
+  ) => void;
   refreshPolyVoiceBlanketMembers: (blanketId: string) => void;
   selectPolyVoiceBlanket: (blanketId: string, addToSelection?: boolean) => void;
 
@@ -112,6 +131,13 @@ interface PatchActions {
   selectAll: () => void;
   clearSelection: () => void;
   deleteSelection: () => void;
+  copySelection: () => boolean;
+  cutSelection: () => boolean;
+  pasteClipboard: (offset?: { x: number; y: number }) => string[];
+  hasClipboard: () => boolean;
+  beginMoveTransaction: (nodeIds: string[]) => void;
+  cancelMoveTransaction: () => boolean;
+  commitMoveTransaction: () => boolean;
 
   // History operations
   undo: () => void;
@@ -187,6 +213,13 @@ const createDefaultPolyVoiceBlanket = (
   selected: input.selected,
 });
 
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+
+const positionsMatch = (
+  a: { x: number; y: number } | undefined,
+  b: { x: number; y: number } | undefined
+): boolean => !!a && !!b && Math.abs(a.x - b.x) <= 0.5 && Math.abs(a.y - b.y) <= 0.5;
+
 const initialState: PatchState = {
   blocks: [],
   connections: [],
@@ -200,6 +233,8 @@ const initialState: PatchState = {
   selectedBlockIds: [],
   selectedConnectionIds: [],
   selectedPolyVoiceBlanketIds: [],
+  clipboard: null,
+  moveTransaction: null,
   isDirty: false,
   loadCount: 0,
 };
@@ -574,7 +609,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           saveHistory('Remove poly voice blanket');
         },
 
-        updatePolyVoiceBlanket: (blanketId, updates) => {
+        updatePolyVoiceBlanket: (blanketId, updates, options) => {
           set((state) => {
             const blanket = state.polyVoiceBlankets.find((item) => item.id === blanketId);
             if (blanket) {
@@ -582,7 +617,9 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             }
           });
 
-          saveHistory('Update poly voice blanket');
+          if (options?.saveHistory !== false) {
+            saveHistory('Update poly voice blanket');
+          }
         },
 
         refreshPolyVoiceBlanketMembers: (blanketId) => {
@@ -863,6 +900,241 @@ export const usePatchStore = create<PatchState & PatchActions>()(
           saveHistory('Delete selection');
         },
 
+        copySelection: () => {
+          const { blocks, connections, polyVoiceBlankets, selectedBlockIds, selectedPolyVoiceBlanketIds } = get();
+          const blockIdSet = new Set(selectedBlockIds);
+          const blanketIdSet = new Set(selectedPolyVoiceBlanketIds);
+          if (blockIdSet.size === 0 && blanketIdSet.size === 0) {
+            return false;
+          }
+
+          const copiedBlocks = blocks.filter((block) => blockIdSet.has(block.id)).map(clone);
+          const copiedConnections = connections
+            .filter((connection) => blockIdSet.has(connection.sourceBlockId) && blockIdSet.has(connection.targetBlockId))
+            .map(clone);
+          const copiedBlankets = polyVoiceBlankets
+            .filter((blanket) => blanketIdSet.has(blanket.id))
+            .map((blanket) => ({
+              ...clone(blanket),
+              memberBlockIds: blanket.memberBlockIds.filter((id) => blockIdSet.has(id)),
+            }));
+
+          set((state) => {
+            state.clipboard = {
+              blocks: copiedBlocks,
+              connections: copiedConnections,
+              polyVoiceBlankets: copiedBlankets,
+            };
+          });
+          return true;
+        },
+
+        cutSelection: () => {
+          const { blocks, connections, polyVoiceBlankets, selectedBlockIds, selectedConnectionIds, selectedPolyVoiceBlanketIds } = get();
+          if (selectedBlockIds.length === 0 && selectedConnectionIds.length === 0 && selectedPolyVoiceBlanketIds.length === 0) {
+            return false;
+          }
+
+          const blockIdSet = new Set(selectedBlockIds);
+          const connectionIdSet = new Set(selectedConnectionIds);
+          const blanketIdSet = new Set(selectedPolyVoiceBlanketIds);
+          const copiedBlocks = blocks.filter((block) => blockIdSet.has(block.id)).map(clone);
+          const copiedConnections = connections
+            .filter(
+              (connection) =>
+                connectionIdSet.has(connection.id) ||
+                (blockIdSet.has(connection.sourceBlockId) && blockIdSet.has(connection.targetBlockId))
+            )
+            .map(clone);
+          const copiedBlankets = polyVoiceBlankets
+            .filter((blanket) => blanketIdSet.has(blanket.id))
+            .map((blanket) => ({
+              ...clone(blanket),
+              memberBlockIds: blanket.memberBlockIds.filter((id) => blockIdSet.has(id)),
+            }));
+
+          set((state) => {
+            state.clipboard = {
+              blocks: copiedBlocks,
+              connections: copiedConnections,
+              polyVoiceBlankets: copiedBlankets,
+            };
+            state.connections = state.connections.filter(
+              (connection) =>
+                !connectionIdSet.has(connection.id) &&
+                !blockIdSet.has(connection.sourceBlockId) &&
+                !blockIdSet.has(connection.targetBlockId)
+            );
+            state.blocks = state.blocks.filter((block) => !blockIdSet.has(block.id));
+            state.polyVoiceBlankets = state.polyVoiceBlankets
+              .filter((blanket) => !blanketIdSet.has(blanket.id))
+              .map((blanket) => ({
+                ...blanket,
+                memberBlockIds: blanket.memberBlockIds.filter((id) => !blockIdSet.has(id)),
+              }));
+            state.selectedBlockIds = [];
+            state.selectedConnectionIds = [];
+            state.selectedPolyVoiceBlanketIds = [];
+          });
+
+          saveHistory('Cut selection');
+          return true;
+        },
+
+        pasteClipboard: (offset = { x: 40, y: 40 }) => {
+          const { clipboard } = get();
+          if (!clipboard || (clipboard.blocks.length === 0 && clipboard.polyVoiceBlankets.length === 0)) {
+            return [];
+          }
+
+          const blockIdMap = new Map<string, string>();
+          const blanketIdMap = new Map<string, string>();
+          const pastedBlocks = clipboard.blocks.map((block) => {
+            const id = uuidv4();
+            blockIdMap.set(block.id, id);
+            return {
+              ...clone(block),
+              id,
+              position: {
+                x: block.position.x + offset.x,
+                y: block.position.y + offset.y,
+              },
+              selected: undefined,
+            };
+          });
+          const pastedBlankets = clipboard.polyVoiceBlankets.map((blanket) => {
+            const id = uuidv4();
+            blanketIdMap.set(blanket.id, id);
+            return {
+              ...clone(blanket),
+              id,
+              position: {
+                x: blanket.position.x + offset.x,
+                y: blanket.position.y + offset.y,
+              },
+              memberBlockIds: blanket.memberBlockIds
+                .map((memberId) => blockIdMap.get(memberId))
+                .filter((memberId): memberId is string => Boolean(memberId)),
+              selected: undefined,
+            };
+          });
+          const pastedConnections = clipboard.connections
+            .map((connection) => {
+              const sourceBlockId = blockIdMap.get(connection.sourceBlockId);
+              const targetBlockId = blockIdMap.get(connection.targetBlockId);
+              if (!sourceBlockId || !targetBlockId) {
+                return null;
+              }
+              return {
+                ...clone(connection),
+                id: uuidv4(),
+                sourceBlockId,
+                targetBlockId,
+              };
+            })
+            .filter((connection): connection is Connection => Boolean(connection));
+
+          const pastedBlockIds = pastedBlocks.map((block) => block.id);
+          const pastedBlanketIds = pastedBlankets.map((blanket) => blanket.id);
+
+          set((state) => {
+            state.blocks.push(...pastedBlocks);
+            state.connections.push(...pastedConnections);
+            state.polyVoiceBlankets.push(...pastedBlankets);
+            state.selectedBlockIds = pastedBlockIds;
+            state.selectedConnectionIds = [];
+            state.selectedPolyVoiceBlanketIds = pastedBlanketIds;
+          });
+
+          saveHistory('Paste selection');
+          return pastedBlockIds;
+        },
+
+        hasClipboard: () => {
+          const { clipboard } = get();
+          return !!clipboard && (clipboard.blocks.length > 0 || clipboard.polyVoiceBlankets.length > 0);
+        },
+
+        beginMoveTransaction: (nodeIds) => {
+          const nodeIdSet = new Set(nodeIds);
+          const { blocks, polyVoiceBlankets } = get();
+          const blockPositions: MoveTransaction['blocks'] = {};
+          const blanketPositions: MoveTransaction['polyVoiceBlankets'] = {};
+
+          blocks.forEach((block) => {
+            if (nodeIdSet.has(block.id)) {
+              blockPositions[block.id] = { ...block.position };
+            }
+          });
+          polyVoiceBlankets.forEach((blanket) => {
+            if (nodeIdSet.has(blanket.id)) {
+              blanketPositions[blanket.id] = { ...blanket.position };
+            }
+          });
+
+          if (Object.keys(blockPositions).length === 0 && Object.keys(blanketPositions).length === 0) {
+            return;
+          }
+
+          set((state) => {
+            state.moveTransaction = {
+              blocks: blockPositions,
+              polyVoiceBlankets: blanketPositions,
+            };
+          });
+        },
+
+        cancelMoveTransaction: () => {
+          const { moveTransaction } = get();
+          if (!moveTransaction) {
+            return false;
+          }
+
+          set((state) => {
+            state.blocks.forEach((block) => {
+              const position = moveTransaction.blocks[block.id];
+              if (position) {
+                block.position = { ...position };
+              }
+            });
+            state.polyVoiceBlankets.forEach((blanket) => {
+              const position = moveTransaction.polyVoiceBlankets[blanket.id];
+              if (position) {
+                blanket.position = { ...position };
+              }
+            });
+            state.moveTransaction = null;
+          });
+          return true;
+        },
+
+        commitMoveTransaction: () => {
+          const { moveTransaction, blocks, polyVoiceBlankets } = get();
+          if (!moveTransaction) {
+            return false;
+          }
+
+          const blockChanged = Object.entries(moveTransaction.blocks).some(([id, position]) => {
+            const block = blocks.find((item) => item.id === id);
+            return !positionsMatch(block?.position, position);
+          });
+          const blanketChanged = Object.entries(moveTransaction.polyVoiceBlankets).some(([id, position]) => {
+            const blanket = polyVoiceBlankets.find((item) => item.id === id);
+            return !positionsMatch(blanket?.position, position);
+          });
+
+          set((state) => {
+            state.moveTransaction = null;
+          });
+
+          if (!blockChanged && !blanketChanged) {
+            return false;
+          }
+
+          saveHistory('Move selection');
+          return true;
+        },
+
         // === History Operations ===
 
         undo: () => {
@@ -916,6 +1188,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
             state.selectedPolyVoiceBlanketIds = [];
+            state.moveTransaction = null;
             state.isDirty = false;
           });
         },
@@ -962,6 +1235,7 @@ export const usePatchStore = create<PatchState & PatchActions>()(
             state.selectedBlockIds = [];
             state.selectedConnectionIds = [];
             state.selectedPolyVoiceBlanketIds = [];
+            state.moveTransaction = null;
             state.isDirty = false;
             state.loadCount = (state.loadCount ?? 0) + 1;
           });

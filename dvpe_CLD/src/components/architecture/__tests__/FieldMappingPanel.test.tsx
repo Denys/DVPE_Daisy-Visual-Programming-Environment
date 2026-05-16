@@ -89,6 +89,7 @@ describe('FieldMappingPanel', () => {
         );
 
         expect(screen.getByRole('heading', { name: 'Field Mapping' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Matrix' }));
         expect(screen.getByText('K1')).toBeInTheDocument();
         expect(screen.getByText('A1')).toBeInTheDocument();
         expect(screen.getByText('SW1+SW2')).toBeInTheDocument();
@@ -140,6 +141,7 @@ describe('FieldMappingPanel', () => {
             />
         );
 
+        fireEvent.click(screen.getByRole('button', { name: 'Matrix' }));
         expect(screen.getByText('Graph connection wins')).toBeInTheDocument();
         expect(screen.getAllByRole('option', { name: 'AD ENV - TRIG (connected)' })[0]).toBeDisabled();
     });

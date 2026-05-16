@@ -23,6 +23,7 @@ import {
     buildFieldMappingConflictErrors,
     getFieldKeyIndex,
     getFieldKnobIndex,
+    getFieldSwitchIndex,
 } from '@/core/fieldMapping';
 
 // ============================================================================
@@ -662,6 +663,16 @@ private:
         }
         lines.push('');
 
+        if (platform === 'field' && this.hasFieldToggleMappings()) {
+            lines.push('constexpr size_t kFieldKeyLeds[16] = {');
+            lines.push('    DaisyField::LED_KEY_A1, DaisyField::LED_KEY_A2, DaisyField::LED_KEY_A3, DaisyField::LED_KEY_A4,');
+            lines.push('    DaisyField::LED_KEY_A5, DaisyField::LED_KEY_A6, DaisyField::LED_KEY_A7, DaisyField::LED_KEY_A8,');
+            lines.push('    DaisyField::LED_KEY_B1, DaisyField::LED_KEY_B2, DaisyField::LED_KEY_B3, DaisyField::LED_KEY_B4,');
+            lines.push('    DaisyField::LED_KEY_B5, DaisyField::LED_KEY_B6, DaisyField::LED_KEY_B7, DaisyField::LED_KEY_B8,');
+            lines.push('};');
+            lines.push('');
+        }
+
         // Declarations for Seed Mapped Controls (Switches, LEDs)
         if (platform === 'seed' && this.patch.hardwareConfig?.pinMapping) {
             const mapping = this.patch.hardwareConfig.pinMapping;
@@ -732,6 +743,15 @@ private:
                 lines.push(`${className} ${instanceName};`);
             }
         });
+
+        const fieldToggleMappings = this.getFieldToggleMappings();
+        if (fieldToggleMappings.length > 0) {
+            lines.push('');
+            lines.push('// Field Toggle States');
+            fieldToggleMappings.forEach(mapping => {
+                lines.push(`uint8_t ${this.getFieldToggleStateVariable(mapping)} = 0;`);
+            });
+        }
 
         // Signal routing variables
         lines.push('');
@@ -858,6 +878,10 @@ private:
             lines.push('    const bool field_sw1_held = hw.GetSwitch(DaisyField::SW_1)->Pressed();');
             lines.push('    const bool field_sw2_held = hw.GetSwitch(DaisyField::SW_2)->Pressed();');
             lines.push('    const int field_mapping_layer = field_sw1_held && field_sw2_held ? 3 : (field_sw2_held ? 2 : (field_sw1_held ? 1 : 0));');
+            if (this.hasFieldSwitchMappings()) {
+                lines.push('    const bool field_sw1_short_press = hw.GetSwitch(DaisyField::SW_1)->RisingEdge();');
+                lines.push('    const bool field_sw2_short_press = hw.GetSwitch(DaisyField::SW_2)->RisingEdge();');
+            }
         }
 
         // Handle Knobs
@@ -915,6 +939,13 @@ private:
                     lines.push(`    bool key_${instanceName} = hw.KeyboardState(${index});`);
                 }
             });
+        }
+
+        const fieldControlEventProcessing = this.generateFieldControlEventProcessing();
+        if (fieldControlEventProcessing.length > 0) {
+            lines.push('');
+            lines.push('    // Field control events and feedback');
+            fieldControlEventProcessing.forEach(line => lines.push('    ' + line));
         }
 
         const preSampleProcessing = this.generatePreSampleProcessing();
@@ -3038,6 +3069,30 @@ private:
         return this.getFieldControlMappings().length > 0;
     }
 
+    private getFieldToggleMappings(): FieldControlMapping[] {
+        return this.getFieldControlMappings().filter(mapping =>
+            mapping.controlType === 'key' &&
+            mapping.keyOutput === 'toggle3' &&
+            Boolean(mapping.targetParameterId) &&
+            Array.isArray(mapping.toggleStates) &&
+            mapping.toggleStates.length === 3
+        );
+    }
+
+    private hasFieldToggleMappings(): boolean {
+        return this.getFieldToggleMappings().length > 0;
+    }
+
+    private hasFieldSwitchMappings(): boolean {
+        return this.getFieldControlMappings().some(mapping =>
+            mapping.controlType === 'switch' && mapping.interaction === 'shortPress'
+        );
+    }
+
+    private getFieldToggleStateVariable(mapping: FieldControlMapping): string {
+        return `field_toggle_${mapping.controlId}_${mapping.layer}`.replace(/[^A-Za-z0-9_]/g, '_');
+    }
+
     private getFieldEffectiveMappingForLayer(
         mappings: FieldControlMapping[],
         controlId: string,
@@ -3092,22 +3147,41 @@ private:
     }
 
     private getFieldMappedParameterExpression(blockId: string, paramId: string, fallback: string): string {
-        const hasTargetMapping = this.getFieldControlMappings().some(mapping =>
+        const hasKnobTargetMapping = this.getFieldControlMappings().some(mapping =>
             mapping.controlType === 'knob' &&
             mapping.targetBlockId === blockId &&
             mapping.targetParameterId === paramId
         );
 
-        if (!hasTargetMapping) {
-            return fallback;
+        const hasToggleTargetMapping = this.getFieldToggleMappings().some(mapping =>
+            mapping.targetBlockId === blockId &&
+            mapping.targetParameterId === paramId
+        );
+
+        let valueExpr = fallback;
+
+        if (hasToggleTargetMapping) {
+            valueExpr = this.getFieldLayeredExpressionForTarget(
+                'key',
+                mapping =>
+                    mapping.keyOutput === 'toggle3' &&
+                    mapping.targetBlockId === blockId &&
+                    mapping.targetParameterId === paramId,
+                mapping => this.generateFieldToggle3Expression(mapping),
+                valueExpr
+            );
         }
 
-        return this.getFieldLayeredExpressionForTarget(
-            'knob',
-            mapping => mapping.targetBlockId === blockId && mapping.targetParameterId === paramId,
-            mapping => this.generateFieldKnobMappingExpression(mapping),
-            fallback
-        );
+        if (hasKnobTargetMapping) {
+            valueExpr = this.getFieldLayeredExpressionForTarget(
+                'knob',
+                mapping => mapping.targetBlockId === blockId && mapping.targetParameterId === paramId,
+                mapping => this.generateFieldKnobMappingExpression(mapping),
+                valueExpr
+            );
+        }
+
+        return valueExpr;
     }
 
     private generateFieldKnobMappingExpression(mapping: FieldControlMapping): string {
@@ -3132,28 +3206,78 @@ private:
         }
     }
 
+    private generateFieldToggle3Expression(mapping: FieldControlMapping): string {
+        const stateVar = this.getFieldToggleStateVariable(mapping);
+        const states = mapping.toggleStates ?? [
+            { label: 'Off', value: 0, led: 'off' as const },
+            { label: 'Blink', value: 0.5, led: 'blink' as const },
+            { label: 'On', value: 1, led: 'on' as const },
+        ];
+
+        return `(${stateVar} == 0 ? ${this.formatFieldMappingValue(states[0])} : ${stateVar} == 1 ? ${this.formatFieldMappingValue(states[1])} : ${this.formatFieldMappingValue(states[2])})`;
+    }
+
+    private formatFieldMappingValue(state: NonNullable<FieldControlMapping['toggleStates']>[number]): string {
+        if (state.cppValue) {
+            return state.cppValue;
+        }
+        if (typeof state.value === 'boolean') {
+            return state.value ? 'true' : 'false';
+        }
+        if (typeof state.value === 'number') {
+            return this.formatFloat(state.value);
+        }
+        if (/^[A-Za-z_][A-Za-z0-9_:]*$/.test(state.value)) {
+            return state.value;
+        }
+        return this.formatFloat(state.value);
+    }
+
     private getFieldMappedInputExpression(blockId: string, portId: string, fallback: string): string {
         const context = this.getCurrentContext();
         if (context) {
             return fallback;
         }
 
-        const hasTargetMapping = this.getFieldControlMappings().some(mapping =>
+        const hasKeyTargetMapping = this.getFieldControlMappings().some(mapping =>
             mapping.controlType === 'key' &&
+            mapping.keyOutput !== 'toggle3' &&
             mapping.targetBlockId === blockId &&
             mapping.targetPortId === portId
         );
 
-        if (!hasTargetMapping) {
-            return fallback;
+        if (hasKeyTargetMapping) {
+            return this.getFieldLayeredExpressionForTarget(
+                'key',
+                mapping =>
+                    mapping.keyOutput !== 'toggle3' &&
+                    mapping.targetBlockId === blockId &&
+                    mapping.targetPortId === portId,
+                mapping => this.generateFieldKeyExpression(mapping, portId),
+                fallback
+            );
         }
 
-        return this.getFieldLayeredExpressionForTarget(
-            'key',
-            mapping => mapping.targetBlockId === blockId && mapping.targetPortId === portId,
-            mapping => this.generateFieldKeyExpression(mapping, portId),
-            fallback
+        const hasSwitchTargetMapping = this.getFieldControlMappings().some(mapping =>
+            mapping.controlType === 'switch' &&
+            mapping.interaction === 'shortPress' &&
+            mapping.targetBlockId === blockId &&
+            mapping.targetPortId === portId
         );
+
+        if (hasSwitchTargetMapping) {
+            return this.getFieldLayeredExpressionForTarget(
+                'switch',
+                mapping =>
+                    mapping.interaction === 'shortPress' &&
+                    mapping.targetBlockId === blockId &&
+                    mapping.targetPortId === portId,
+                mapping => this.generateFieldSwitchExpression(mapping),
+                fallback
+            );
+        }
+
+        return fallback;
     }
 
     private generateFieldKeyExpression(mapping: FieldControlMapping, portId: string): string {
@@ -3162,6 +3286,40 @@ private:
         return output === 'gate'
             ? `hw.KeyboardState(${keyIndex})`
             : `hw.KeyboardRisingEdge(${keyIndex})`;
+    }
+
+    private generateFieldSwitchExpression(mapping: FieldControlMapping): string {
+        const switchIndex = getFieldSwitchIndex(mapping.controlId);
+        return switchIndex === 0 ? 'field_sw1_short_press' : 'field_sw2_short_press';
+    }
+
+    private generateFieldControlEventProcessing(): string[] {
+        const lines: string[] = [];
+
+        this.getFieldToggleMappings().forEach(mapping => {
+            const keyIndex = getFieldKeyIndex(mapping.controlId);
+            const stateVar = this.getFieldToggleStateVariable(mapping);
+            lines.push(`if (hw.KeyboardRisingEdge(${keyIndex})) ${stateVar} = (${stateVar} + 1) % 3;`);
+            lines.push(`hw.led_driver.SetLed(kFieldKeyLeds[${keyIndex}], ${this.generateFieldToggleLedExpression(mapping)});`);
+        });
+
+        return lines;
+    }
+
+    private generateFieldToggleLedExpression(mapping: FieldControlMapping): string {
+        const stateVar = this.getFieldToggleStateVariable(mapping);
+        const states = mapping.toggleStates ?? [
+            { label: 'Off', value: 0, led: 'off' as const },
+            { label: 'Blink', value: 0.5, led: 'blink' as const },
+            { label: 'On', value: 1, led: 'on' as const },
+        ];
+        const brightnessByState = states.map(state => {
+            if (state.led === 'on') return '0.8f';
+            if (state.led === 'blink') return '(((System::GetNow() / 250) % 2) ? 0.8f : 0.05f)';
+            return '0.0f';
+        });
+
+        return `(${stateVar} == 0 ? ${brightnessByState[0]} : ${stateVar} == 1 ? ${brightnessByState[1]} : ${brightnessByState[2]})`;
     }
 
     private writeParameterSetters(block: BlockInstance, instanceName: string, lines: string[], excludeParams: string[] = []): void {

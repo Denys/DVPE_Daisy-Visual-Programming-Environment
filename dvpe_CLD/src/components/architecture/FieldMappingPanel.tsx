@@ -26,7 +26,7 @@ export const FieldMappingPanel: React.FC<FieldMappingPanelProps> = ({
     connections,
     onChange,
 }) => {
-    const [viewMode, setViewMode] = React.useState<'matrix' | 'surface'>('matrix');
+    const [viewMode, setViewMode] = React.useState<'matrix' | 'surface'>('surface');
     const [selectedControl, setSelectedControl] = React.useState('K1');
     const [selectedLayer, setSelectedLayer] = React.useState<FieldMappingLayer>('normal');
     const [draftKeyModes, setDraftKeyModes] = React.useState<Record<string, FieldKeyOutputType>>({});

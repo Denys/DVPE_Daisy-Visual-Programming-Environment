@@ -17,13 +17,16 @@ const shortcutEntries: ShortcutEntry[] = [
   { key: 'Ctrl/Cmd + O', description: 'Open patch' },
   { key: 'Ctrl/Cmd + S', description: 'Save patch' },
   { key: 'Ctrl/Cmd + U', description: 'Toggle block UI designer' },
+  { key: 'Ctrl/Cmd + C', description: 'Copy selection' },
+  { key: 'Ctrl/Cmd + X', description: 'Cut selection' },
+  { key: 'Ctrl/Cmd + V', description: 'Paste selection' },
   { key: 'Double-click', description: 'Inspect selected block' },
   { key: 'Ctrl/Cmd + Double-click', description: 'Inspect custom block internals' },
   { key: 'Delete / Backspace', description: 'Delete selection' },
   { key: 'Ctrl/Cmd + Z', description: 'Undo' },
   { key: 'Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y', description: 'Redo' },
-  { key: 'Ctrl + Drag', description: 'Box select in canvas' },
-  { key: 'Escape', description: 'Clear selection and inspector focus' },
+  { key: 'Ctrl/Shift + Drag', description: 'Box select in canvas' },
+  { key: 'Escape', description: 'Cancel active drag or clear selection and inspector focus' },
 ];
 
 export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose }) => {

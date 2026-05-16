@@ -18,6 +18,11 @@ import { ConnectionType, BlockInstance } from '@/types';
 import { BlockCategory } from '@/types/blocks';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import { usePatchStore, useUIStore } from '@/stores';
+import {
+  getStitchNeonCategoryColor,
+  getStitchNeonWireStyle,
+  hexToRgba,
+} from '@/lib/stitchNeonStyle';
 
 export interface BlockNodeData extends Record<string, unknown> {
   instance: BlockInstance;
@@ -134,6 +139,7 @@ type ConnectionEdgeType = Edge<ConnectionEdgeData>;
 
 const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
   id,
+  source,
   target,
   sourceX,
   sourceY,
@@ -147,6 +153,7 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
   const { setEdges, getNode } = useReactFlow();
   const setConnectionLabel = usePatchStore((state) => state.setConnectionLabel);
   const layoutStyle = useUIStore((state) => state.layoutStyle);
+  const stitchNeonSettings = useUIStore((state) => state.stitchNeonSettings);
 
   // Type-safe data access
   const edgeData = (data || { type: 'audio' }) as ConnectionEdgeData;
@@ -157,16 +164,33 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Get target node resolving category
+  const sourceNode = getNode(source);
+  const sourceNodeData = sourceNode?.data as BlockNodeData;
+  const sourceDefinition = sourceNodeData ? BlockRegistry.get(sourceNodeData.instance.definitionId) : null;
   const targetNode = getNode(target);
   const targetNodeData = targetNode?.data as BlockNodeData;
   const targetDefinition = targetNodeData ? BlockRegistry.get(targetNodeData.instance.definitionId) : null;
   const targetCategory = targetDefinition?.category;
 
   // Get colors for this connection type
-  const colors = useMemo(
-    () => getConnectionColors(edgeData.type || 'audio', targetCategory),
-    [edgeData.type, targetCategory]
-  );
+  const colors = useMemo(() => {
+    const baseColors = getConnectionColors(edgeData.type || 'audio', targetCategory);
+    if (layoutStyle !== 'glass' || !sourceDefinition) {
+      return baseColors;
+    }
+
+    const stroke = getStitchNeonCategoryColor(
+      stitchNeonSettings,
+      baseColors.stroke,
+      sourceDefinition.category
+    );
+    return {
+      ...baseColors,
+      stroke,
+      glow: hexToRgba(stroke, stitchNeonSettings.wireGlow),
+      gradient: [stroke, stroke],
+    };
+  }, [edgeData.type, layoutStyle, sourceDefinition, stitchNeonSettings, targetCategory]);
 
   // Calculate bezier path
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -177,6 +201,17 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
     targetY,
     targetPosition,
   });
+
+  const glassBaseWidth = edgeData.type === 'audio' ? 3.5 : edgeData.type === 'cv' ? 3 : 2.7;
+  const stitchWireStyle = getStitchNeonWireStyle(
+    stitchNeonSettings,
+    glassBaseWidth,
+    Boolean(selected)
+  );
+  const mainStrokeWidth = layoutStyle === 'glass'
+    ? stitchWireStyle.strokeWidth
+    : selected ? 3 : 2;
+  const mainStrokeOpacity = layoutStyle === 'glass' ? stitchWireStyle.opacity : 1;
 
   // Handle delete
   const handleDelete = useCallback(() => {
@@ -209,16 +244,16 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
 
   return (
     <>
-      {/* Glow effect layer - omit if glass mode for cleaner look */}
-      {layoutStyle !== 'glass' && (
+      {/* Glow effect layer */}
+      {(layoutStyle !== 'glass' || stitchNeonSettings.wireGlow > 0) && (
         <path
           d={edgePath}
           fill="none"
-          stroke={colors.glow}
-          strokeWidth={selected ? 12 : 8}
+          stroke={layoutStyle === 'glass' ? hexToRgba(colors.stroke, stitchNeonSettings.wireGlow) : colors.glow}
+          strokeWidth={layoutStyle === 'glass' ? Number(mainStrokeWidth) + 8 * stitchNeonSettings.wireGlow : selected ? 12 : 8}
           strokeLinecap="round"
           className="transition-all duration-200"
-          style={{ filter: 'blur(4px)' }}
+          style={{ filter: `blur(${layoutStyle === 'glass' ? 3 + stitchNeonSettings.wireGlow * 5 : 4}px)` }}
         />
       )}
 
@@ -228,12 +263,13 @@ const ConnectionEdge: React.FC<EdgeProps<ConnectionEdgeType>> = ({
         d={edgePath}
         fill="none"
         stroke={colors.stroke}
-        strokeWidth={layoutStyle === 'glass' ? (edgeData.type === 'audio' ? 3.5 : edgeData.type === 'cv' ? 3 : 2.7) : (selected ? 3 : 2)}
+        strokeWidth={mainStrokeWidth}
+        opacity={mainStrokeOpacity}
         strokeDasharray={layoutStyle === 'glass' ? (edgeData.type === 'cv' ? '8 10' : edgeData.type === 'trigger' ? '3 11' : undefined) : undefined}
         strokeLinecap="round"
         className={cn(
           'transition-all duration-200',
-          (selected as boolean) && 'stroke-[3px]'
+          layoutStyle !== 'glass' && (selected as boolean) && 'stroke-[3px]'
         )}
         initial={{ pathLength: 0 }}
         animate={{ pathLength: 1 }}

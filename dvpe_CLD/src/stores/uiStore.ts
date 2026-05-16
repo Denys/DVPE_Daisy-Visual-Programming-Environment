@@ -7,6 +7,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ViewportState } from '@/types';
 import { getDefaultAIModel, type AIProvider } from '@/codegen/advancedExportService';
+import {
+  DEFAULT_STITCH_NEON_SETTINGS,
+  normalizeStitchNeonSettings,
+  type StitchNeonSettings,
+} from '@/lib/stitchNeonStyle';
 
 // ============================================================================
 // TYPES
@@ -31,6 +36,12 @@ export interface DesignPreset {
   id: string;
   name: string;
   settings: DesignSettings;
+}
+
+export interface StitchNeonPreset {
+  id: string;
+  name: string;
+  settings: StitchNeonSettings;
 }
 
 interface PanelState {
@@ -89,6 +100,8 @@ interface UIState {
   // Design Experimentator
   designSettings: DesignSettings;
   customPresets: DesignPreset[];
+  stitchNeonSettings: StitchNeonSettings;
+  stitchNeonPresets: StitchNeonPreset[];
 
   // AI Export
   aiProvider: AIProvider;
@@ -151,6 +164,11 @@ interface UIActions {
   saveDesignPreset: (name: string) => void;
   loadDesignPreset: (presetId: string) => void;
   deleteDesignPreset: (presetId: string) => void;
+  updateStitchNeonSettings: (settings: Partial<StitchNeonSettings>) => void;
+  resetStitchNeonSettings: () => void;
+  saveStitchNeonPreset: (name: string) => void;
+  loadStitchNeonPreset: (presetId: string) => void;
+  deleteStitchNeonPreset: (presetId: string) => void;
 
   // AI Export
   setAIProvider: (provider: AIProvider) => void;
@@ -206,6 +224,8 @@ const initialState: UIState = {
     glassTint: 0.15,
   },
   customPresets: [],
+  stitchNeonSettings: { ...DEFAULT_STITCH_NEON_SETTINGS },
+  stitchNeonPresets: [],
   aiProvider: 'gemini' as AIProvider,
   aiModel: getDefaultAIModel('gemini'),
 };
@@ -431,6 +451,54 @@ export const useUIStore = create<UIState & UIActions>()(
         }));
       },
 
+      updateStitchNeonSettings: (settings) => {
+        set((state) => {
+          const current = normalizeStitchNeonSettings(state.stitchNeonSettings);
+          return {
+            stitchNeonSettings: normalizeStitchNeonSettings({
+              ...current,
+              ...settings,
+              blockTypeColors: {
+                ...current.blockTypeColors,
+                ...settings.blockTypeColors,
+              },
+            }),
+            layoutStyle: 'glass',
+          };
+        });
+      },
+
+      resetStitchNeonSettings: () => {
+        set({ stitchNeonSettings: { ...DEFAULT_STITCH_NEON_SETTINGS } });
+      },
+
+      saveStitchNeonPreset: (name) => {
+        const { stitchNeonSettings, stitchNeonPresets } = get();
+        const newPreset: StitchNeonPreset = {
+          id: `stitch-preset-${Date.now()}`,
+          name,
+          settings: normalizeStitchNeonSettings(stitchNeonSettings),
+        };
+        set({ stitchNeonPresets: [...stitchNeonPresets, newPreset] });
+      },
+
+      loadStitchNeonPreset: (presetId) => {
+        const { stitchNeonPresets } = get();
+        const preset = stitchNeonPresets.find((p) => p.id === presetId);
+        if (preset) {
+          set({
+            stitchNeonSettings: normalizeStitchNeonSettings(preset.settings),
+            layoutStyle: 'glass',
+          });
+        }
+      },
+
+      deleteStitchNeonPreset: (presetId) => {
+        set((state) => ({
+          stitchNeonPresets: state.stitchNeonPresets.filter((p) => p.id !== presetId),
+        }));
+      },
+
       // === AI Export ===
       setAIProvider: (provider) => set({ aiProvider: provider }),
       setAIModel: (model) => set({ aiModel: model }),
@@ -450,9 +518,25 @@ export const useUIStore = create<UIState & UIActions>()(
         highContrast: state.highContrast,
         designSettings: state.designSettings,
         customPresets: state.customPresets,
+        stitchNeonSettings: normalizeStitchNeonSettings(state.stitchNeonSettings),
+        stitchNeonPresets: state.stitchNeonPresets,
         aiProvider: state.aiProvider,
         aiModel: state.aiModel,
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<UIState> | undefined;
+        return {
+          ...currentState,
+          ...(persisted || {}),
+          stitchNeonSettings: normalizeStitchNeonSettings(persisted?.stitchNeonSettings),
+          stitchNeonPresets: Array.isArray(persisted?.stitchNeonPresets)
+            ? persisted.stitchNeonPresets.map((preset) => ({
+              ...preset,
+              settings: normalizeStitchNeonSettings(preset.settings),
+            }))
+            : [],
+        };
+      },
     }
   )
 );

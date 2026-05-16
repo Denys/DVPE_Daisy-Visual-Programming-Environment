@@ -15,8 +15,9 @@
 The Field Mapping panel maps the fixed Daisy Field surface directly to patch parameters:
 
 - `K1-K8` map to safe numeric parameters.
-- `A1-B8` map to gate or trigger input ports.
-- `SW1` and `SW2` are held shift selectors.
+- `A1-B8` map to gate/trigger input ports or 3-state parameter toggles.
+- `SW1` and `SW2` are held shift selectors; short press can also be mapped as an action.
+- 3-state key toggles use Field key LEDs: Off, Blinking, On.
 - Layers resolve as `SW1+SW2`, then `SW2`, then `SW1`, then `Normal`.
 - A graph wire into a target input wins over a mapping.
 
@@ -29,7 +30,7 @@ SOURCE -> FILTER -> AMP VCA -> SPACE -> OUT
         B1 ACCENT   AMP ENV
 ```
 
-`A1` gates the amplitude envelope. `B1` triggers a short accent envelope into filter drive.
+`A1` gates the amplitude envelope. `SW1` short press triggers a short accent envelope into filter drive. `B2` cycles three reverb damping values and shows the selected state on its key LED.
 
 ---
 
@@ -47,7 +48,7 @@ npm run dev
 4. Open **Architecture**.
 5. Select **Field Mapping**.
 
-You should see rows for `K1-K8` and `A1-B8`, with columns for **Normal**, **SW1**, **SW2**, and **SW1+SW2**.
+Open **Surface** for the visual Field layout, or **Matrix** for the full layer table. The matrix shows rows for `K1-K8` and `A1-B8`, with columns for **Normal**, **SW1**, **SW2**, and **SW1+SW2**.
 
 ---
 
@@ -66,9 +67,10 @@ Use the Field with no switch held:
 | `K7` | reverb decay |
 | `K8` | reverb wet/dry |
 | `A1` | amp envelope gate |
-| `B1` | filter-drive accent trigger |
+| `SW1` short press | filter-drive accent trigger |
+| `B2` | 3-state reverb damping toggle |
 
-Hold `A1` to hear the oscillator through the ADSR/VCA. Tap `B1` to add a short drive accent.
+Hold `A1` to hear the oscillator through the ADSR/VCA. Tap `SW1` to add a short drive accent. Tap `B2` to cycle damping; its LED moves through Off, Blinking, and On.
 
 ---
 
@@ -110,6 +112,8 @@ The generated Field code reads `SW1` and `SW2` once, computes the active mapping
 
 For keys, gate targets use `hw.KeyboardState(index)`. Trigger targets use `hw.KeyboardRisingEdge(index)`.
 
+For `toggle3` keys, code generation creates a persistent three-state value, advances it on `KeyboardRisingEdge(index)`, applies the chosen parameter value, and drives the Field key LED with `hw.led_driver.SetLed(...)`.
+
 ---
 
 ## Conflict Rule
@@ -123,7 +127,7 @@ Example: if a CV wire is connected to `FILTER.drive_cv`, the Field Mapping panel
 ## Suggested Experiments
 
 1. Map `K5` on `SW2` to `SPACE - Decay` for a second reverb page.
-2. Map `B2` to `AMP ENV - Gate` as a second performance key.
+2. Change `B2` to another 3-state target, such as a numeric tone or modulation parameter.
 3. Remove the `B1 ACCENT -> FILTER.drive_cv` wire, then map a knob to `FILTER - Drive`.
 
 Keep mappings sparse at first. The useful pattern is: normal layer for performance controls, `SW1` for tone/detail, `SW2` for envelope ranges, and `SW1+SW2` for less common global controls.

@@ -81,6 +81,14 @@ describe('Help menu and shortcuts modal', () => {
 
     expect(screen.getByText('Ctrl/Cmd + Double-click')).toBeInTheDocument();
     expect(screen.getByText('Inspect custom block internals')).toBeInTheDocument();
+    expect(screen.getByText('Ctrl/Cmd + C')).toBeInTheDocument();
+    expect(screen.getByText('Copy selection')).toBeInTheDocument();
+    expect(screen.getByText('Ctrl/Cmd + X')).toBeInTheDocument();
+    expect(screen.getByText('Cut selection')).toBeInTheDocument();
+    expect(screen.getByText('Ctrl/Cmd + V')).toBeInTheDocument();
+    expect(screen.getByText('Paste selection')).toBeInTheDocument();
+    expect(screen.getByText('Ctrl/Shift + Drag')).toBeInTheDocument();
+    expect(screen.getByText('Cancel active drag or clear selection and inspector focus')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /close shortcuts/i }));
     expect(onClose).toHaveBeenCalledTimes(1);

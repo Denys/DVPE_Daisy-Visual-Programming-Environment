@@ -100,3 +100,125 @@ describe('patchStore poly voice blankets', () => {
     expect(usePatchStore.getState().polyVoiceBlankets[0].memberBlockIds).toEqual(['shared_filter']);
   });
 });
+
+describe('patchStore clipboard operations', () => {
+  beforeEach(() => {
+    usePatchStore.getState().newPatch();
+  });
+
+  it('copies and pastes selected blocks with remapped internal connections', () => {
+    usePatchStore.setState({
+      blocks: [block('source', 100, 120), block('target', 320, 120), block('outside', 600, 120)],
+      connections: [
+        {
+          id: 'internal',
+          sourceBlockId: 'source',
+          sourcePortId: 'out',
+          targetBlockId: 'target',
+          targetPortId: 'in',
+          type: 'audio',
+        },
+        {
+          id: 'external',
+          sourceBlockId: 'target',
+          sourcePortId: 'out',
+          targetBlockId: 'outside',
+          targetPortId: 'in',
+          type: 'audio',
+        },
+      ],
+      selectedBlockIds: ['source', 'target'],
+      selectedConnectionIds: [],
+      selectedPolyVoiceBlanketIds: [],
+    });
+
+    expect(usePatchStore.getState().copySelection()).toBe(true);
+    const pastedIds = usePatchStore.getState().pasteClipboard({ x: 40, y: 60 });
+
+    expect(pastedIds).toHaveLength(2);
+    const state = usePatchStore.getState();
+    const pastedBlocks = state.blocks.filter((item) => pastedIds.includes(item.id));
+    expect(pastedBlocks.map((item) => item.position)).toEqual([
+      { x: 140, y: 180 },
+      { x: 360, y: 180 },
+    ]);
+
+    const remappedConnection = state.connections.find(
+      (connection) =>
+        pastedIds.includes(connection.sourceBlockId) &&
+        pastedIds.includes(connection.targetBlockId)
+    );
+    expect(remappedConnection).toBeDefined();
+    expect(state.connections.some((connection) => connection.id === 'external')).toBe(true);
+    expect(state.selectedBlockIds).toEqual(pastedIds);
+    expect(state.selectedConnectionIds).toEqual([]);
+  });
+
+  it('cuts selected blocks as one clipboard operation', () => {
+    usePatchStore.setState({
+      blocks: [block('source', 100, 120), block('target', 320, 120)],
+      connections: [],
+      selectedBlockIds: ['source'],
+      selectedConnectionIds: [],
+      selectedPolyVoiceBlanketIds: [],
+    });
+
+    expect(usePatchStore.getState().cutSelection()).toBe(true);
+
+    const afterCut = usePatchStore.getState();
+    expect(afterCut.hasClipboard()).toBe(true);
+    expect(afterCut.blocks.map((item) => item.id)).toEqual(['target']);
+
+    const pastedIds = usePatchStore.getState().pasteClipboard({ x: 20, y: 20 });
+    expect(pastedIds).toHaveLength(1);
+    expect(usePatchStore.getState().blocks).toHaveLength(2);
+  });
+});
+
+describe('patchStore drag transactions', () => {
+  beforeEach(() => {
+    usePatchStore.getState().newPatch();
+  });
+
+  it('restores block and blanket positions when a move transaction is canceled', () => {
+    usePatchStore.setState({
+      blocks: [block('source', 100, 120)],
+      polyVoiceBlankets: [
+        {
+          id: 'blanket',
+          label: 'Voice',
+          position: { x: 80, y: 90 },
+          size: { width: 240, height: 160 },
+          voiceCount: 8,
+          octave: 2,
+          allocator: 'reuse_free_oldest',
+          memberBlockIds: ['source'],
+        },
+      ],
+    });
+
+    usePatchStore.getState().beginMoveTransaction(['source', 'blanket']);
+    usePatchStore.getState().updateBlockPositions([{ id: 'source', position: { x: 400, y: 440 } }]);
+    usePatchStore.getState().updatePolyVoiceBlanket('blanket', { position: { x: 360, y: 380 } });
+
+    expect(usePatchStore.getState().cancelMoveTransaction()).toBe(true);
+
+    const state = usePatchStore.getState();
+    expect(state.blocks[0].position).toEqual({ x: 100, y: 120 });
+    expect(state.polyVoiceBlankets[0].position).toEqual({ x: 80, y: 90 });
+  });
+
+  it('marks the patch dirty when a changed move transaction is committed', () => {
+    usePatchStore.setState({
+      blocks: [block('source', 100, 120)],
+      isDirty: false,
+    });
+
+    usePatchStore.getState().beginMoveTransaction(['source']);
+    usePatchStore.getState().updateBlockPositions([{ id: 'source', position: { x: 180, y: 200 } }]);
+
+    expect(usePatchStore.getState().commitMoveTransaction()).toBe(true);
+    expect(usePatchStore.getState().isDirty).toBe(true);
+    expect(usePatchStore.getState().history.at(-1)?.description).toBe('Move selection');
+  });
+});
