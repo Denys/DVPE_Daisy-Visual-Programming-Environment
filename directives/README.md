@@ -22,6 +22,19 @@ Directives define **what to do** using natural language instructions. They speci
 
 ## Available Directives
 
+### CLI Spine
+
+Use `py -3 execution\dvpe_cli.py <command>` for deterministic DVPE helper
+workflows:
+
+| Command | Purpose |
+|---------|---------|
+| `doctor` | Check local command and repo wiring, including deferred legacy script references |
+| `blocks export` | Generate `.tmp/block_library.json` from live block definition files |
+| `patch validate <file.dvpe>` | Validate `.dvpe` structure, block IDs, ports, and connection references |
+| `fixtures generate` | Generate known valid chatbot fixture `.dvpe` files |
+| `skill check` | Detect dvpe-development skill drift against the live block library |
+
 ### DVPE Development (composed by `.claude/skills/dvpe-development/`)
 
 | Directive | Purpose |

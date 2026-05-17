@@ -14,8 +14,8 @@ stored as `.dvpe` JSON files and can be exported to C++ firmware for Daisy Field
 Without a structured design workflow, two problems repeat every time:
 
 - **Wrong block selected** — e.g., `reverb` instead of `reverb_sc`, or `filter` instead of `svf`.
-  The DVPE block library has 108+ blocks with specific `definitionId` strings. Guessing the ID
-  produces broken `.dvpe` files that won't load.
+  The live DVPE block library is exported with `py -3 execution\dvpe_cli.py blocks export`.
+  Guessing the ID produces broken `.dvpe` files that won't load.
 - **Unvalidated signal flow** — connections drawn between incompatible port types (`audio` vs `cv`
   vs `trigger`) only become obvious after attempting to generate C++.
 - **Hardware mismatches** — generating a Field patch with an encoder block (Field has no encoder),
@@ -125,11 +125,11 @@ You can refine any diagram before advancing. Gate does not self-advance.
 
 For every Audio Flow node, Claude:
 
-1. Looks up the `definitionId` in the Block Catalog (108+ blocks)
-2. Verifies the block exists in `BlockRegistry.ts`
+1. Runs `py -3 execution\dvpe_cli.py blocks export`
+2. Verifies the block exists in `.tmp/block_library.json`
 3. Flags any unmapped node with the nearest available alternative
-4. Generates `.dvpe` JSON following SCHEMA.md rules
-5. Validates the schema checklist (6 common mistakes) before declaring done
+4. Generates `.dvpe` JSON using the current block and port IDs
+5. Runs `py -3 execution\dvpe_cli.py patch validate <file.dvpe>` before declaring done
 
 Output is saved to `_block_diagrams_code/{patch_name}.dvpe`.
 
@@ -203,9 +203,9 @@ After Claude presents all 3 Mermaid diagrams, your options:
   OLED visualization, correct LED indexing, and other FieldUX requirements. Always pass it
   through `/daisy-qae` before flashing to hardware.
 
-- **Don't guess `definitionId` strings.** The Block Catalog in SKILL.md lists all 108+
-  verified IDs. Using a made-up ID (like `"reverb"` instead of `"reverb_sc"`) produces a
-  `.dvpe` that fails to load silently.
+- **Don't guess `definitionId` strings.** Treat the SKILL.md catalog as a quick reference only.
+  Run `py -3 execution\dvpe_cli.py blocks export` and validate generated files with
+  `py -3 execution\dvpe_cli.py patch validate <file.dvpe>`.
 
 - **Don't skip Diagram A for "simple patches."** Simple patches still run on real hardware.
   The block diagram catches platform mismatches (Field vs Pod), MIDI assumptions, and OLED
@@ -215,7 +215,8 @@ After Claude presents all 3 Mermaid diagrams, your options:
 
 ## Block Catalog Quick Reference
 
-Full catalog with all `definitionId` strings is in SKILL.md. Key blocks by use case:
+This is a quick reference. The current catalog is `.tmp/block_library.json` after running
+`py -3 execution\dvpe_cli.py blocks export`. Key blocks by use case:
 
 ### Synthesis Starting Points
 
@@ -334,7 +335,7 @@ the DVPE workflow.
 ```
 .claude/skills/dvpe-development/
 ├── README.md      ← This file
-├── SKILL.md       ← Mermaid-First Rule + 4 modes + Block Catalog + Platform Reference
+├── SKILL.md       ← Mermaid-First Rule + 4 modes + CLI validation rule + quick reference
 └── EXAMPLES.md    ← 3 complete workflow traces + anti-pattern table
 ```
 
@@ -342,14 +343,15 @@ the DVPE workflow.
 
 ## Extending the Skill
 
-### Adding a new block to the catalog
+### Adding a new block
 
 When a new block is added to `dvpe_CLD/src/core/blocks/definitions/`:
 
 1. Find its `id` property in the `.ts` definition file
-2. Add it to the Block Catalog in SKILL.md under the appropriate category
-3. Note LGPL status if applicable
-4. Add to EXAMPLES.md if it introduces a new usage pattern
+2. Run `py -3 execution\dvpe_cli.py blocks export`
+3. Run `py -3 execution\dvpe_cli.py skill check`
+4. Update the SKILL.md quick reference only if it is useful for humans
+5. Add to EXAMPLES.md if it introduces a new usage pattern
 
 ### Adding a new platform
 
@@ -374,4 +376,4 @@ If a 4th diagram type becomes useful (e.g., memory layout for delay-heavy patche
 *Part of the DVPE project.*
 *See also: `daisy-qae` skill for production firmware quality assurance.*
 *Block definitions: `dvpe_CLD/src/core/blocks/definitions/`*
-*Schema: `_block_diagrams_code/SCHEMA.md`*
+*Validation CLI: `execution/dvpe_cli.py`*

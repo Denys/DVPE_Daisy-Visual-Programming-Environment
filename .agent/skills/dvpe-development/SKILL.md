@@ -34,6 +34,24 @@ override the rule. The diagrams take 5 minutes and prevent wrong block connectio
 
 ---
 
+## Runtime Validation Rule
+
+The block catalog below is a human quick reference only. Before trusting a
+`definitionId`, port ID, generated `.dvpe`, or fixture, validate against the
+live repo CLI:
+
+```powershell
+py -3 execution\dvpe_cli.py blocks export
+py -3 execution\dvpe_cli.py patch validate <file.dvpe>
+py -3 execution\dvpe_cli.py skill check
+```
+
+The exported `.tmp/block_library.json` and `patch validate` output are the
+current source of truth. If this document disagrees with the CLI, follow the
+CLI and update the skill.
+
+---
+
 ## When to Use
 
 Trigger this skill when the user:
@@ -144,7 +162,7 @@ OUT[audio_output]     → block definitionId = "audio_output"
 
 For every node in the Audio Flow diagram:
 
-1. Find matching `definitionId` in the Block Catalog below
+1. Run `py -3 execution\dvpe_cli.py blocks export` and find matching `definitionId`
 2. If found → include in .dvpe blocks array
 3. If NOT found → flag it:
    - Suggest nearest available block
@@ -172,7 +190,13 @@ Follow the schema exactly (see Schema Quick Reference below).
 
 ### Step 3 — Schema Validation Checklist
 
-Before declaring MODE 2 done, verify:
+Before declaring MODE 2 done, run:
+
+```powershell
+py -3 execution\dvpe_cli.py patch validate _block_diagrams_code\{patch_name}.dvpe
+```
+
+Also verify:
 
 - [ ] Top-level `"version": "1.0.0"` present
 - [ ] All blocks wrapped inside `"patch": { "blocks": [...] }` (not top-level)
@@ -256,7 +280,11 @@ Step 5: Handoff to /daisy-qae
 
 ## Block Catalog
 
-Complete `definitionId` reference. Source of truth: `dvpe_CLD/src/core/blocks/BlockRegistry.ts`
+Human quick reference only. The live source of truth is:
+
+```powershell
+py -3 execution\dvpe_cli.py blocks export
+```
 
 `*` = LGPL module — requires `USE_DAISYSP_LGPL = 1` in Makefile
 
@@ -311,8 +339,8 @@ Complete `definitionId` reference. Source of truth: `dvpe_CLD/src/core/blocks/Bl
 | `distortion` | Hard distortion |
 | `bitcrush` | Bit crusher (bit depth reduction) |
 | `decimator` | Sample rate decimator |
-| `soft_clip` | Soft clipping waveshaper |
-| `hard_clip` | Hard clipping waveshaper |
+| `softclip` | Soft clipping waveshaper |
+| `hardclip` | Hard clipping waveshaper |
 | `wavefolder` | Wavefolder |
 | `fold` | Simple fold distortion |
 | `rectifier` | Half/full wave rectifier |
@@ -353,7 +381,7 @@ Complete `definitionId` reference. Source of truth: `dvpe_CLD/src/core/blocks/Bl
 | `sample_hold` | Sample and hold |
 | `envelope_follower` | Envelope follower |
 | `gate_length` | Gate duration control |
-| `fsm4` | 4-state finite state machine |
+| `fsm_4` | 4-state finite state machine |
 
 ### Dynamics
 
@@ -631,8 +659,8 @@ These requests violate the Mermaid-first rule. Redirect to the correct stage.
 - `dvpe_CLD/src/core/blocks/BlockRegistry.ts` — authoritative block ID list
 - `dvpe_CLD/src/core/blocks/definitions/` — individual block definition files
 - `dvpe_CLD/src/codegen/CodeGenerator.ts` — C++ generation logic
-- `_block_diagrams_code/SCHEMA.md` — complete schema documentation
-- `_block_diagrams_code/template.dvpe` — minimal valid .dvpe example
+- `execution/dvpe_cli.py` — live block export, `.dvpe` validation, fixture generation, and skill drift checks
+- `.tmp/block_library.json` — generated block reference after `py -3 execution\dvpe_cli.py blocks export`
 
 ### Directives
 
