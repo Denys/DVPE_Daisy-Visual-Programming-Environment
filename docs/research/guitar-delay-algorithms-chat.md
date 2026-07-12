@@ -863,3 +863,189 @@ create full chat contents markdown file
 ### Assistant Action
 
 Created this Markdown transcript file in the repository.
+
+---
+
+## Addendum — Practical Parameter Values and Ranges
+
+This addendum fills the gap between the theory above and implementation-ready parameter choices. The values below are starting points for guitar-focused real-time DSP at `48 kHz`; scale sample counts by `Fs / 48000` for other sample rates. They are deliberately expressed as ranges plus defaults because guitar delay designs are taste-dependent and because several cited papers give structural constraints rather than one universal pedal preset.
+
+### Source-grounded implementation anchors
+
+- **Flanger vs. chorus delay time:** Huovilainen describes flangers as delayed-copy comb filters with delay times around a few milliseconds, while increasing delay to tens of milliseconds is perceived as chorus. Use that as the main boundary between `flanger` and `chorus` modes. Source: DAFx-05 analog modulation model paper.
+- **BBD support blocks:** The DAFx-05 BBD discussion states that BBD delay systems need anti-aliasing and anti-imaging low-pass filters, typically second- to fourth-order, and often use a compressor before the BBD plus an expander after it because SNR worsens at longer delay times. Source: DAFx-05.
+- **BBD delay-time behavior:** For an `N`-stage BBD, steady delay is tied to clock rate by approximately `td = N / fclock`; Huovilainen also notes that changing clock rate gives inverse/warped delay-time behavior rather than a perfectly linear digital delay trajectory. Source: DAFx-05.
+- **Fractional interpolation choice:** DSPRelated/CCRMA notes that linear interpolation is cheap, works best when audio is oversampled or low-frequency-heavy, but rolls off near Nyquist and suppresses images only modestly; it also notes that first-order allpass interpolation costs about the same but has no gain distortion, which matters in near-lossless feedback loops.
+- **Tape-like variable speed:** The DAFx-18 tape-delay paper treats tape delay as variable-speed read/write behavior and points out that speedups pitch-shift material upward, which can create content above Nyquist unless the interpolation/readout is bandwidth-limited. It also discusses using linear or cubic interpolation at non-integer read positions.
+- **Karplus–Strong tuning and decay:** Karplus and Strong state that wavetable length/period `p` sets frequency approximately as `Fs / p`; their analysis also emphasizes that decay rises strongly with period and falls with harmonic number, so short high notes need compensation if musical sustain is desired.
+
+### Global ranges for a guitar delay module
+
+| Parameter | Practical range | Useful default | Notes |
+|---|---:|---:|---|
+| `sample_rate` | 44.1, 48, 88.2, 96 kHz | 48 kHz | Use `48 kHz` for embedded guitar pedals unless CPU permits oversampling. |
+| `max_delay_time` | 1–4 s | 2 s | Allocate `ceil(max_delay_time * Fs) + interpolation_margin` samples. |
+| `delay_time` | 1 ms–2 s | 375 ms | Below 30 ms becomes comb/doubling; 60–140 ms is slapback; 250–750 ms is classic echo. |
+| `dry_gain` | 0.0–1.0 | 1.0 | Use equal-power mix if the wet path is dense/modulated. |
+| `wet_gain` | 0.0–1.0 | 0.35 | Pedal-style default; raise for ambient or fully wet sends. |
+| `feedback` | 0.0–0.95 | 0.35 | Keep `< 1`; if a loop filter boosts, clamp lower. Self-oscillation modes may use saturation and `0.95–1.10`. |
+| `input_headroom` | -18 to -6 dBFS nominal | -12 dBFS | Leaves room for feedback buildup and saturation. |
+| `parameter_smoothing` | 5–100 ms | 20 ms | Shorter for performance knobs; longer for click-free preset changes. |
+| `crossfade_time` | 5–100 ms | 25 ms | Use for clickless delay jumps instead of tape-style pitch glide. |
+| `denormal_floor` | `1e-20` to `1e-15` | `1e-18` | Add tiny noise or zero values below threshold. |
+
+### Algorithm-specific starting presets
+
+| Algorithm | Delay time | Mod rate | Mod depth | Feedback | Tone/filtering | Mix |
+|---|---:|---:|---:|---:|---|---:|
+| Clean digital echo | 125–1000 ms | off | off | 0.15–0.75 | optional HPF 80–150 Hz, LPF 8–16 kHz | wet 20–45% |
+| Slapback | 60–140 ms | off | off | 0.0–0.15 | HPF 100 Hz, LPF 4–8 kHz | wet 15–35% |
+| Dub delay | 250–750 ms | optional 0.05–0.3 Hz | 1–8 ms | 0.55–0.95 | HPF 120–250 Hz, LPF 1.5–5 kHz, saturation | wet 25–60% |
+| Analog/BBD-style delay | 80–600 ms | 0.1–2.5 Hz | 0.5–8 ms | 0.25–0.80 | 2nd–4th order LPF, clock/noise, compander optional | wet 20–45% |
+| Tape delay | 80–1200 ms | wow 0.1–1 Hz, flutter 3–12 Hz | 0.2–10 ms equivalent | 0.25–0.90 | record/playback EQ, saturation, hiss | wet 20–50% |
+| Chorus | 10–35 ms | 0.1–5 Hz | 1–10 ms | 0.0–0.20 | LPF 6–12 kHz if bright | wet 20–50% |
+| Flanger | 0.2–10 ms | 0.05–2 Hz | 0.1–5 ms | -0.80–0.80 | polarity switch; feedback HPF useful | wet 30–60% |
+| Vibrato | 5–25 ms | 3–8 Hz | 1–8 ms | 0 | no dry signal | wet 100% |
+| Diffused/ambient delay | 200–1200 ms | optional slow | 0–10 ms | 0.45–0.90 | 2–8 allpass stages, HPF/LPF | wet 35–80% |
+| Shimmer delay | 300–1200 ms | optional slow | 0–5 ms | 0.40–0.85 | pitch +12 semitones, HPF 150–300 Hz, LPF 6–10 kHz | wet 30–70% |
+| Karplus–Strong resonator | `Fs / f0` samples | n/a | fractional tuning | loop gain 0.95–0.999 | loop low-pass and optional body filter | effect-specific |
+
+### Feedback gain as decay time instead of arbitrary knob value
+
+For a musically meaningful `Decay` control, convert desired `RT60` to feedback gain:
+
+```math
+feedback = 10^{-3T/RT60}
+```
+
+where `T` is delay time in seconds. Useful `RT60` ranges:
+
+| Use | `RT60` range | Notes |
+|---|---:|---|
+| Short slap | 0.15–0.6 s | Usually no more than 1–2 audible repeats. |
+| Standard echo | 1–6 s | Maps better to users than raw feedback. |
+| Ambient | 6–20 s | Needs loop filtering and saturation/limiting. |
+| Freeze/hold | effectively infinite | Use explicit freeze mode, not uncontrolled `feedback > 1`. |
+
+Example at `delay_time = 500 ms`:
+
+| Desired `RT60` | Feedback |
+|---:|---:|
+| 1 s | 0.0316 |
+| 2 s | 0.1778 |
+| 4 s | 0.4217 |
+| 8 s | 0.6494 |
+| 12 s | 0.7499 |
+
+### Filter and tone ranges
+
+| Block | Range | Default | Why |
+|---|---:|---:|---|
+| Feedback HPF | 40–300 Hz | 120 Hz | Prevents low-end buildup and keeps repeats behind guitar. |
+| Feedback LPF, digital | 6–18 kHz | 12 kHz | Clean but not brittle. |
+| Feedback LPF, analog/BBD | 1.5–8 kHz | 4.5 kHz | Darker repeats; aligns with BBD bandwidth limitations and clock-noise filtering. |
+| Tape playback LPF | 3–12 kHz | 7 kHz | Warm repeats without excessive dullness. |
+| Tape/BBD pre-emphasis | +0–6 dB above 1–3 kHz | +3 dB | Helps saturation/compander feel before later low-pass. |
+| Low-mid cleanup | -0–6 dB at 200–500 Hz | -2 dB | Reduces mud in high feedback. |
+| Diffusion allpass delay | 3–60 ms | 7, 13, 23 ms | Use mutually prime-ish values to avoid ringing. |
+| Allpass feedback `g` | 0.2–0.75 | 0.5 | Higher values smear more but can ring. |
+
+For one-pole smoothing/filters, prefer coefficient calculation from time/frequency instead of magic constants:
+
+```math
+alpha_{smooth} = e^{-1/(tau_s Fs)}
+```
+
+```math
+g_{onepole} = 1 - e^{-2\pi f_c/Fs}
+```
+
+### Modulation values
+
+| Mod source | Range | Default | Use |
+|---|---:|---:|---|
+| Chorus LFO rate | 0.1–5 Hz | 0.8 Hz | Slow ensemble to obvious wobble. |
+| Chorus depth | 1–10 ms | 4 ms | Keep base delay high enough that `D[n] > 0`. |
+| Flanger LFO rate | 0.05–2 Hz | 0.2 Hz | Slow sweeps are usually more guitar-friendly. |
+| Flanger depth | 0.1–5 ms | 1.5 ms | Avoid crossing below interpolation safety margin unless through-zero design. |
+| Vibrato rate | 3–8 Hz | 5.5 Hz | Guitar-like pitch vibrato. |
+| Vibrato depth | 1–8 ms | 3 ms | Convert to cents by listening; perceived pitch depends on delay derivative. |
+| Tape wow | 0.1–1 Hz | 0.35 Hz | Slow speed drift. |
+| Tape flutter | 3–12 Hz | 6 Hz | Small depth; avoid seasick pitch unless intentional. |
+| Random drift cutoff | 0.05–0.5 Hz | 0.15 Hz | Filtered noise into delay-time modulation. |
+| Ducking attack | 1–20 ms | 5 ms | Fast enough to clear picked notes. |
+| Ducking release | 100–1000 ms | 350 ms | Delay blooms after phrase endings. |
+| Ducking depth | 3–18 dB | 9 dB | More for lead guitar, less for rhythm. |
+
+### BBD-specific practical mapping
+
+For a BBD-style control, expose `delay_time` to the user but internally compute clock-like behavior:
+
+```math
+f_{clock} \approx N / t_d
+```
+
+Typical virtual stage counts:
+
+| Virtual BBD stages `N` | Time range target | Character |
+|---:|---:|---|
+| 512–1024 | 1–40 ms | flanger/chorus |
+| 2048–4096 | 20–300 ms | short analog delay |
+| 8192 | 80–600 ms | long, dark analog delay |
+
+Implementation starting points:
+
+- Use 2nd–4th order low-pass filters before and after the BBD core.
+- Lower the low-pass cutoff as delay time increases: `cutoff ≈ clamp(0.35 * fclock, 1.5 kHz, 10 kHz)`.
+- Add clock leakage as a very low-level sine or narrowband component near `fclock` only if the modeled clock lands below or near the audible band after scaling; otherwise it becomes unrealistic fizz.
+- Place a compressor before and expander after the BBD core for long-delay modes; start with gentle 2:1 compression and matching expansion rather than extreme dynamics.
+
+### Tape-delay practical mapping
+
+Tape-style delay should avoid instant read-pointer jumps. Use variable-speed transition instead:
+
+| Parameter | Range | Default |
+|---|---:|---:|
+| Time-change slew | 50–1000 ms | 250 ms |
+| Record drive | 0–18 dB | 6 dB |
+| Feedback drive | 0–24 dB | 9 dB |
+| Saturator | `tanh(kx)` with `k = 1–5` | `k = 2` |
+| Hiss | -90 to -55 dBFS | -75 dBFS |
+| Wow depth | 0.05–1.5% speed variation | 0.25% |
+| Flutter depth | 0.01–0.5% speed variation | 0.08% |
+
+Because DAFx-18 warns that speedups can create above-Nyquist content, use either oversampling, bandwidth-limited interpolation, or a dynamic low-pass when `read_speed / record_speed > 1`.
+
+### Interpolation decision table
+
+| Interpolator | When to use | Practical notes |
+|---|---|---|
+| Nearest | Lo-fi only | Clicky/aliased under modulation. |
+| Linear | Embedded CPU budget, darker delays | One multiply and two additions; acceptable for analog-like repeats. |
+| First-order allpass | Near-lossless feedback or resonator loops | Similar cost to linear but no magnitude error; phase is less transparent. |
+| 3rd-order Lagrange/Hermite | General high-quality guitar delay | Good default for chorus, flanger, tape, and clean delay. |
+| Windowed-sinc/Farrow | Studio/plugin quality or heavy pitch motion | Higher CPU; pair with oversampling for best results. |
+
+### Minimal implementation constants for a first working pedal
+
+If you need one conservative implementation profile:
+
+```text
+Fs                 = 48000
+max_delay_time     = 2.0 s
+interpolator       = 3rd-order Lagrange, linear fallback
+input_headroom     = -12 dBFS nominal
+wet_default        = 0.35
+feedback_default   = 0.40
+feedback_limit     = 0.92 normal, 1.05 self-osc with saturator
+feedback_hpf       = 120 Hz, one-pole or biquad
+feedback_lpf       = 4500 Hz analog mode, 12000 Hz clean mode
+parameter_smooth   = 20 ms
+crossfade_time     = 25 ms
+saturator          = tanh(2.0 * x) / tanh(2.0)
+chorus             = base 18 ms, depth 4 ms, rate 0.8 Hz
+flanger            = base 2 ms, depth 1.5 ms, rate 0.2 Hz, feedback 0.45
+slapback           = 95 ms, feedback 0.08, wet 0.25
+lead delay         = dotted eighth or 375 ms at 120 BPM, feedback 0.35, wet 0.30
+tape               = 420 ms, feedback 0.45, wow 0.35 Hz at 0.25%, flutter 6 Hz at 0.08%
+```
