@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Academic Research Deep Dive — Guitar Delay Algorithms</title>
+<style>
+:root{
+  --bg:#091018;--panel:#101a25;--panel2:#152231;--ink:#e8eef5;--muted:#9fb0c2;
+  --accent:#61dafb;--accent2:#a78bfa;--good:#62d49d;--warn:#f0bd66;--bad:#ff7a83;
+  --line:#2c3e50;--code:#071018;--shadow:0 14px 40px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:radial-gradient(circle at 15% -10%,#17324a 0,transparent 35%),var(--bg);color:var(--ink);font:15.5px/1.58 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+.shell{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1500px;margin:auto}.side{position:sticky;top:0;height:100vh;overflow:auto;padding:26px 20px;border-right:1px solid var(--line);background:rgba(7,14,22,.92);backdrop-filter:blur(12px)}
+.side .kicker{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:800}.side h2{font-size:1.02rem;margin:.4rem 0 1rem}.side nav a{display:block;padding:6px 8px;margin:2px 0;border-radius:7px;color:var(--muted);font-size:.87rem}.side nav a:hover{background:var(--panel2);color:var(--ink);text-decoration:none}.side .meta{margin-top:20px;padding-top:15px;border-top:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+main{min-width:0;padding:0 4vw 90px}.hero{padding:74px 0 50px;max-width:1100px}.eyebrow{color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:.14em;font-size:.78rem}.hero h1{font-size:clamp(2.2rem,5vw,4.7rem);line-height:.98;letter-spacing:-.045em;margin:.3em 0 .32em}.hero .lede{max-width:980px;color:#bed0df;font-size:1.13rem}.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.chip{border:1px solid var(--line);background:rgba(16,26,37,.72);padding:6px 10px;border-radius:999px;color:#c8d5e1;font-size:.78rem}
+section{max-width:1160px;margin:0 auto 68px;scroll-margin-top:22px}section>h2{font-size:2rem;line-height:1.15;margin:0 0 18px;letter-spacing:-.025em}section>h3{margin-top:34px;font-size:1.35rem}.section-intro{font-size:1.03rem;color:#c1cfdb;max-width:1000px}.grid{display:grid;gap:18px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.card{background:linear-gradient(145deg,rgba(21,34,49,.96),rgba(12,22,32,.96));border:1px solid var(--line);border-radius:15px;padding:20px;box-shadow:var(--shadow)}.card h3,.card h4{margin-top:0}.card p:last-child{margin-bottom:0}.callout{border-left:4px solid var(--accent);background:rgba(97,218,251,.075);padding:15px 18px;border-radius:0 10px 10px 0;margin:18px 0}.callout.warn{border-color:var(--warn);background:rgba(240,189,102,.08)}.callout.good{border-color:var(--good);background:rgba(98,212,157,.08)}
+.tag{display:inline-block;padding:2px 7px;border-radius:5px;font-weight:800;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;margin-right:5px}.est{background:rgba(98,212,157,.15);color:var(--good)}.model{background:rgba(167,139,250,.16);color:#c3adff}.rec{background:rgba(240,189,102,.15);color:var(--warn)}
+.eq{overflow:auto;margin:14px 0;padding:13px 16px;border:1px solid #243848;border-radius:10px;background:var(--code);font:500 .94rem/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:#dff4ff;white-space:nowrap}.eq small{display:block;color:var(--muted);font-family:inherit;white-space:normal;margin-top:6px}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#071018;padding:.1em .35em;border-radius:4px}table{border-collapse:collapse;width:100%;margin:15px 0;background:rgba(8,16,24,.46)}th,td{padding:10px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}th{background:#152434;color:#dcebf5;font-size:.82rem}td{color:#c5d1dc}.table-wrap{overflow:auto;border-radius:10px}.small{font-size:.84rem;color:var(--muted)}ul,ol{padding-left:1.2rem}li{margin:.32rem 0}.cite{font-size:.75rem;vertical-align:super;color:var(--accent)}
+.svg-wrap{background:linear-gradient(180deg,#0a141e,#0d1924);border:1px solid var(--line);border-radius:14px;padding:12px;margin:20px 0;overflow:auto}.svg-wrap svg{display:block;width:100%;height:auto;min-width:700px}.caption{font-size:.8rem;color:var(--muted);margin:-10px 4px 18px}.svg-bg{fill:#0b1620}.svg-box{fill:#162738;stroke:#4b6981;stroke-width:1.6}.svg-box2{fill:#1a2538;stroke:#806bb0;stroke-width:1.6}.svg-special{fill:#1d3434;stroke:#4d9f83;stroke-width:1.6}.svg-warn{fill:#382d1c;stroke:#b48c4a;stroke-width:1.6}.svg-text{fill:#e8eef5;font:600 15px system-ui,sans-serif}.svg-small{fill:#9fb0c2;font:12px system-ui,sans-serif}.svg-note{fill:#c8d5df;font:13px ui-monospace,monospace}.svg-line{stroke:#7dc9e8;stroke-width:2;fill:none}.svg-line2{stroke:#b29cf7;stroke-width:2;fill:none}.svg-dash{stroke:#6f8495;stroke-width:1.5;stroke-dasharray:6 5;fill:none}
+hr{border:0;border-top:1px solid var(--line);margin:42px 0}.rank{font-size:2.3rem;font-weight:900;color:var(--accent);line-height:1}.ref-list{counter-reset:refs}.ref{position:relative;padding:11px 12px 11px 50px;border-top:1px solid var(--line);color:#bac8d5}.ref:before{counter-increment:refs;content:"R" counter(refs);position:absolute;left:8px;top:11px;font-weight:900;color:var(--accent)}.ref-title{color:var(--ink);font-weight:700}.footnote{font-size:.78rem;color:var(--muted)}
+@media(max-width:1000px){.shell{grid-template-columns:1fr}.side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}.side nav{columns:2}.side .meta{display:none}main{padding:0 22px 70px}.hero{padding-top:45px}.g2,.g3{grid-template-columns:1fr}}
+@media(max-width:620px){.side{padding:18px 20px}.side nav{display:none}.side h2{margin-bottom:0}.hero h1{font-size:2.6rem}th,td{padding:8px}.card{padding:16px}}
+@media print{body{background:white;color:#111;font-size:10pt}.shell{display:block}.side{display:none}main{padding:0}.hero{padding:20px 0}.card,.svg-wrap,.eq{box-shadow:none;background:#fff;color:#111;border-color:#aaa}.svg-bg{fill:#fff}.svg-text{fill:#111}.svg-small,.svg-note{fill:#333}.svg-box,.svg-box2,.svg-special,.svg-warn{fill:#f5f5f5;stroke:#555}.svg-line,.svg-line2,.svg-dash{stroke:#222}.section{break-inside:avoid}a{color:#111;text-decoration:underline}.chip{color:#111;background:#fff}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side">
+  <div class="kicker">Research report</div>
+  <h2>Guitar delay algorithms</h2>
+  <nav>
+    <a href="#summary">1. Executive summary</a>
+    <a href="#taxonomy">2. Algorithm taxonomy</a>
+    <a href="#core">3. Core feedback model</a>
+    <a href="#fractional">4. Fractional delay</a>
+    <a href="#timevarying">5. Time-varying delay</a>
+    <a href="#modulation">6. Flange / chorus / vibrato</a>
+    <a href="#tape">7. Tape delay</a>
+    <a href="#bbd">8. BBD delay</a>
+    <a href="#reverse">9. Reverse / granular</a>
+    <a href="#pitch">10. Pitch-shifted feedback</a>
+    <a href="#multitap">11. Multitap / stereo</a>
+    <a href="#diffusion">12. Diffusion / FDN</a>
+    <a href="#freeze">13. Freeze / infinite hold</a>
+    <a href="#architecture">14. Embedded architecture</a>
+    <a href="#cost">15. Memory and compute</a>
+    <a href="#verification">16. Verification plan</a>
+    <a href="#conclusion">17. Recommendation</a>
+    <a href="#references">References</a>
+  </nav>
+  <div class="meta">Standalone HTML · inline SVG only<br>Research cut-off: 10 July 2026<br>Focus: real-time guitar-pedal DSP</div>
+</aside>
+<main>
+<header class="hero">
+  <div class="eyebrow">Academic research deep dive</div>
+  <h1>Guitar Delay<br>Algorithms</h1>
+  <p class="lede">A signal-processing and embedded-design review of clean feedback delay, fractional delay interpolation, modulation effects, tape transport emulation, BBD models, reverse/granular playback, pitch-shifted feedback, diffusion networks, and freeze methods. The report separates physical mechanisms from marketing labels and maps each family to a buildable pedal architecture.</p>
+  <div class="chips"><span class="chip">27 academic sources</span><span class="chip">14 inline SVG diagrams</span><span class="chip">48 kHz reference design</span><span class="chip">Pedal-oriented verification</span><span class="chip">Evidence / inference / recommendation separated</span></div>
+</header>
+
+<section id="summary">
+<h2>1. Executive summary</h2>
+<div class="grid g3">
+  <div class="card"><div class="rank">01</div><h3>One buffer, several read semantics</h3><p>Most guitar-delay modes can share a circular-memory service. The meaningful architectural split is not “digital versus analog,” but <b>fixed read offset</b>, <b>moving read position</b>, <b>transport-speed reconstruction</b>, and <b>block/grain scheduling</b>.</p></div>
+  <div class="card"><div class="rank">02</div><h3>Interpolation is part of the loop tone</h3><p>A moving fractional-delay filter is repeatedly traversed by feedback energy. Its magnitude error and coefficient modulation therefore become audible coloration, not merely a small readout error. Linear interpolation is inexpensive but has a severe high-frequency droop at half-sample offset.</p></div>
+  <div class="card"><div class="rank">03</div><h3>Tape needs transport semantics</h3><p>Modulating an ordinary delay length creates Doppler pitch from the derivative of delay. A physical tape path instead relates pitch to the ratio of medium speeds at the record and playback events. These are not equivalent under feedback.<a class="cite" href="#r7">[R7]</a></p></div>
+  <div class="card"><div class="rank">04</div><h3>BBD character is a system</h3><p>Credible BBD behavior comes from clock-dependent bandwidth, input/output filtering, companding, sampled-transfer artifacts, and distortion—not from “dark repeats” alone.<a class="cite" href="#r12">[R12]</a><a class="cite" href="#r13">[R13]</a></p></div>
+  <div class="card"><div class="rank">05</div><h3>Reverse and shimmer are schedulers</h3><p>Reverse delay requires captured history and overlap-add; shimmer requires a pitch shifter inside or around the loop. Both need explicit seam policy, latency accounting, and anti-aliasing. A plain variable delay is insufficient.</p></div>
+  <div class="card"><div class="rank">06</div><h3>Recommended product core</h3><p>At 48 kHz: float32 state, cubic Lagrange/Farrow for continuously moving heads, dual-head crossfade for discontinuous time changes, a configurable feedback processor, and mode-specific read/scheduling adapters. External SDRAM is warranted for long stereo/reverse/looper modes.</p></div>
+</div>
+<div class="callout good"><span class="tag est">Established</span> A delay line is a memory and indexing primitive. <span class="tag model">Model-dependent</span> “Tape” and “BBD” depend on which device behavior is being modeled. <span class="tag rec">Recommendation</span> Preserve a clean core and layer coloration; otherwise every character mode inherits the same irreversible artifacts.</div>
+</section>
+
+<section id="taxonomy">
+<h2>2. Taxonomy: classify by signal mechanism</h2>
+<p class="section-intro">Commercial names overlap. The table below uses the internal operation that determines pitch, seams, feedback stability, and CPU/memory cost.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Family</th><th>Core operation</th><th>Dominant artifact / character</th><th>Guitar-pedal use</th><th>Implementation risk</th></tr></thead>
+<tbody>
+<tr><td><b>Clean echo</b></td><td>Fixed circular-buffer offset</td><td>Loop filter, quantization, saturation only</td><td>Rhythmic repeats, tap tempo</td><td>Low</td></tr>
+<tr><td><b>Flanger / chorus / vibrato</b></td><td>Smoothly moving fractional read head</td><td>Comb motion and Doppler modulation</td><td>Short-delay modulation, tape warble layer</td><td>Medium</td></tr>
+<tr><td><b>Tape-like</b></td><td>Transport-speed trajectory or calibrated variable delay + nonlinear head model</td><td>Speed-correlated pitch, loss, hysteresis, noise</td><td>Organic repeats and time-knob gestures</td><td>Medium–high</td></tr>
+<tr><td><b>BBD-like</b></td><td>Clock-rate-dependent sampled delay plus surrounding circuit model</td><td>Bandwidth/aliasing/distortion/compander dynamics</td><td>Dark modulation and vintage echo</td><td>High if physically faithful</td></tr>
+<tr><td><b>Reverse</b></td><td>Capture grains/blocks, read each backward, overlap-add</td><td>Periodic envelope and grain seams</td><td>Swell-like phrases, rhythmic reverse</td><td>Medium</td></tr>
+<tr><td><b>Pitch delay / shimmer</b></td><td>Pitch shifter in feedforward or feedback path</td><td>Read-head reset, grain, or phase-vocoder artifacts</td><td>Octave repeats, harmonized ambience</td><td>Medium–high</td></tr>
+<tr><td><b>Diffused / ambient</b></td><td>Allpass diffusers or multi-line feedback matrix</td><td>Echo-density growth, modal coloration</td><td>Delay-to-reverb continuum</td><td>Medium</td></tr>
+<tr><td><b>Freeze / hold</b></td><td>Loop latch, granular resynthesis, STFT hold, or predictive/noise excitation</td><td>Periodicity, phasiness, or statistical texture</td><td>Infinite pad under live guitar</td><td>Medium–high</td></tr>
+<tr><td><b>Feature-based delay</b></td><td>Analyze buffer segments, retrieve by content features</td><td>Semantic/concatenative rearrangement</td><td>Experimental phrase-aware repeats</td><td>Research frontier<a class="cite" href="#r24">[R24]</a></td></tr>
+</tbody></table></div>
+<div class="svg-wrap">
+<svg viewBox="0 0 1040 350" role="img" aria-labelledby="taxTitle taxDesc"><title id="taxTitle">Mechanism-oriented taxonomy of delay algorithms</title><desc id="taxDesc">A common circular memory branches into fixed heads, moving heads, transport reconstruction, grain scheduling, and multi-line networks.</desc>
+<defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs>
+<rect class="svg-bg" x="0" y="0" width="1040" height="350" rx="12"/>
+<rect class="svg-special" x="35" y="126" width="180" height="92" rx="12"/><text class="svg-text" x="125" y="160" text-anchor="middle">Audio history</text><text class="svg-small" x="125" y="184" text-anchor="middle">circular memory / SDRAM</text>
+<path class="svg-line" marker-end="url(#a1)" d="M215 172H278"/>
+<rect class="svg-box" x="280" y="25" width="195" height="62" rx="10"/><text class="svg-text" x="377" y="54" text-anchor="middle">Fixed offset</text><text class="svg-small" x="377" y="74" text-anchor="middle">clean / multitap / ping-pong</text>
+<rect class="svg-box" x="280" y="101" width="195" height="62" rx="10"/><text class="svg-text" x="377" y="130" text-anchor="middle">Moving head</text><text class="svg-small" x="377" y="150" text-anchor="middle">flange / chorus / Doppler</text>
+<rect class="svg-box2" x="280" y="177" width="195" height="62" rx="10"/><text class="svg-text" x="377" y="206" text-anchor="middle">Transport mapping</text><text class="svg-small" x="377" y="226" text-anchor="middle">tape speed → read event</text>
+<rect class="svg-warn" x="280" y="253" width="195" height="62" rx="10"/><text class="svg-text" x="377" y="282" text-anchor="middle">Grain / block scheduler</text><text class="svg-small" x="377" y="302" text-anchor="middle">reverse / pitch / freeze</text>
+<path class="svg-line" marker-end="url(#a1)" d="M245 172V56H280"/><path class="svg-line" marker-end="url(#a1)" d="M245 172V132H280"/><path class="svg-line" marker-end="url(#a1)" d="M245 172V208H280"/><path class="svg-line" marker-end="url(#a1)" d="M245 172V284H280"/>
+<path class="svg-line" marker-end="url(#a1)" d="M475 56H535"/><path class="svg-line" marker-end="url(#a1)" d="M475 132H535"/><path class="svg-line" marker-end="url(#a1)" d="M475 208H535"/><path class="svg-line" marker-end="url(#a1)" d="M475 284H535"/>
+<rect class="svg-box" x="538" y="64" width="215" height="116" rx="12"/><text class="svg-text" x="645" y="96" text-anchor="middle">Loop processor</text><text class="svg-small" x="645" y="120" text-anchor="middle">EQ · loss · diffusion</text><text class="svg-small" x="645" y="142" text-anchor="middle">nonlinearity · dynamics</text><text class="svg-small" x="645" y="164" text-anchor="middle">feedback gain / matrix</text>
+<rect class="svg-box2" x="538" y="202" width="215" height="84" rx="12"/><text class="svg-text" x="645" y="233" text-anchor="middle">Multi-line state</text><text class="svg-small" x="645" y="257" text-anchor="middle">FDN / diffusion / stereo</text>
+<path class="svg-line" marker-end="url(#a1)" d="M753 122H816"/><path class="svg-line2" marker-end="url(#a1)" d="M753 244H816"/>
+<rect class="svg-special" x="818" y="126" width="180" height="92" rx="12"/><text class="svg-text" x="908" y="160" text-anchor="middle">Wet output</text><text class="svg-small" x="908" y="184" text-anchor="middle">mix / stereo routing</text>
+</svg></div>
+<p class="caption">Figure 1. Product “modes” are best treated as policies over shared history memory and loop processing.</p>
+</section>
+
+<section id="core">
+<h2>3. Core feedback-delay model</h2>
+<p class="section-intro">The baseline is a delay line in a feedback loop, optionally with a frequency-dependent loop processor. This model exposes the two control axes that matter: <b>time between recirculations</b> and <b>gain/phase applied per recirculation</b>.<a class="cite" href="#r1">[R1]</a></p>
+<div class="svg-wrap"><svg viewBox="0 0 1040 300" role="img" aria-labelledby="coreTitle"><title id="coreTitle">Universal feedback delay block diagram</title><defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1040" height="300" rx="12"/>
+<text class="svg-text" x="45" y="139">x[n]</text><path class="svg-line" marker-end="url(#a2)" d="M85 134H165"/><circle cx="190" cy="134" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="190" y="140" text-anchor="middle">+</text><path class="svg-line" marker-end="url(#a2)" d="M213 134H280"/>
+<rect class="svg-special" x="282" y="92" width="190" height="84" rx="12"/><text class="svg-text" x="377" y="126" text-anchor="middle">Delay memory</text><text class="svg-note" x="377" y="151" text-anchor="middle">z⁻ᴰ or D[n]</text><path class="svg-line" marker-end="url(#a2)" d="M472 134H555"/>
+<rect class="svg-box" x="558" y="92" width="180" height="84" rx="12"/><text class="svg-text" x="648" y="125" text-anchor="middle">Wet gain</text><text class="svg-note" x="648" y="151" text-anchor="middle">w</text><path class="svg-line" marker-end="url(#a2)" d="M738 134H825"/><circle cx="850" cy="134" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="850" y="140" text-anchor="middle">+</text><path class="svg-line" marker-end="url(#a2)" d="M873 134H955"/><text class="svg-text" x="965" y="139">y[n]</text>
+<path class="svg-line" marker-end="url(#a2)" d="M90 70H850V109"/><text class="svg-small" x="410" y="57">dry path</text>
+<path class="svg-line2" marker-end="url(#a2)" d="M525 134V236H410"/><rect class="svg-box2" x="230" y="202" width="180" height="68" rx="10"/><text class="svg-text" x="320" y="231" text-anchor="middle">Loop processor</text><text class="svg-small" x="320" y="253" text-anchor="middle">g · F(z) · sat(·)</text><path class="svg-line2" marker-end="url(#a2)" d="M230 236H190V157"/><text class="svg-small" x="455" y="258">read → process → write avoids an accidental extra sample in some structures</text>
+</svg></div>
+<p class="caption">Figure 2. Universal feedback delay. Order of read, feedback processing, and write must be specified; it is not a harmless coding detail in transport models.<a class="cite" href="#r7">[R7]</a></p>
+<div class="eq">u[n] = x[n] + g · (F * d)[n] &nbsp;&nbsp;&nbsp; d[n] = u[n − D] &nbsp;&nbsp;&nbsp; y[n] = a·x[n] + b·d[n]</div>
+<div class="eq">H<sub>wet</sub>(z) = z<sup>−D</sup> / (1 − g F(z) z<sup>−D</sup>)<small>For a linear time-invariant loop, a practical sufficient stability condition is |g| · ||F||∞ &lt; 1. Nonlinear saturation may bound amplitude but does not remove the need to test bias, limit cycles, and transient growth.</small></div>
+<h3>Decay mapping</h3>
+<p>For scalar per-loop gain <i>g</i>, an echo recirculates every <i>D/f<sub>s</sub></i> seconds. A −60 dB amplitude decay after <i>T<sub>60</sub></i> gives:</p>
+<div class="eq">|g| = 10<sup>−3D/(f<sub>s</sub>T<sub>60</sub>)</sup> &nbsp;&nbsp;&nbsp; ↔ &nbsp;&nbsp;&nbsp; T<sub>60</sub> = −3D / (f<sub>s</sub> log<sub>10</sub>|g|)</div>
+<p>For a colored loop, apply the same mapping by frequency: set the loop magnitude <i>|G(e<sup>jω</sup>)|</i> from a target <i>T<sub>60</sub>(ω)</i>. This is more predictable than mapping a “feedback” knob directly to a raw coefficient.</p>
+<div class="callout warn"><span class="tag rec">Recommendation</span> Reserve an explicit margin below unity after the complete loop processor. A shelving filter, interpolator, diffuser, and saturator can together create local gain peaks even when the front-panel feedback coefficient is below 1.</div>
+</section>
+
+<section id="fractional">
+<h2>4. Fractional delay: the quality-critical primitive</h2>
+<p class="section-intro">A sample-accurate static delay needs only integer indexing. Any smooth modulation, tempo interpolation, pitch head, room-size change, or tape-wobble path requires non-integer read positions. Fractional-delay design is therefore central rather than optional.<a class="cite" href="#r2">[R2]</a><a class="cite" href="#r3">[R3]</a></p>
+<div class="eq">D[n] = N[n] + μ[n], &nbsp; N ∈ ℤ, &nbsp; 0 ≤ μ &lt; 1</div>
+<div class="svg-wrap"><svg viewBox="0 0 1040 330" role="img" aria-labelledby="fdTitle"><title id="fdTitle">Fractional read from a circular buffer</title><defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1040" height="330" rx="12"/>
+<text class="svg-text" x="42" y="52">Circular buffer cells</text>
+<g transform="translate(40 85)"><rect class="svg-box" x="0" y="0" width="105" height="75" rx="8"/><rect class="svg-box" x="112" y="0" width="105" height="75" rx="8"/><rect class="svg-special" x="224" y="0" width="105" height="75" rx="8"/><rect class="svg-special" x="336" y="0" width="105" height="75" rx="8"/><rect class="svg-box" x="448" y="0" width="105" height="75" rx="8"/><rect class="svg-warn" x="672" y="0" width="105" height="75" rx="8"/>
+<text class="svg-note" x="52" y="43" text-anchor="middle">x[k−2]</text><text class="svg-note" x="164" y="43" text-anchor="middle">x[k−1]</text><text class="svg-note" x="276" y="43" text-anchor="middle">x[k]</text><text class="svg-note" x="388" y="43" text-anchor="middle">x[k+1]</text><text class="svg-note" x="500" y="43" text-anchor="middle">x[k+2]</text><text class="svg-note" x="724" y="43" text-anchor="middle">write</text>
+<path class="svg-dash" d="M329 -18V118"/><text class="svg-small" x="329" y="140" text-anchor="middle">fractional read k+μ</text><path class="svg-line" marker-end="url(#a3)" d="M724 0V-35H925V35"/><text class="svg-small" x="814" y="-47">write advances 1 sample/tick</text></g>
+<path class="svg-line2" marker-end="url(#a3)" d="M316 245H484"/><rect class="svg-box2" x="486" y="210" width="236" height="74" rx="10"/><text class="svg-text" x="604" y="240" text-anchor="middle">Interpolator H<sub>μ</sub>(z)</text><text class="svg-small" x="604" y="263" text-anchor="middle">linear · Lagrange/Farrow · sinc · allpass</text><path class="svg-line2" marker-end="url(#a3)" d="M722 247H882"/><text class="svg-text" x="895" y="252">d[n]</text>
+<text class="svg-small" x="75" y="225">μ[n] and neighboring samples select the reconstruction policy</text><path class="svg-line2" marker-end="url(#a3)" d="M253 230H316V245"/>
+</svg></div>
+<p class="caption">Figure 3. Fractional addressing reconstructs between stored samples; the filter changes with μ.</p>
+<h3>Interpolation options</h3>
+<div class="table-wrap"><table><thead><tr><th>Method</th><th>Strength</th><th>Failure mode in a feedback delay</th><th>Pedal recommendation</th></tr></thead><tbody>
+<tr><td>Linear, 2-point</td><td>1 multiply, very cheap, smooth</td><td>Magnitude droop; at μ=0.5, response is <code>cos(ω/2)</code> and reaches zero at Nyquist. Repeated loops darken aggressively.</td><td>Lo-fi/BBD flavor or low-bandwidth paths only</td></tr>
+<tr><td>3rd-order Lagrange / Farrow</td><td>Good time-domain accuracy, efficient continuously variable μ<a class="cite" href="#r25">[R25]</a></td><td>Not exactly allpass; residual magnitude ripple changes with μ</td><td><b>Default moving-head choice</b> at 48 kHz</td></tr>
+<tr><td>Higher-order windowed sinc / polyphase</td><td>Best bandlimited resampling quality</td><td>More taps, state traffic, coefficient/table design; latency if symmetric FIR</td><td>Large pitch ratios, offline-quality mode, or SDRAM-rich target</td></tr>
+<tr><td>Thiran allpass</td><td>Unity magnitude, maximally flat group delay near DC</td><td>Phase approximation; recursive coefficient modulation can produce transients and needs stability care</td><td>Static/slowly varying waveguide or FDN fractional delay</td></tr>
+<tr><td>Dual complete delays + crossfade</td><td>No Doppler during abrupt time change</td><td>Two simultaneous echoes cause temporary combing/energy change</td><td>Tap-tempo jumps and preset morphs</td></tr>
+</tbody></table></div>
+<div class="eq">Linear: d[n] = (1−μ)x[k] + μx[k+1] &nbsp;&nbsp;&nbsp; H<sub>μ</sub>(e<sup>jω</sup>) = (1−μ)+μe<sup>−jω</sup></div>
+<div class="callout"><span class="tag est">Established</span> The interpolation error is inside the feedback transfer function. A one-pass listening test understates the error; characterize magnitude, phase, and modulation sidebands after many recirculations over the full μ range.<a class="cite" href="#r2">[R2]</a><a class="cite" href="#r3">[R3]</a></div>
+</section>
+
+<section id="timevarying">
+<h2>5. Time-varying delay and pitch: four different policies</h2>
+<p class="section-intro">For <i>y(t)=x(t−d(t))</i>, moving the delay changes the read rate. This creates pitch by construction; smoothing a knob only spreads the transition.</p>
+<div class="eq">r[n] = n − d[n] &nbsp;&nbsp;&nbsp; Δr[n] = 1 − Δd[n] &nbsp;&nbsp;&nbsp; pitch ratio p ≈ 1 − Δd[n]</div>
+<div class="svg-wrap"><svg viewBox="0 0 1040 420" role="img" aria-labelledby="tvTitle"><title id="tvTitle">Four policies for changing delay time</title><defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1040" height="420" rx="12"/>
+<rect class="svg-special" x="38" y="164" width="155" height="82" rx="11"/><text class="svg-text" x="116" y="198" text-anchor="middle">Target time</text><text class="svg-small" x="116" y="222" text-anchor="middle">knob / tap / preset</text>
+<path class="svg-line" marker-end="url(#a4)" d="M193 205H250"/>
+<rect class="svg-box" x="252" y="30" width="225" height="75" rx="10"/><text class="svg-text" x="365" y="59" text-anchor="middle">A. Slew one head</text><text class="svg-small" x="365" y="83" text-anchor="middle">continuous Doppler glide</text>
+<rect class="svg-box2" x="252" y="125" width="225" height="75" rx="10"/><text class="svg-text" x="365" y="154" text-anchor="middle">B. Crossfade two taps</text><text class="svg-small" x="365" y="178" text-anchor="middle">no pitch; temporary doubling</text>
+<rect class="svg-special" x="252" y="220" width="225" height="75" rx="10"/><text class="svg-text" x="365" y="249" text-anchor="middle">C. Transport equation</text><text class="svg-small" x="365" y="273" text-anchor="middle">speed-consistent tape behavior</text>
+<rect class="svg-warn" x="252" y="315" width="225" height="75" rx="10"/><text class="svg-text" x="365" y="344" text-anchor="middle">D. Hard pointer jump</text><text class="svg-small" x="365" y="368" text-anchor="middle">click / discontinuity / glitch</text>
+<path class="svg-line" marker-end="url(#a4)" d="M223 205V67H252"/><path class="svg-line2" marker-end="url(#a4)" d="M223 205V162H252"/><path class="svg-line" marker-end="url(#a4)" d="M223 205V257H252"/><path class="svg-line" marker-end="url(#a4)" d="M223 205V352H252"/>
+<rect class="svg-box" x="570" y="30" width="210" height="75" rx="10"/><text class="svg-text" x="675" y="59" text-anchor="middle">Musical tape gesture</text><text class="svg-small" x="675" y="83" text-anchor="middle">time knob changes pitch</text>
+<rect class="svg-box2" x="570" y="125" width="210" height="75" rx="10"/><text class="svg-text" x="675" y="154" text-anchor="middle">Tempo-safe retime</text><text class="svg-small" x="675" y="178" text-anchor="middle">old and new taps overlap</text>
+<rect class="svg-special" x="570" y="220" width="210" height="75" rx="10"/><text class="svg-text" x="675" y="249" text-anchor="middle">Feedback-coherent tape</text><text class="svg-small" x="675" y="273" text-anchor="middle">same recorded material recurs</text>
+<rect class="svg-warn" x="570" y="315" width="210" height="75" rx="10"/><text class="svg-text" x="675" y="344" text-anchor="middle">Intentional glitch</text><text class="svg-small" x="675" y="368" text-anchor="middle">otherwise reject</text>
+<path class="svg-line" marker-end="url(#a4)" d="M477 67H570"/><path class="svg-line2" marker-end="url(#a4)" d="M477 162H570"/><path class="svg-line" marker-end="url(#a4)" d="M477 257H570"/><path class="svg-line" marker-end="url(#a4)" d="M477 352H570"/>
+<rect class="svg-box" x="850" y="150" width="155" height="120" rx="12"/><text class="svg-text" x="928" y="184" text-anchor="middle">Choose policy</text><text class="svg-small" x="928" y="210" text-anchor="middle">per gesture, not</text><text class="svg-small" x="928" y="231" text-anchor="middle">per entire product</text><text class="svg-small" x="928" y="252" text-anchor="middle">mode</text>
+<path class="svg-dash" d="M780 67H818V210H850"/><path class="svg-dash" d="M780 162H850"/><path class="svg-dash" d="M780 257H818V210H850"/><path class="svg-dash" d="M780 352H818V210H850"/>
+</svg></div>
+<p class="caption">Figure 4. A robust pedal chooses the retiming policy according to the user gesture: tape-style pitch sweep, transparent tap-tempo update, or deliberate glitch.</p>
+</section>
+
+<section id="modulation">
+<h2>6. Flanging, chorus, vibrato, and modulated echo</h2>
+<p class="section-intro">These effects share a smoothly modulated fractional delay. The audible category is set by nominal delay, modulation depth/rate, dry/wet combination, feedback, and inter-channel correlation—not by a different underlying memory algorithm.<a class="cite" href="#r4">[R4]</a><a class="cite" href="#r5">[R5]</a></p>
+<div class="svg-wrap"><svg viewBox="0 0 1040 330" role="img" aria-labelledby="modTitle"><title id="modTitle">Modulated delay effects architecture</title><defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1040" height="330" rx="12"/>
+<text class="svg-text" x="35" y="155">x[n]</text><path class="svg-line" marker-end="url(#a5)" d="M80 150H165"/><circle cx="190" cy="150" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="190" y="156" text-anchor="middle">+</text><path class="svg-line" marker-end="url(#a5)" d="M213 150H286"/>
+<rect class="svg-special" x="288" y="105" width="220" height="90" rx="12"/><text class="svg-text" x="398" y="138" text-anchor="middle">Fractional delay</text><text class="svg-note" x="398" y="165" text-anchor="middle">D[n]=D₀+m[n]</text><path class="svg-line" marker-end="url(#a5)" d="M508 150H615"/><circle cx="640" cy="150" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="640" y="156" text-anchor="middle">+</text><path class="svg-line" marker-end="url(#a5)" d="M663 150H825"/><text class="svg-text" x="840" y="155">wet/dry</text>
+<path class="svg-line" marker-end="url(#a5)" d="M90 65H640V125"/><text class="svg-small" x="355" y="51">dry path: remove for vibrato</text>
+<rect class="svg-box2" x="307" y="238" width="182" height="62" rx="10"/><text class="svg-text" x="398" y="265" text-anchor="middle">LFO / random process</text><text class="svg-small" x="398" y="286" text-anchor="middle">rate · depth · correlation</text><path class="svg-line2" marker-end="url(#a5)" d="M398 238V195"/>
+<rect class="svg-box" x="125" y="238" width="130" height="62" rx="10"/><text class="svg-text" x="190" y="266" text-anchor="middle">feedback g</text><path class="svg-line2" marker-end="url(#a5)" d="M288 180H255V238"/><path class="svg-line2" marker-end="url(#a5)" d="M125 269H92V150H165"/>
+<rect class="svg-box" x="735" y="230" width="235" height="70" rx="10"/><text class="svg-text" x="853" y="258" text-anchor="middle">Stereo voice B</text><text class="svg-small" x="853" y="280" text-anchor="middle">decorrelated phase/noise, not copy</text><path class="svg-dash" d="M508 180H705V265H735"/>
+</svg></div>
+<p class="caption">Figure 5. The same modulated-delay core covers flange, chorus, and vibrato; routing and parameter ranges define the perceptual result.</p>
+<div class="grid g2">
+<div class="card"><h3>Comb geometry</h3><p>For equal-gain dry and delayed signals, destructive notches occur where phase differs by π:</p><div class="eq">f<sub>k</sub> = (2k+1)/(2τ), &nbsp; k=0,1,2…</div><p>Moving τ sweeps the notch lattice. Feedback converts the simple FIR comb to a sharper IIR comb.</p></div>
+<div class="card"><h3>Historical operating ranges</h3><p>Dutilleux’s tutorial lists typical ranges around flanging 0–15 ms, chorus 10–25 ms, slapback 25–50 ms, and echo above 50 ms; these are engineering conventions, not hard psychoacoustic boundaries.<a class="cite" href="#r1">[R1]</a> A listener study found musically useful vibrato/flange/chorus regions depend jointly on modulation rate and depth, with common practice around low single-digit hertz.<a class="cite" href="#r6">[R6]</a></p></div>
+</div>
+<div class="callout warn"><span class="tag rec">Recommendation</span> For a guitar delay, use at least two modulation components: a slow quasi-periodic component for wow/chorus and a smaller band-limited random component for non-repeating motion. Stereo voices should share macro movement but decorrelate the fine component; fully independent wide LFOs often produce unstable image wander.</div>
+</section>
+
+<section id="tape">
+<h2>7. Tape delay: transport first, coloration second</h2>
+<p class="section-intro">A tape-delay emulation has two separable layers: <b>where/when the historical sample is read</b> and <b>what the record–medium–playback chain does to it</b>. Combining both under one “wow/flutter” LFO obscures the mechanism.</p>
+<h3>7.1 Length modulation versus speed modulation</h3>
+<div class="svg-wrap"><svg viewBox="0 0 1040 440" role="img" aria-labelledby="tapeTitle"><title id="tapeTitle">Comparison of delay-length modulation and tape-speed modulation</title><defs><marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1040" height="440" rx="12"/>
+<text class="svg-text" x="42" y="44">A. Variable-length digital delay</text><rect class="svg-box" x="42" y="75" width="155" height="68" rx="10"/><text class="svg-text" x="119" y="104" text-anchor="middle">write event</text><text class="svg-small" x="119" y="126" text-anchor="middle">time n</text><path class="svg-line" marker-end="url(#a6)" d="M197 109H344"/><rect class="svg-special" x="346" y="75" width="220" height="68" rx="10"/><text class="svg-text" x="456" y="104" text-anchor="middle">distance d[n]</text><text class="svg-small" x="456" y="126" text-anchor="middle">control moves read position</text><path class="svg-line" marker-end="url(#a6)" d="M566 109H715"/><rect class="svg-box" x="717" y="75" width="155" height="68" rx="10"/><text class="svg-text" x="794" y="104" text-anchor="middle">read event</text><text class="svg-small" x="794" y="126" text-anchor="middle">pitch ≈ 1−d′(t)</text>
+<path class="svg-line2" marker-end="url(#a6)" d="M456 190V143"/><rect class="svg-box2" x="347" y="190" width="218" height="58" rx="10"/><text class="svg-text" x="456" y="217" text-anchor="middle">delay-time LFO / slew</text><text class="svg-small" x="456" y="238" text-anchor="middle">directly specifies d(t)</text>
+<line x1="35" y1="276" x2="1005" y2="276" stroke="#2c3e50"/>
+<text class="svg-text" x="42" y="318">B. Fixed head spacing, variable tape speed</text><rect class="svg-box" x="42" y="345" width="155" height="68" rx="10"/><text class="svg-text" x="119" y="374" text-anchor="middle">record head</text><text class="svg-small" x="119" y="396" text-anchor="middle">entry at tᵢ</text><path class="svg-line" marker-end="url(#a6)" d="M197 379H344"/><rect class="svg-special" x="346" y="345" width="220" height="68" rx="10"/><text class="svg-text" x="456" y="374" text-anchor="middle">transport ∫v(t)dt = L</text><text class="svg-small" x="456" y="396" text-anchor="middle">fixed physical distance L</text><path class="svg-line" marker-end="url(#a6)" d="M566 379H715"/><rect class="svg-box" x="717" y="345" width="155" height="68" rx="10"/><text class="svg-text" x="794" y="374" text-anchor="middle">play head</text><text class="svg-small" x="794" y="396" text-anchor="middle">pitch = v(tₒ)/v(tᵢ)</text>
+<rect class="svg-box2" x="884" y="345" width="122" height="68" rx="10"/><text class="svg-text" x="945" y="374" text-anchor="middle">feedback</text><text class="svg-small" x="945" y="396" text-anchor="middle">same tape path</text><path class="svg-line2" marker-end="url(#a6)" d="M872 379H884"/><path class="svg-line2" marker-end="url(#a6)" d="M945 345V326H119V345"/>
+</svg></div>
+<p class="caption">Figure 6. Length-type modulation ties pitch to delay derivative. Speed-type tape transport ties it to the speed ratio at entry and exit; the distinction matters strongly in feedback.<a class="cite" href="#r7">[R7]</a></p>
+<div class="eq">Fixed head spacing L: &nbsp; ∫<sub>tᵢ</sub><sup>tₒ</sup> v(τ)dτ = L &nbsp;&nbsp;&nbsp; pitch ratio = v(tₒ)/v(tᵢ)</div>
+<p>Zavalishin and Parker show that directly varying delay length and emulating a moving medium have different feedback behavior. Their numerical transport method stores an integrated speed coordinate and searches for the read event; it is mostly O(1), O(log K) during speed-up transitions, and O(K) when full anti-alias filtering of speed-up is applied.<a class="cite" href="#r7">[R7]</a></p>
+<h3>7.2 Grey-box tape chain</h3>
+<div class="svg-wrap"><svg viewBox="0 0 1120 300" role="img" aria-labelledby="tapeChainTitle"><title id="tapeChainTitle">Physical and grey-box tape delay signal chain</title><defs><marker id="a7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1120" height="300" rx="12"/>
+<text class="svg-text" x="25" y="145">x</text><path class="svg-line" marker-end="url(#a7)" d="M50 140H95"/>
+<rect class="svg-box" x="97" y="100" width="125" height="80" rx="10"/><text class="svg-text" x="159" y="130" text-anchor="middle">Record EQ</text><text class="svg-small" x="159" y="153" text-anchor="middle">pre-emphasis</text><path class="svg-line" marker-end="url(#a7)" d="M222 140H250"/>
+<rect class="svg-box2" x="252" y="100" width="135" height="80" rx="10"/><text class="svg-text" x="320" y="128" text-anchor="middle">Bias +</text><text class="svg-text" x="320" y="150" text-anchor="middle">hysteresis</text><text class="svg-small" x="320" y="171" text-anchor="middle">Jiles–Atherton / RNN</text><path class="svg-line" marker-end="url(#a7)" d="M387 140H415"/>
+<rect class="svg-special" x="417" y="100" width="150" height="80" rx="10"/><text class="svg-text" x="492" y="128" text-anchor="middle">Transport</text><text class="svg-small" x="492" y="151" text-anchor="middle">variable delay</text><text class="svg-small" x="492" y="171" text-anchor="middle">wow · flutter · slip</text><path class="svg-line" marker-end="url(#a7)" d="M567 140H595"/>
+<rect class="svg-box" x="597" y="100" width="135" height="80" rx="10"/><text class="svg-text" x="665" y="128" text-anchor="middle">Playback</text><text class="svg-text" x="665" y="150" text-anchor="middle">head loss</text><text class="svg-small" x="665" y="171" text-anchor="middle">speed dependent</text><path class="svg-line" marker-end="url(#a7)" d="M732 140H760"/>
+<rect class="svg-box" x="762" y="100" width="135" height="80" rx="10"/><text class="svg-text" x="830" y="130" text-anchor="middle">Play EQ</text><text class="svg-small" x="830" y="153" text-anchor="middle">de-emphasis</text><path class="svg-line" marker-end="url(#a7)" d="M897 140H925"/>
+<rect class="svg-warn" x="927" y="100" width="135" height="80" rx="10"/><text class="svg-text" x="995" y="130" text-anchor="middle">Noise</text><text class="svg-small" x="995" y="153" text-anchor="middle">hiss · hum · splice</text><path class="svg-line" marker-end="url(#a7)" d="M1062 140H1092"/><text class="svg-text" x="1097" y="145">y</text>
+<rect class="svg-box2" x="370" y="225" width="245" height="55" rx="10"/><text class="svg-text" x="492" y="250" text-anchor="middle">speed / mechanics trajectory</text><text class="svg-small" x="492" y="271" text-anchor="middle">measured, stochastic, or physically modeled</text><path class="svg-line2" marker-end="url(#a7)" d="M492 225V180"/>
+<path class="svg-line2" marker-end="url(#a7)" d="M830 180V230H665V180"/><text class="svg-small" x="747" y="220" text-anchor="middle">feedback-loop placement changes repeat aging</text>
+</svg></div>
+<p class="caption">Figure 7. A physically informed tape chain. Chowdhury’s model combines record/play filters, magnetic hysteresis, variable delay/flutter, and speed-dependent loss.<a class="cite" href="#r8">[R8]</a></p>
+<div class="table-wrap"><table><thead><tr><th>Fidelity tier</th><th>What is modeled</th><th>Cost / calibration</th><th>Recommended use</th></tr></thead><tbody>
+<tr><td>Stylized</td><td>LP loss per repeat + soft saturation + 2-band modulation</td><td>Low; no reference machine needed</td><td>General-purpose pedal default</td></tr>
+<tr><td>Transport-correct</td><td>Speed equation / event mapping plus stylized coloration</td><td>Moderate; control-history storage/search</td><td>Convincing time-knob gestures and feedback</td></tr>
+<tr><td>Grey-box machine</td><td>Measured delay trajectory, record/play EQ, nonlinear magnetic model, noise</td><td>High; reference unit and system identification</td><td>Named-machine emulation</td></tr>
+<tr><td>Neural hybrid</td><td>RNN nonlinear/filter block plus learned delay/noise generators</td><td>High data and inference cost; less transparent</td><td>Research or high-end plugin, not first embedded pedal build<a class="cite" href="#r10">[R10]</a></td></tr>
+</tbody></table></div>
+<div class="callout warn"><span class="tag model">Model-dependent</span> Chowdhury used 16× oversampling in one Sony TC-260 model to represent a 55 kHz bias and nonlinear aliasing. That is evidence for that modeled chain, not a universal tape-pedal requirement.<a class="cite" href="#r8">[R8]</a> For an embedded delay, oversample only the nonlinear sub-block unless measurements justify a wider rate increase.</div>
+</section>
+
+<section id="bbd">
+<h2>8. Bucket-brigade delay (BBD): clocked analog memory</h2>
+<p class="section-intro">A BBD is sampled-time but not digital: charge packets advance through capacitor stages under a two-phase clock. A complete effect includes clock generation, anti-alias/reconstruction filters, companding, and feedback routing.<a class="cite" href="#r12">[R12]</a></p>
+<div class="eq">T<sub>delay</sub> = N / (2 f<sub>CP</sub>) &nbsp;&nbsp;&nbsp; approximate signal band edge ≤ f<sub>CP</sub>/2</div>
+<div class="svg-wrap"><svg viewBox="0 0 1120 350" role="img" aria-labelledby="bbdTitle"><title id="bbdTitle">BBD effect architecture and digital modeling choices</title><defs><marker id="a8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1120" height="350" rx="12"/>
+<text class="svg-text" x="25" y="135">x</text><path class="svg-line" marker-end="url(#a8)" d="M48 130H78"/>
+<rect class="svg-box2" x="80" y="90" width="130" height="80" rx="10"/><text class="svg-text" x="145" y="120" text-anchor="middle">Compressor</text><text class="svg-small" x="145" y="144" text-anchor="middle">level-dependent</text><path class="svg-line" marker-end="url(#a8)" d="M210 130H238"/>
+<rect class="svg-box" x="240" y="90" width="130" height="80" rx="10"/><text class="svg-text" x="305" y="120" text-anchor="middle">Input LPF</text><text class="svg-small" x="305" y="144" text-anchor="middle">clock-dependent AA</text><path class="svg-line" marker-end="url(#a8)" d="M370 130H398"/>
+<rect class="svg-special" x="400" y="78" width="175" height="104" rx="10"/><text class="svg-text" x="488" y="112" text-anchor="middle">BBD N stages</text><text class="svg-small" x="488" y="137" text-anchor="middle">two-phase transfer</text><text class="svg-note" x="488" y="162" text-anchor="middle">T=N/(2fCP)</text><path class="svg-line" marker-end="url(#a8)" d="M575 130H603"/>
+<rect class="svg-box" x="605" y="90" width="130" height="80" rx="10"/><text class="svg-text" x="670" y="120" text-anchor="middle">Output LPF</text><text class="svg-small" x="670" y="144" text-anchor="middle">clock rejection</text><path class="svg-line" marker-end="url(#a8)" d="M735 130H763"/>
+<rect class="svg-box2" x="765" y="90" width="130" height="80" rx="10"/><text class="svg-text" x="830" y="120" text-anchor="middle">Expander</text><text class="svg-small" x="830" y="144" text-anchor="middle">restore dynamics</text><path class="svg-line" marker-end="url(#a8)" d="M895 130H923"/>
+<circle cx="948" cy="130" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="948" y="136" text-anchor="middle">+</text><path class="svg-line" marker-end="url(#a8)" d="M971 130H1070"/><text class="svg-text" x="1080" y="135">y</text>
+<rect class="svg-warn" x="400" y="230" width="175" height="75" rx="10"/><text class="svg-text" x="488" y="260" text-anchor="middle">Clock / LFO</text><text class="svg-small" x="488" y="283" text-anchor="middle">fCP controls time & bandwidth</text><path class="svg-line2" marker-end="url(#a8)" d="M488 230V182"/>
+<path class="svg-line2" marker-end="url(#a8)" d="M830 170V210H145V170"/><text class="svg-small" x="305" y="202">feedback placement varies by circuit</text>
+<rect class="svg-box" x="650" y="230" width="310" height="75" rx="10"/><text class="svg-text" x="805" y="258" text-anchor="middle">Digital model options</text><text class="svg-small" x="805" y="281" text-anchor="middle">fixed-rate FD · variable-rate + filters · BLEP correction</text>
+</svg></div>
+<p class="caption">Figure 8. BBD system topology and modeling options. The surrounding filters are functionally coupled to the changing clock rate.</p>
+<p>Example: a 4096-stage BBD at 300 ms requires <i>f<sub>CP</sub>≈6.83 kHz</i>, leaving an approximate upper signal band around 3.41 kHz before practical margin. A 1024-stage device at 10 ms requires 51.2 kHz. These numbers explain why long BBD echoes become intrinsically bandwidth-limited rather than merely EQ-dark.<a class="cite" href="#r12">[R12]</a></p>
+<div class="grid g2">
+<div class="card"><h3>Fixed-rate model</h3><p>Fractional addressing emulates clock-varying delay at the host sample rate. It is convenient but can generate interpolation and rate-conversion artifacts not present in the physical chip.</p></div>
+<div class="card"><h3>Variable-rate combined model</h3><p>Holters and Parker use the surrounding filters as the rate-conversion interface, reducing the need for a separate interpolator and its distortion.<a class="cite" href="#r13">[R13]</a></p></div>
+</div>
+<div class="callout"><span class="tag est">Latest directly relevant work found</span> Gabrielli, D’Angelo, and Squartini (DAFx-25) apply polyBLEP correction to discontinuities in a digital BBD simulation, suppressing simulator-generated aliasing while retaining alias components intended as part of the chip model. In their test setup, reported SNR improvement was 36.2 dB at 50 kHz and 27.8 dB at 90 kHz clock; these are setup-specific results, not guaranteed product figures.<a class="cite" href="#r14">[R14]</a></div>
+<div class="callout warn"><span class="tag rec">Recommendation</span> Offer a “BBD-inspired” mode unless a specific device/circuit is measured. Implement clock-linked low-pass behavior, compander-like envelope dynamics, stage/clock-dependent nonlinearity, and controlled alias/noise. Avoid claiming a faithful chip model from a dark loop filter plus random modulation.</div>
+</section>
+
+<section id="reverse">
+<h2>9. Reverse delay and granular overlap-add</h2>
+<p class="section-intro">Real-time reverse cannot play future audio. It captures a finite past segment, reads that segment backward, and overlaps successive segments so the wet stream remains continuous. Grain ordering and sample ordering are independent controls in granular synthesis.<a class="cite" href="#r18">[R18]</a><a class="cite" href="#r19">[R19]</a></p>
+<div class="eq">y[n] = Σ<sub>g</sub> w[n−gH] · x[a<sub>g</sub> − (n−gH)]</div>
+<div class="svg-wrap"><svg viewBox="0 0 1120 430" role="img" aria-labelledby="revTitle"><title id="revTitle">Dual-grain reverse delay with overlap-add</title><defs><marker id="a9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1120" height="430" rx="12"/>
+<text class="svg-text" x="30" y="120">x[n]</text><path class="svg-line" marker-end="url(#a9)" d="M78 115H128"/><rect class="svg-special" x="130" y="75" width="190" height="80" rx="10"/><text class="svg-text" x="225" y="106" text-anchor="middle">History buffer</text><text class="svg-small" x="225" y="130" text-anchor="middle">continuous forward write</text>
+<path class="svg-line" marker-end="url(#a9)" d="M320 115H390V62H435"/><path class="svg-line" marker-end="url(#a9)" d="M320 115H390V190H435"/>
+<rect class="svg-box2" x="437" y="26" width="215" height="78" rx="10"/><text class="svg-text" x="545" y="57" text-anchor="middle">Reverse head A</text><text class="svg-small" x="545" y="81" text-anchor="middle">read −1 sample/tick · window wA</text>
+<rect class="svg-box2" x="437" y="152" width="215" height="78" rx="10"/><text class="svg-text" x="545" y="183" text-anchor="middle">Reverse head B</text><text class="svg-small" x="545" y="207" text-anchor="middle">offset by hop H · window wB</text>
+<path class="svg-line2" marker-end="url(#a9)" d="M652 65H740V114H790"/><path class="svg-line2" marker-end="url(#a9)" d="M652 191H740V138H790"/><circle cx="815" cy="126" r="25" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="815" y="132" text-anchor="middle">Σ</text><path class="svg-line" marker-end="url(#a9)" d="M840 126H1010"/><text class="svg-text" x="1020" y="131">wet</text>
+<rect class="svg-box" x="130" y="286" width="880" height="98" rx="10"/><text class="svg-text" x="160" y="317">Timeline</text><line x1="255" y1="336" x2="940" y2="336" stroke="#7dc9e8" stroke-width="2"/><text class="svg-small" x="255" y="360">old</text><text class="svg-small" x="925" y="360">now</text><path class="svg-line2" d="M700 320L520 350"/><text class="svg-small" x="565" y="309">head A reads backward</text><path class="svg-line2" d="M850 320L670 350"/><text class="svg-small" x="753" y="382">head B overlaps by H</text>
+<rect class="svg-warn" x="820" y="190" width="190" height="65" rx="10"/><text class="svg-text" x="915" y="218" text-anchor="middle">Scheduler</text><text class="svg-small" x="915" y="240" text-anchor="middle">capture length L · hop H · phase</text><path class="svg-line2" marker-end="url(#a9)" d="M820 222H720V191H652"/>
+</svg></div>
+<p class="caption">Figure 9. Two reverse grains offset by a hop and complementary windows form a continuous stream. The wet path necessarily has look-back/start-up latency; the dry path does not.</p>
+<div class="grid g2">
+<div class="card"><h3>Window policy</h3><p>A periodic Hann window with 50% overlap supports constant-overlap-add amplitude. Square-root Hann pairs are useful for equal-power crossfades. At high feedback, window normalization must remain exact enough to avoid systematic decay or growth.</p></div>
+<div class="card"><h3>Feedback placement</h3><p><b>After OLA:</b> each composite reverse phrase re-enters memory. <b>Per grain:</b> stronger granular identity. <b>Before reverse scheduler:</b> new forward input mixes into a recirculating history. They are musically distinct and should be explicit.</p></div>
+</div>
+<div class="callout warn"><span class="tag rec">Recommendation</span> For a compact pedal, start with two grains, L=250–1000 ms, H=L/2, periodic Hann, and quantized grain restarts for rhythmic mode. Add onset-aware or low-correlation seam selection only after the deterministic scheduler is verified; otherwise debugging causality and feedback energy becomes difficult.</div>
+</section>
+
+<section id="pitch">
+<h2>10. Pitch-shifted delay and shimmer feedback</h2>
+<p class="section-intro">A pitch delay changes pitch without proportionally changing repeat duration. That requires periodic read-head reset/crossfade, time-scale modification plus resampling, or a phase-vocoder family—not merely a continuously drifting read pointer.</p>
+<div class="eq">p = 2<sup>s/12</sup> &nbsp;&nbsp;&nbsp; read increment = p &nbsp;&nbsp;&nbsp; delay-distance rate = 1−p</div>
+<div class="svg-wrap"><svg viewBox="0 0 1100 350" role="img" aria-labelledby="pitchTitle"><title id="pitchTitle">Pitch shifter inside a feedback delay for shimmer</title><defs><marker id="a10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1100" height="350" rx="12"/>
+<text class="svg-text" x="25" y="145">x</text><path class="svg-line" marker-end="url(#a10)" d="M48 140H110"/><circle cx="135" cy="140" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="135" y="146" text-anchor="middle">+</text><path class="svg-line" marker-end="url(#a10)" d="M158 140H225"/>
+<rect class="svg-special" x="227" y="98" width="190" height="84" rx="10"/><text class="svg-text" x="322" y="130" text-anchor="middle">Base delay D</text><text class="svg-small" x="322" y="155" text-anchor="middle">rhythmic repeat interval</text><path class="svg-line" marker-end="url(#a10)" d="M417 140H500"/>
+<rect class="svg-box2" x="502" y="98" width="190" height="84" rx="10"/><text class="svg-text" x="597" y="128" text-anchor="middle">Pitch shifter</text><text class="svg-note" x="597" y="154" text-anchor="middle">p=2^(s/12)</text><path class="svg-line" marker-end="url(#a10)" d="M692 140H775"/><circle cx="800" cy="140" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="800" y="146" text-anchor="middle">+</text><path class="svg-line" marker-end="url(#a10)" d="M823 140H1015"/><text class="svg-text" x="1025" y="145">y</text>
+<path class="svg-line" marker-end="url(#a10)" d="M65 63H800V115"/><text class="svg-small" x="390" y="49">dry path</text>
+<rect class="svg-box" x="465" y="245" width="264" height="70" rx="10"/><text class="svg-text" x="597" y="273" text-anchor="middle">Anti-alias + tone + diffusion + g</text><text class="svg-small" x="597" y="296" text-anchor="middle">loop conditioning</text><path class="svg-line2" marker-end="url(#a10)" d="M760 140V280H729"/><path class="svg-line2" marker-end="url(#a10)" d="M465 280H135V163"/>
+<rect class="svg-warn" x="780" y="238" width="225" height="77" rx="10"/><text class="svg-text" x="892" y="267" text-anchor="middle">Placement alternative</text><text class="svg-small" x="892" y="289" text-anchor="middle">pitch only a feedback branch,</text><text class="svg-small" x="892" y="308" text-anchor="middle">retain unshifted repeats in parallel</text>
+</svg></div>
+<p class="caption">Figure 10. Shimmer topology. With +12 semitones in the loop, repeat k is shifted by k octaves unless a parallel unshifted path or band limiting prevents runaway ultrasonic energy.</p>
+<h3>Algorithm choice</h3>
+<div class="table-wrap"><table><thead><tr><th>Pitch method</th><th>Latency / cost</th><th>Typical artifact</th><th>Best pedal role</th></tr></thead><tbody>
+<tr><td>Dual moving read heads</td><td>Low; 2 interpolated reads + windows</td><td>Periodic crossfade/seam; transient smearing</td><td>Octave shimmer, obvious effect</td></tr>
+<tr><td>Granular / WSOLA-like</td><td>Moderate; grain search and OLA</td><td>Granularity, doubled transients, pitch-period mismatch</td><td>Monophonic guitar and moderate ratios. NFC-TSM uses a ring buffer and normalized filtered correlation to choose splice points.<a class="cite" href="#r15">[R15]</a></td></tr>
+<tr><td>Phase vocoder with phase locking</td><td>FFT frames, more latency and RAM</td><td>Phasiness, transient blur without special handling</td><td>Polyphonic, high-quality harmonization; improved phase synchronization reduces classic artifacts.<a class="cite" href="#r16">[R16]</a><a class="cite" href="#r17">[R17]</a></td></tr>
+</tbody></table></div>
+<div class="eq">Head lifetime before wrap/reset: &nbsp; T<sub>head</sub> = ΔD / (|1−p| f<sub>s</sub>)</div>
+<p>For p=2, a 2048-sample available delay span at 48 kHz lasts only 42.7 ms before the head must reset. Increasing span lowers reset rate but increases temporal blur and/or internal latency. Upward feedback shift also repeatedly compresses bandwidth toward Nyquist, so anti-alias filtering must be inside the loop.</p>
+</section>
+
+<section id="multitap">
+<h2>11. Multitap, ping-pong, and stereo feedback matrices</h2>
+<p class="section-intro">Multitap delay is a sparse finite impulse response readout unless taps feed back. Stereo character comes from tap times, panning, filtering, and a feedback matrix. The matrix eigenvalues—not individual knob values—set linear stability.</p>
+<div class="svg-wrap"><svg viewBox="0 0 1080 360" role="img" aria-labelledby="multiTitle"><title id="multiTitle">Stereo multitap delay with feedback matrix</title><defs><marker id="a11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1080" height="360" rx="12"/>
+<text class="svg-text" x="25" y="100">L in</text><text class="svg-text" x="25" y="245">R in</text><path class="svg-line" marker-end="url(#a11)" d="M75 95H130"/><path class="svg-line" marker-end="url(#a11)" d="M75 240H130"/>
+<rect class="svg-special" x="132" y="55" width="220" height="80" rx="10"/><text class="svg-text" x="242" y="86" text-anchor="middle">L history + taps</text><text class="svg-small" x="242" y="110" text-anchor="middle">D₁,D₂,… · pan/EQ</text><rect class="svg-special" x="132" y="200" width="220" height="80" rx="10"/><text class="svg-text" x="242" y="231" text-anchor="middle">R history + taps</text><text class="svg-small" x="242" y="255" text-anchor="middle">D₁,D₂,… · pan/EQ</text>
+<path class="svg-line" marker-end="url(#a11)" d="M352 95H455"/><path class="svg-line" marker-end="url(#a11)" d="M352 240H455"/>
+<rect class="svg-box2" x="457" y="92" width="205" height="150" rx="12"/><text class="svg-text" x="560" y="125" text-anchor="middle">Feedback matrix A</text><text class="svg-note" x="560" y="155" text-anchor="middle">[a₁₁ a₁₂]</text><text class="svg-note" x="560" y="180" text-anchor="middle">[a₂₁ a₂₂]</text><text class="svg-small" x="560" y="214" text-anchor="middle">optional per-line filters</text>
+<path class="svg-line2" marker-end="url(#a11)" d="M457 130H405V70H352"/><path class="svg-line2" marker-end="url(#a11)" d="M457 204H405V265H352"/>
+<path class="svg-line" marker-end="url(#a11)" d="M662 130H780"/><path class="svg-line" marker-end="url(#a11)" d="M662 204H780"/>
+<circle cx="805" cy="130" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="805" y="136" text-anchor="middle">Σ</text><circle cx="805" cy="204" r="23" fill="#162738" stroke="#4b6981" stroke-width="2"/><text class="svg-text" x="805" y="210" text-anchor="middle">Σ</text><path class="svg-line" marker-end="url(#a11)" d="M828 130H980"/><path class="svg-line" marker-end="url(#a11)" d="M828 204H980"/><text class="svg-text" x="990" y="135">L out</text><text class="svg-text" x="990" y="209">R out</text>
+<rect class="svg-box" x="405" y="285" width="310" height="55" rx="10"/><text class="svg-text" x="560" y="309" text-anchor="middle">A = g·rotation → energy-preserving spatial mixing</text><text class="svg-small" x="560" y="330" text-anchor="middle">ping-pong is the special cross-coupled case</text>
+</svg></div>
+<p class="caption">Figure 11. Stereo delay with a general 2×2 feedback matrix. A scaled orthogonal matrix redistributes energy without adding matrix gain.</p>
+<div class="eq">Ping-pong: A = [[0,g],[g,0]], eigenvalues ±g &nbsp;&nbsp;&nbsp; Rotation: A=g[[cosθ,−sinθ],[sinθ,cosθ]]</div>
+<div class="callout warn"><span class="tag rec">Recommendation</span> Keep tap panning outside the feedback matrix when possible. This separates the audible stereo image from stability tuning. Check mono sum: anti-phase rotations and Haas-scale offsets can produce large cancellations.</div>
+</section>
+
+<section id="diffusion">
+<h2>12. Diffused delay and feedback delay networks</h2>
+<p class="section-intro">A delay becomes reverb-like when echo density grows and energy is redistributed across several incommensurate delay lines. An FDN consists of N delays, attenuation filters, and a feedback matrix; unitary/orthogonal mixing is a useful lossless baseline before decay filters are applied.<a class="cite" href="#r20">[R20]</a></p>
+<div class="svg-wrap"><svg viewBox="0 0 1120 400" role="img" aria-labelledby="fdnTitle"><title id="fdnTitle">Four-line feedback delay network used as a diffused delay tail</title><defs><marker id="a12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1120" height="400" rx="12"/>
+<text class="svg-text" x="25" y="199">x</text><path class="svg-line" marker-end="url(#a12)" d="M48 194H100"/><rect class="svg-box" x="102" y="112" width="130" height="164" rx="12"/><text class="svg-text" x="167" y="145" text-anchor="middle">Input mix</text><text class="svg-small" x="167" y="171" text-anchor="middle">b₁…b₄</text><text class="svg-small" x="167" y="210" text-anchor="middle">optional</text><text class="svg-small" x="167" y="231" text-anchor="middle">prediffusion</text>
+<g transform="translate(290 35)"><rect class="svg-special" width="220" height="62" rx="9"/><text class="svg-text" x="110" y="27" text-anchor="middle">z⁻ᴰ¹ · G₁(z)</text><text class="svg-small" x="110" y="49" text-anchor="middle">delay + decay filter</text><rect class="svg-special" y="82" width="220" height="62" rx="9"/><text class="svg-text" x="110" y="109" text-anchor="middle">z⁻ᴰ² · G₂(z)</text><rect class="svg-special" y="164" width="220" height="62" rx="9"/><text class="svg-text" x="110" y="191" text-anchor="middle">z⁻ᴰ³ · G₃(z)</text><rect class="svg-special" y="246" width="220" height="62" rx="9"/><text class="svg-text" x="110" y="273" text-anchor="middle">z⁻ᴰ⁴ · G₄(z)</text></g>
+<path class="svg-line" marker-end="url(#a12)" d="M232 145H290"/><path class="svg-line" marker-end="url(#a12)" d="M232 178H260V148H290"/><path class="svg-line" marker-end="url(#a12)" d="M232 210H260V230H290"/><path class="svg-line" marker-end="url(#a12)" d="M232 243H290V312"/>
+<path class="svg-line" marker-end="url(#a12)" d="M510 66H595"/><path class="svg-line" marker-end="url(#a12)" d="M510 148H595"/><path class="svg-line" marker-end="url(#a12)" d="M510 230H595"/><path class="svg-line" marker-end="url(#a12)" d="M510 312H595"/>
+<rect class="svg-box2" x="597" y="98" width="205" height="194" rx="12"/><text class="svg-text" x="700" y="135" text-anchor="middle">Orthogonal matrix A</text><text class="svg-note" x="700" y="165" text-anchor="middle">Hadamard / Householder</text><text class="svg-small" x="700" y="201" text-anchor="middle">redistributes energy</text><text class="svg-small" x="700" y="224" text-anchor="middle">between every circulation</text><text class="svg-small" x="700" y="260" text-anchor="middle">AᵀA = I</text>
+<path class="svg-line2" marker-end="url(#a12)" d="M597 132H555V18H290V35"/><path class="svg-line2" marker-end="url(#a12)" d="M597 170H545V128H510"/><path class="svg-line2" marker-end="url(#a12)" d="M597 220H545V230H510"/><path class="svg-line2" marker-end="url(#a12)" d="M597 258H555V375H290V343"/>
+<path class="svg-line" marker-end="url(#a12)" d="M802 195H875"/><rect class="svg-box" x="877" y="142" width="155" height="106" rx="10"/><text class="svg-text" x="955" y="175" text-anchor="middle">Output mix</text><text class="svg-small" x="955" y="200" text-anchor="middle">c₁…c₄</text><text class="svg-small" x="955" y="225" text-anchor="middle">stereo projection</text><path class="svg-line" marker-end="url(#a12)" d="M1032 195H1080"/><text class="svg-text" x="1087" y="200">y</text>
+</svg></div>
+<p class="caption">Figure 12. Four-line FDN used behind audible taps. The discrete echoes remain intelligible at low diffusion and become a dense ambient tail as matrix recirculations accumulate.</p>
+<p>For an N=8 Hadamard matrix, a fast Walsh–Hadamard transform requires N log₂N = 24 scalar add/subtract operations plus scaling, versus 64 multiplications and 56 additions for a dense 8×8 matrix. This makes structured orthogonal matrices attractive on embedded targets.</p>
+<div class="eq">Per-line decay target: |G<sub>i</sub>(e<sup>jω</sup>)| = 10<sup>−3Dᵢ/(f<sub>s</sub>T₆₀(ω))</sup></div>
+<div class="callout"><span class="tag model">Design boundary</span> FDN theory is reverb literature, but it is directly useful for “diffused delay” when the direct taps and late network are kept as separate layers. Fractional allpass elements can resize delay lines without amplitude filtering, though modulation of recursive allpasses still needs transient tests.<a class="cite" href="#r21">[R21]</a><a class="cite" href="#r22">[R22]</a></div>
+</section>
+
+<section id="freeze">
+<h2>13. Freeze, hold, and endless sound</h2>
+<p class="section-intro">“Freeze” is not one algorithm. The design choice is what remains invariant: an exact waveform loop, a cloud of short grains, a frozen spectrum, or a statistical resonant model.</p>
+<div class="grid g2">
+<div class="card"><h3>Loop hold</h3><p>Stop writing, keep reading a captured ring segment. Lowest cost and exact timbre, but periodicity and loop seam are exposed. Crossfade endpoints or search low-error seam pairs.</p></div>
+<div class="card"><h3>Granular freeze</h3><p>Sample grains from a bounded history with randomized position, size, and phase. Masks loop periodicity but can become diffuse/noisy and may weaken pitch center.</p></div>
+<div class="card"><h3>Spectral freeze</h3><p>Latch STFT magnitudes; propagate or randomize phase. Stable sustained spectrum, but transients and phase coherence determine whether the result sounds metallic, static, or smeared.</p></div>
+<div class="card"><h3>Predictive / excitation freeze</h3><p>Estimate a high-order linear-prediction filter from stationary audio and excite it with white or sparse velvet noise. Välimäki et al. report over 90% operation reduction using velvet noise versus standard convolution in their endless-sound method.<a class="cite" href="#r23">[R23]</a></p></div>
+</div>
+<div class="svg-wrap"><svg viewBox="0 0 1060 300" role="img" aria-labelledby="freezeTitle"><title id="freezeTitle">Four freeze algorithm families</title><defs><marker id="a13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1060" height="300" rx="12"/><rect class="svg-special" x="32" y="105" width="165" height="80" rx="10"/><text class="svg-text" x="114" y="136" text-anchor="middle">Captured audio</text><text class="svg-small" x="114" y="160" text-anchor="middle">trigger / gate / onset</text><path class="svg-line" marker-end="url(#a13)" d="M197 145H250"/>
+<rect class="svg-box" x="252" y="25" width="180" height="62" rx="10"/><text class="svg-text" x="342" y="54" text-anchor="middle">Loop latch</text><text class="svg-small" x="342" y="75" text-anchor="middle">waveform invariant</text><rect class="svg-box2" x="252" y="101" width="180" height="62" rx="10"/><text class="svg-text" x="342" y="130" text-anchor="middle">Grain cloud</text><text class="svg-small" x="342" y="151" text-anchor="middle">local fragments invariant</text><rect class="svg-special" x="252" y="177" width="180" height="62" rx="10"/><text class="svg-text" x="342" y="206" text-anchor="middle">STFT hold</text><text class="svg-small" x="342" y="227" text-anchor="middle">magnitude invariant</text><rect class="svg-warn" x="252" y="253" width="180" height="42" rx="10"/><text class="svg-text" x="342" y="279" text-anchor="middle">LP / noise model</text>
+<path class="svg-line" marker-end="url(#a13)" d="M224 145V56H252"/><path class="svg-line" marker-end="url(#a13)" d="M224 145V132H252"/><path class="svg-line" marker-end="url(#a13)" d="M224 145V208H252"/><path class="svg-line" marker-end="url(#a13)" d="M224 145V274H252"/>
+<rect class="svg-box" x="545" y="72" width="240" height="145" rx="12"/><text class="svg-text" x="665" y="106" text-anchor="middle">Motion layer</text><text class="svg-small" x="665" y="132" text-anchor="middle">phase evolution · grain drift</text><text class="svg-small" x="665" y="156" text-anchor="middle">modulation · diffusion · tone</text><text class="svg-small" x="665" y="184" text-anchor="middle">prevents a dead static pad</text><path class="svg-line" marker-end="url(#a13)" d="M432 56H490V115H545"/><path class="svg-line" marker-end="url(#a13)" d="M432 132H545"/><path class="svg-line" marker-end="url(#a13)" d="M432 208H490V175H545"/><path class="svg-line" marker-end="url(#a13)" d="M432 274H490V200H545"/>
+<path class="svg-line" marker-end="url(#a13)" d="M785 145H865"/><rect class="svg-special" x="867" y="105" width="160" height="80" rx="10"/><text class="svg-text" x="947" y="136" text-anchor="middle">Endless pad</text><text class="svg-small" x="947" y="160" text-anchor="middle">mix under live input</text>
+</svg></div>
+<p class="caption">Figure 13. Freeze families differ by what representation is held and how motion is reintroduced.</p>
+</section>
+
+<section id="architecture">
+<h2>14. Recommended embedded architecture</h2>
+<p class="section-intro">The architecture below keeps high-risk algorithms replaceable. A mode chooses read/scheduling semantics and loop processing; it does not own a separate ad-hoc delay buffer.</p>
+<div class="svg-wrap"><svg viewBox="0 0 1180 520" role="img" aria-labelledby="archTitle"><title id="archTitle">Shared embedded DSP architecture for a multi-algorithm guitar delay</title><defs><marker id="a14" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7dc9e8"/></marker></defs><rect class="svg-bg" width="1180" height="520" rx="12"/>
+<rect class="svg-box" x="30" y="55" width="170" height="90" rx="10"/><text class="svg-text" x="115" y="88" text-anchor="middle">Audio I/O</text><text class="svg-small" x="115" y="112" text-anchor="middle">codec · DC block</text><text class="svg-small" x="115" y="133" text-anchor="middle">input conditioning</text><path class="svg-line" marker-end="url(#a14)" d="M200 100H250"/>
+<rect class="svg-special" x="252" y="40" width="215" height="120" rx="12"/><text class="svg-text" x="359" y="76" text-anchor="middle">Delay memory service</text><text class="svg-small" x="359" y="102" text-anchor="middle">aligned ring buffers</text><text class="svg-small" x="359" y="124" text-anchor="middle">internal SRAM / external SDRAM</text><text class="svg-small" x="359" y="146" text-anchor="middle">read-before-write contract</text><path class="svg-line" marker-end="url(#a14)" d="M467 100H520"/>
+<rect class="svg-box2" x="522" y="25" width="235" height="150" rx="12"/><text class="svg-text" x="639" y="60" text-anchor="middle">Read-head engine</text><text class="svg-small" x="639" y="87" text-anchor="middle">integer · Lagrange/Farrow</text><text class="svg-small" x="639" y="109" text-anchor="middle">dual-head crossfade</text><text class="svg-small" x="639" y="131" text-anchor="middle">transport coordinate</text><text class="svg-small" x="639" y="153" text-anchor="middle">pitch-head increments</text><path class="svg-line" marker-end="url(#a14)" d="M757 100H810"/>
+<rect class="svg-warn" x="812" y="40" width="200" height="120" rx="12"/><text class="svg-text" x="912" y="75" text-anchor="middle">Scheduler</text><text class="svg-small" x="912" y="101" text-anchor="middle">reverse grains · freeze</text><text class="svg-small" x="912" y="123" text-anchor="middle">tap tempo / quantization</text><text class="svg-small" x="912" y="145" text-anchor="middle">preset morph policy</text><path class="svg-line" marker-end="url(#a14)" d="M1012 100H1130"/><text class="svg-text" x="1138" y="105">wet</text>
+<rect class="svg-box" x="220" y="235" width="240" height="145" rx="12"/><text class="svg-text" x="340" y="271" text-anchor="middle">Feedback processor chain</text><text class="svg-small" x="340" y="298" text-anchor="middle">HP / LP / shelving loss</text><text class="svg-small" x="340" y="320" text-anchor="middle">saturation / compander</text><text class="svg-small" x="340" y="342" text-anchor="middle">diffuser / pitch branch</text><text class="svg-small" x="340" y="364" text-anchor="middle">gain & safety limiter</text>
+<path class="svg-line2" marker-end="url(#a14)" d="M825 145V307H460"/><path class="svg-line2" marker-end="url(#a14)" d="M220 307H150V145"/>
+<rect class="svg-box2" x="520" y="235" width="235" height="145" rx="12"/><text class="svg-text" x="637" y="271" text-anchor="middle">Mode adapters</text><text class="svg-small" x="637" y="298" text-anchor="middle">DIGI · MOD · TAPE · BBD</text><text class="svg-small" x="637" y="320" text-anchor="middle">REVERSE · PITCH · DIFFUSE</text><text class="svg-small" x="637" y="342" text-anchor="middle">map user controls to</text><text class="svg-small" x="637" y="364" text-anchor="middle">validated parameter envelopes</text>
+<rect class="svg-special" x="815" y="235" width="250" height="145" rx="12"/><text class="svg-text" x="940" y="271" text-anchor="middle">Control / telemetry</text><text class="svg-small" x="940" y="298" text-anchor="middle">sample-accurate ramps</text><text class="svg-small" x="940" y="320" text-anchor="middle">CPU / underrun counters</text><text class="svg-small" x="940" y="342" text-anchor="middle">feedback peak monitor</text><text class="svg-small" x="940" y="364" text-anchor="middle">NaN / denormal protection</text>
+<path class="svg-dash" d="M755 307H815"/><path class="svg-dash" d="M637 235V175"/><path class="svg-dash" d="M940 235V160"/>
+<rect class="svg-box" x="220" y="430" width="845" height="60" rx="10"/><text class="svg-text" x="642" y="455" text-anchor="middle">Offline validation harness: impulse · sweep · sideband FFT · loop-gain scan · randomized soak · golden audio</text><text class="svg-small" x="642" y="478" text-anchor="middle">same DSP modules compiled for desktop and target; no “target-only” algorithm fork</text>
+</svg></div>
+<p class="caption">Figure 14. Recommended shared engine. The delay-memory and read-head contracts are testable independently from character processing and UI mapping.</p>
+<h3>Reference configuration</h3>
+<div class="table-wrap"><table><thead><tr><th>Subsystem</th><th>Baseline</th><th>Reason</th></tr></thead><tbody>
+<tr><td>Sample rate / state</td><td>48 kHz, float32 audio state</td><td>Normal guitar-bandwidth target, robust headroom, simple coefficient work</td></tr>
+<tr><td>Continuously moving read</td><td>3rd-order Lagrange in Farrow form</td><td>Good cost/quality balance; μ changes without rebuilding a long FIR</td></tr>
+<tr><td>Discontinuous time update</td><td>Two stable taps, 10–50 ms equal-power crossfade</td><td>Avoids pointer click and Doppler sweep; crossfade length remains a musical parameter</td></tr>
+<tr><td>Loop protection</td><td>DC blocker, configurable band limits, soft saturation, peak/RMS guard</td><td>Handles bias and accumulation without relying on hard clipping</td></tr>
+<tr><td>Long memory</td><td>External SDRAM with contiguous aligned channel buffers</td><td>Needed for multi-second stereo, reverse, and freeze; benchmark worst-case concurrent heads</td></tr>
+<tr><td>Nonlinear oversampling</td><td>2× or 4× local subgraph as starting point</td><td>Do not pay the rate multiplier on the long delay memory; measure alias residual before increasing</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="cost">
+<h2>15. Memory, bandwidth, and compute envelopes</h2>
+<p class="section-intro">Delay DSP is frequently memory-bound before it is arithmetic-bound. The raw payload numbers below exclude cache-line overfetch, SDRAM refresh/turnaround, interpolation neighborhoods, and DMA contention.</p>
+<h3>15.1 Storage at 48 kHz</h3>
+<div class="table-wrap"><table><thead><tr><th>Format / channels</th><th>1 second</th><th>4 seconds</th><th>Comment</th></tr></thead><tbody>
+<tr><td>float32 mono</td><td>192,000 B = 187.5 KiB</td><td>750 KiB</td><td>Fits some MCU SRAM only at short lengths</td></tr>
+<tr><td>float32 stereo</td><td>384,000 B = 375 KiB</td><td>1.536 MB = 1.465 MiB</td><td>External memory likely for long modes</td></tr>
+<tr><td>packed 24-bit stereo</td><td>288,000 B = 281.25 KiB</td><td>1.152 MB</td><td>Packing/unpacking and unaligned access can erase gains</td></tr>
+<tr><td>int16 stereo</td><td>192,000 B = 187.5 KiB</td><td>750 KiB</td><td>Quantization in feedback must be noise-shaped/dithered or deliberately lo-fi</td></tr>
+</tbody></table></div>
+<h3>15.2 Minimum sequential traffic</h3>
+<div class="grid g3">
+<div class="card"><h3>1 stereo read + write</h3><div class="eq">48k · 2ch · 4B · 2 = 0.768 MB/s</div><p class="small">Fixed clean delay, payload only.</p></div>
+<div class="card"><h3>4 stereo heads + write</h3><div class="eq">48k · 2ch · 4B · 5 = 1.92 MB/s</div><p class="small">Reverse/pitch/multitap before interpolation-neighbor overfetch.</p></div>
+<div class="card"><h3>8 mono FDN lines R+W</h3><div class="eq">48k · 4B · 16 = 3.072 MB/s</div><p class="small">No filters, matrix, or cache overhead included.</p></div>
+</div>
+<div class="callout warn"><span class="tag rec">Recommendation</span> Benchmark a deliberately adversarial case: stereo, four fractional heads, nonlinear feedback, UI/LED traffic, and the codec DMA active. Average SDRAM bandwidth is not enough; underruns follow worst-case latency and cache conflict.</div>
+<h3>15.3 Rough algorithmic cost ranking</h3>
+<div class="table-wrap"><table><thead><tr><th>Family</th><th>Per-sample arithmetic</th><th>Memory pattern</th><th>Primary bottleneck</th></tr></thead><tbody>
+<tr><td>Clean / multitap</td><td>Very low</td><td>1 write + N reads</td><td>External memory latency for many heads</td></tr>
+<tr><td>Lagrange modulated</td><td>Low</td><td>4-neighbor reads per head</td><td>Cache/SDRAM locality</td></tr>
+<tr><td>Transport-correct tape</td><td>Low–moderate, occasional search</td><td>audio + integrated-speed coordinate</td><td>extra state and speed-up anti-aliasing<a class="cite" href="#r7">[R7]</a></td></tr>
+<tr><td>BBD combined model</td><td>Moderate</td><td>variable-rate state/filter updates</td><td>rate conversion and clock-linked filters</td></tr>
+<tr><td>Reverse/granular</td><td>Moderate</td><td>2–4 heads + window tables</td><td>seams and memory reads</td></tr>
+<tr><td>Phase vocoder</td><td>High/block-based</td><td>FFT frames and phase state</td><td>latency, FFT, transient handling</td></tr>
+<tr><td>FDN 8-line</td><td>Moderate</td><td>8 reads/writes + filters</td><td>memory plus per-line decay filters</td></tr>
+<tr><td>Neural tape hybrid</td><td>High / hardware-specific</td><td>network states and generators</td><td>inference and model memory<a class="cite" href="#r10">[R10]</a></td></tr>
+</tbody></table></div>
+</section>
+
+<section id="verification">
+<h2>16. Verification and listening protocol</h2>
+<p class="section-intro">A delay can pass ordinary audio listening and still fail at buffer wrap, high feedback, extreme modulation, or parameter transitions. Verification should isolate mathematical invariants before subjective voicing.</p>
+<div class="table-wrap"><table><thead><tr><th>Test</th><th>Stimulus / sweep</th><th>Metric</th><th>Failure exposed</th></tr></thead><tbody>
+<tr><td>Impulse timing</td><td>Unit impulse; every time range and wrap position</td><td>Echo sample indices, amplitudes, polarity</td><td>Off-by-one, read/write order, wrap errors</td></tr>
+<tr><td>Decay law</td><td>Impulse with scalar and colored feedback</td><td>Per-repeat gain; fitted T60 by band</td><td>Wrong feedback mapping; hidden loop gain</td></tr>
+<tr><td>Fractional response</td><td>Swept sine for μ=0…1</td><td>|H|, group delay, peak/ripple</td><td>Interpolator coloration and coefficient bug</td></tr>
+<tr><td>Modulation sidebands</td><td>1 kHz and 8–15 kHz tones; LFO/rate sweep</td><td>Spectrogram and sideband symmetry</td><td>Zippering, control-rate images, aliasing</td></tr>
+<tr><td>Time jump</td><td>Tap-tempo and preset step at g=0.8…0.99</td><td>Peak discontinuity, energy during crossfade</td><td>Clicks, double-energy burst, unstable morph</td></tr>
+<tr><td>Reverse seam</td><td>Sine, transient train, chords, noise</td><td>OLA gain flatness; seam residual</td><td>Window normalization and scheduler phase</td></tr>
+<tr><td>Pitch loop</td><td>Wideband guitar/chord + semitone sweep</td><td>Alias energy, head-reset periodicity</td><td>Ultrasonic accumulation and grain buzz</td></tr>
+<tr><td>Long soak</td><td>Random controls, feedback near limit, 1–8 h</td><td>No NaN/Inf, no underrun, bounded output</td><td>State corruption, denormals, rare wrap race</td></tr>
+<tr><td>Stereo/mono compatibility</td><td>Correlated and anti-correlated inputs</td><td>Width, mono sum loss, interchannel phase</td><td>Unusable live/FOH mono collapse</td></tr>
+<tr><td>Target performance</td><td>Worst-case mode, UI/USB/DMA active</td><td>cycle histogram, deadline misses, SDRAM stalls</td><td>Average-load optimism</td></tr>
+</tbody></table></div>
+<h3>Listening corpus</h3>
+<p>Use at least: muted single-note transients, clean arpeggios, dense distorted chords, palm-muted low strings, sustained harmonics, silence/noise floor, and knob/tap gestures during active feedback. Level-match algorithms within 0.2 dB where tone is compared; otherwise saturation and brightness preference are confounded by loudness.</p>
+<div class="callout good"><span class="tag rec">Release gate</span> No mode should be accepted solely because its nominal preset sounds good. It must pass wrap, transition, near-unity-feedback, and long-soak tests at the same parameter extremes exposed by MIDI/expression/control automation.</div>
+</section>
+
+<section id="conclusion">
+<h2>17. Conclusion and implementation recommendation</h2>
+<div class="card">
+<h3>Recommended sequence</h3>
+<ol>
+<li><b>Build the invariant core:</b> circular memory, deterministic read-before-write semantics, integer/fractional head API, and feedback processor with measured loop gain.</li>
+<li><b>Ship the clean and modulated families first:</b> DIGITAL, MOD, multitap/stereo. They validate memory, interpolation, control smoothing, tempo transitions, and loop safety.</li>
+<li><b>Add TAPE as a transport-aware layer:</b> use speed semantics for time gestures; keep physical coloration modular. Do not couple every wow/flutter control to a single sine LFO.</li>
+<li><b>Add REVERSE and PITCH through a scheduler:</b> shared windowing and crossfade infrastructure, but different read direction and rate.</li>
+<li><b>Add BBD only after deciding the claim:</b> “BBD-inspired” can be perceptually designed; a named-device emulation requires a measured system model.</li>
+<li><b>Add DIFFUSE/FREEZE last:</b> they reuse the stable delay core but add state density, complex feedback, and difficult subjective tuning.</li>
+</ol>
+</div>
+<div class="callout"><span class="tag rec">Bottom line</span> The strongest pedal architecture is a small set of rigorously verified primitives with mode-specific semantics. The weakest is a collection of unrelated per-mode buffers and hand-tuned hacks: it duplicates wrap/transition bugs, hides loop gain, and makes later stereo, MIDI, and preset morphing disproportionately difficult.</div>
+</section>
+
+<section id="references">
+<h2>References</h2>
+<p class="section-intro">Primary academic sources were preferred. Links point to publisher pages, author copies, or conference archives. Source-specific measurements are identified as such in the report.</p>
+<div class="ref-list">
+<div class="ref" id="r1"><span class="ref-title">P. Dutilleux, “Filters, Delays, Modulations and Demodulations—A Tutorial,”</span> Proc. DAFx-98, 1998. <a href="https://www.dafx.de/paper-archive/1998/DUT52.PS.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r2"><span class="ref-title">T. I. Laakso, V. Välimäki, M. Karjalainen, and U. K. Laine, “Splitting the Unit Delay—Tools for Fractional Delay Filter Design,”</span> IEEE Signal Processing Magazine, 13(1), 30–60, 1996. <a href="https://doi.org/10.1109/79.482137" target="_blank" rel="noopener">DOI</a>.</div>
+<div class="ref" id="r3"><span class="ref-title">D. Rocchesso, “Fractionally Addressed Delay Lines,”</span> IEEE Trans. Speech and Audio Processing, 8(6), 717–727, 2000. <a href="https://doi.org/10.1109/89.876310" target="_blank" rel="noopener">DOI</a>; <a href="https://arxiv.org/abs/cs/0005022" target="_blank" rel="noopener">author preprint</a>.</div>
+<div class="ref" id="r4"><span class="ref-title">J. Dattorro, “Effect Design, Part 2: Delay-Line Modulation and Chorus,”</span> Journal of the Audio Engineering Society, 45(10), 764–788, 1997. <a href="https://www.aes.org/e-lib/browse.cfm?elib=10159" target="_blank" rel="noopener">AES E-Library</a>.</div>
+<div class="ref" id="r5"><span class="ref-title">S. Disch and U. Zölzer, “Modulation and Delay Line Based Digital Audio Effects,”</span> Proc. DAFx-99, 1999. <a href="https://www.dafx.de/paper-archive/1999/disch.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r6"><span class="ref-title">W. L. Martens and A. Marui, “Categories of Perception for Vibrato, Flange, and Stereo Chorus,”</span> Proc. DAFx-06, 2006. <a href="https://dafx.de/paper-archive/2006/papers/p_149.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r7"><span class="ref-title">V. Zavalishin and J. D. Parker, “Efficient Emulation of Tape-Like Delay Modulation Behavior,”</span> Proc. DAFx-18, 2018. <a href="https://dafx.de/paper-archive/2018/papers/DAFx2018_paper_9.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r8"><span class="ref-title">J. Chowdhury, “Real-Time Physical Modelling for Analog Tape Machines,”</span> Proc. DAFx-19, 2019. <a href="https://www.dafx.de/paper-archive/2019/DAFx2019_paper_3.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r9"><span class="ref-title">S. Arnardóttir, J. S. Abel, and J. O. Smith, “A Digital Model of the Echoplex Tape Delay,”</span> AES Convention 125, convention paper 7649, 2008. <a href="https://www.aes.org/events/125/125thWrapUp.pdf" target="_blank" rel="noopener">AES convention abstracts</a>.</div>
+<div class="ref" id="r10"><span class="ref-title">O. Mikkonen, A. Wright, E. Moliner, and V. Välimäki, “Neural Modeling of Magnetic Tape Recorders,”</span> Proc. DAFx-23, 2023. <a href="https://www.dafx.de/paper-archive/2023/DAFx23_paper_51.pdf" target="_blank" rel="noopener">Conference PDF</a>; <a href="https://arxiv.org/abs/2305.16862" target="_blank" rel="noopener">arXiv</a>.</div>
+<div class="ref" id="r11"><span class="ref-title">A. Huovilainen, “Enhanced Digital Models for Analog Modulation Effects,”</span> Proc. DAFx-05, 2005. <a href="https://www.dafx.de/paper-archive/2005/P_155.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r12"><span class="ref-title">C. Raffel and J. O. Smith, “Practical Modeling of Bucket-Brigade Device Circuits,”</span> Proc. DAFx-10, 2010. <a href="https://colinraffel.com/publications/dafx2010practical.pdf" target="_blank" rel="noopener">Author PDF</a>.</div>
+<div class="ref" id="r13"><span class="ref-title">M. Holters and J. D. Parker, “A Combined Model for a Bucket Brigade Device and its Input and Output Filters,”</span> Proc. DAFx-18, 2018. <a href="https://www.hsu-hh.de/ant/wp-content/uploads/sites/699/2018/09/Holters-Parker-2018-A-Combined-Model-for-a-Bucket-Brigade-Device-and-its-Input-and-Output-Filters.pdf" target="_blank" rel="noopener">Author PDF</a>.</div>
+<div class="ref" id="r14"><span class="ref-title">L. Gabrielli, S. D’Angelo, and S. Squartini, “Antialiasing in BBD Chips Using BLEP,”</span> Proc. DAFx-25, 2025. <a href="https://dafx.de/paper-archive/2025/DAFx25_paper_29.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r15"><span class="ref-title">A. Haghparast, H. Penttinen, and V. Välimäki, “Real-Time Pitch-Shifting of Musical Signals by a Time-Varying Factor Using NFC-TSM,”</span> Proc. DAFx-07, 2007. <a href="https://dafx.labri.fr/main/papers/p007.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r16"><span class="ref-title">J. Laroche and M. Dolson, “Improved Phase Vocoder Time-Scale Modification of Audio,”</span> IEEE Trans. Speech and Audio Processing, 7(3), 323–332, 1999. <a href="https://doi.org/10.1109/89.759041" target="_blank" rel="noopener">DOI</a>.</div>
+<div class="ref" id="r17"><span class="ref-title">J. Laroche and M. Dolson, “New Phase-Vocoder Techniques for Real-Time Pitch-Shifting, Chorusing, Harmonizing and Other Exotic Audio Modifications,”</span> Journal of the AES, 47(11), 928–936, 1999. <a href="https://www.ee.columbia.edu/~dpwe/papers/LaroD99-pvoc.pdf" target="_blank" rel="noopener">Author PDF</a>.</div>
+<div class="ref" id="r18"><span class="ref-title">N. Schnell and D. Schwarz, “Gabor, Multi-Representation Real-Time Analysis/Synthesis,”</span> Proc. DAFx-05, 2005. <a href="https://www.dafx.de/paper-archive/2005/P_122.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r19"><span class="ref-title">J. J. López, J. Martí, and M. Resina, “Vocem: An Application for Real-Time Granular Synthesis,”</span> Proc. DAFx-98, 1998. <a href="https://www.dafx.de/paper-archive/1998/MAR30.PS.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r20"><span class="ref-title">S. J. Schlecht, “FDNTB: The Feedback Delay Network Toolbox,”</span> Proc. DAFx-20, 2020. <a href="https://www.dafx.de/paper-archive/2020/proceedings/papers/DAFx2020_paper_53.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r21"><span class="ref-title">E. K. Canfield-Dafilou and J. S. Abel, “Resizing Rooms in Convolution, Delay Network, and Modal Reverberators,”</span> Proc. DAFx-18, 2018. <a href="https://www.dafx.de/paper-archive/2018/papers/DAFx2018_paper_40.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r22"><span class="ref-title">S. J. Schlecht, “Allpass Feedback Delay Networks,”</span> IEEE Transactions on Signal Processing, 69, 1028–1038, 2021. <a href="https://doi.org/10.1109/TSP.2021.3053507" target="_blank" rel="noopener">DOI</a>.</div>
+<div class="ref" id="r23"><span class="ref-title">V. Välimäki, J. Rämö, and F. Esqueda, “Creating Endless Sounds,”</span> Proc. DAFx-18, 2018. <a href="https://www.dafx.de/paper-archive/2018/papers/DAFx2018_paper_6.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r24"><span class="ref-title">N. Abate and B. Hansen, “Feature-Based Delay Line Using Real-Time Concatenative Synthesis,”</span> Proc. DAFx-23, 2023. <a href="https://www.dafx.de/paper-archive/2023/DAFx23_paper_6.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+<div class="ref" id="r25"><span class="ref-title">A. Franck, “Efficient Algorithms and Structures for Fractional Delay Filtering Based on Lagrange Interpolation,”</span> Journal of the Audio Engineering Society, 56(12), 1036–1056, 2008. <a href="https://www.aes.org/e-lib/browse.cfm?elib=14647" target="_blank" rel="noopener">AES E-Library</a>.</div>
+<div class="ref" id="r26"><span class="ref-title">V. Välimäki, J. D. Parker, L. Savioja, J. O. Smith, and J. S. Abel, “More than 50 Years of Artificial Reverberation,”</span> Proc. AES 60th International Conference, 2016. <a href="https://www.aes.org/e-lib/browse.cfm?elib=18061" target="_blank" rel="noopener">AES E-Library</a>.</div>
+<div class="ref" id="r27"><span class="ref-title">D. Sanfilippo, “Combining Zeroth and First-Order Analysis with Lagrange Polynomials for Real-Time Granular Processing,”</span> Proc. DAFx-20in21, 2021. <a href="https://dafx.de/paper-archive/2021/proceedings/papers/DAFx20in21_paper_38.pdf" target="_blank" rel="noopener">Conference PDF</a>.</div>
+</div>
+<hr><p class="footnote">Prepared 10 July 2026. This is an engineering synthesis of cited literature, not a claim that every commercial pedal follows these structures. Equations and implementation recommendations should be validated against the selected MCU/DSP, codec, memory topology, and product requirements.</p>
+</section>
+</main>
+</div>
+</body>
+</html>
