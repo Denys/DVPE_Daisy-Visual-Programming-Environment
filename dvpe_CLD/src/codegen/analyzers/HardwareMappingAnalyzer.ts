@@ -59,13 +59,13 @@ export class HardwareMappingAnalyzer {
                     break;
                 }
 
-                case 'cv_input':
-                case 'gate_trigger_in': {
+                case 'cv_input': {
                     const cvChannel = parseInt(block.parameterValues['channel'] as string) || 0;
                     mapping.cvInputs.set(cvChannel, block.id);
                     break;
                 }
 
+                case 'gate_trigger_in':
                 case 'gate_input': {
                     const gateChannel = parseInt(block.parameterValues['channel'] as string) || 0;
                     mapping.gateInputs.set(gateChannel, block.id);
@@ -84,9 +84,10 @@ export class HardwareMappingAnalyzer {
         return {
             knobs: 8,
             keys: 16,
-            cvInputs: 2,
-            gateInputs: 2,
+            cvInputs: 4,
+            gateInputs: 1,
             cvOutputs: 2,
+            gateOutputs: 1,
             audioInputs: 2,
             audioOutputs: 2,
         };

@@ -157,6 +157,7 @@ export { HarmonicOscillatorBlock } from './harmonicOscillator';
 export { OscillatorBankBlock } from './oscillatorBank';
 export { VariableSawOscillatorBlock } from './variableSawOscillator';
 export { ZOscillatorBlock } from './zOscillator';
+export { PolyGrainletVoiceBlock } from './polyGrainletVoice';
 
 // === Remaining DaisySP Blocks ===
 export { PhasorBlock } from './phasor';

@@ -12,6 +12,11 @@ import { cn } from '@/lib/utils';
 import { useUIStore, usePatchStore } from '@/stores';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import {
+  getStitchNeonBlockStyle,
+  getStitchNeonCategoryColor,
+  shouldShowInputPortInLayout,
+} from '@/lib/stitchNeonStyle';
+import {
   BlockInstance,
   PortDirection,
   SignalType,
@@ -97,7 +102,11 @@ export const getGlassNeonColor = (_scheme: BlockColorScheme, category: BlockCate
 const getBlockSchemeStyles = (scheme: BlockColorScheme, selected: boolean, layoutStyle: string, category?: BlockCategory, defId?: string) => {
   const isGlass = layoutStyle === 'glass';
   const isExperiment = layoutStyle === 'experiment';
-  const base = selected ? 'ring-2 ring-white/80' : '';
+  const base = selected
+    ? isGlass || isExperiment
+      ? 'ring-2 ring-white shadow-[0_0_0_2px_rgba(255,255,255,0.82),0_0_32px_rgba(250,204,21,0.38)]'
+      : 'ring-2 ring-white/80'
+    : '';
 
   if (isGlass || isExperiment) {
 
@@ -704,6 +713,7 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
   const { instance } = nodeData;
   const inspectBlock = useUIStore((state) => state.inspectBlock);
   const layoutStyle = useUIStore((state) => state.layoutStyle);
+  const stitchNeonSettings = useUIStore((state) => state.stitchNeonSettings);
   const connections = usePatchStore((state) => state.connections);
   const updateBlockParameter = usePatchStore((state) => state.updateBlockParameter);
 
@@ -741,18 +751,13 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
 
     // Filter input ports
     const inputs = definition.ports.filter((p) => {
-      if (p.direction !== PortDirection.INPUT) return false;
-
-      // 1. Check CV modulation ports
-      if (p.id.endsWith('_cv') && p.signalType === SignalType.CV) {
-        // Exception for MUX sel_cv which is static
-        if (p.id === 'sel_cv') return true;
-
-        // Extract the parameter ID (e.g., 'frequency_cv' -> 'frequency')
-        const paramId = p.id.replace(/_cv$/, '');
-        // Only show if explicitly enabled
-        return instance.enabledCvPorts?.includes(paramId) ?? false;
-      }
+      if (!shouldShowInputPortInLayout({
+        port: p,
+        definition,
+        layoutStyle,
+        enabledCvPorts: instance.enabledCvPorts,
+        connectedPorts,
+      })) return false;
 
       // 2. Check dynamic input count (ADD, MIXER, MUX)
       if (inputCount !== undefined) {
@@ -801,7 +806,7 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
       inputPorts: inputs,
       outputPorts: outputs,
     };
-  }, [definition, instance.enabledCvPorts, instance.parameterValues]);
+  }, [connectedPorts, definition, instance.enabledCvPorts, instance.parameterValues, layoutStyle]);
 
   // Get icon component
   const IconComponent = useMemo(() => {
@@ -823,34 +828,35 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
     );
   }
   const designSettings = useUIStore((state) => state.designSettings);
-  const neonColor = definition ? getGlassNeonColor(definition.colorScheme, definition.category, definition.id) : "#00e5ff";
+  const baseNeonColor = definition ? getGlassNeonColor(definition.colorScheme, definition.category, definition.id) : "#00e5ff";
+  const neonColor = layoutStyle === 'glass'
+    ? getStitchNeonCategoryColor(stitchNeonSettings, baseNeonColor, definition.category)
+    : baseNeonColor;
 
   // Dynamic glass background based on experiment settings
-  const dynamicStyle = useMemo(() => {
+  const dynamicStyle = useMemo<React.CSSProperties>(() => {
     if (layoutStyle !== 'experiment' && layoutStyle !== 'glass') return {};
+
+    if (layoutStyle === 'glass') {
+      return getStitchNeonBlockStyle(stitchNeonSettings, neonColor, Boolean(selected));
+    }
     
-    // Use store values if in experiment mode, otherwise defaults
-    const s = layoutStyle === 'experiment' ? designSettings : {
-        glowIntensity: 0.4,
-        glowSpread: 160,
-        baseTransparency: 0.08,
-        borderWidth: 1,
-        borderRadius: 16,
-        glassTint: 0.15
-    };
+    const s = designSettings;
 
     const tintHex = Math.round(s.glassTint * 255).toString(16).padStart(2, '0');
     const bgHex = Math.round(s.baseTransparency * 255).toString(16).padStart(2, '0');
+    const isSelected = Boolean(selected);
+    const selectedShadow = `0 0 0 2px rgba(255,255,255,0.9), 0 0 38px ${neonColor}99, 0 0 70px rgba(250,204,21,0.28)`;
+    const normalShadow = `0 0 ${s.glowSpread}px -${s.glowSpread / 4}px ${neonColor}${Math.round(s.glowIntensity * 255).toString(16).padStart(2, '0')}, 0 0 40px -10px ${neonColor}33, inset 0 0 0 1px ${neonColor}1a`;
     
     return {
       borderRadius: s.borderRadius,
-      borderWidth: s.borderWidth,
+      borderWidth: isSelected ? Math.max(2, s.borderWidth) : s.borderWidth,
+      borderColor: isSelected ? 'rgba(255,255,255,0.95)' : undefined,
       background: `linear-gradient(135deg, ${neonColor}${tintHex}, #111111${bgHex})`,
-      boxShadow: `0 0 ${s.glowSpread}px -${s.glowSpread/4}px ${neonColor}${Math.round(s.glowIntensity * 255).toString(16).padStart(2, '0')}, 
-                  0 0 40px -10px ${neonColor}33, 
-                  inset 0 0 0 1px ${neonColor}1a`
+      boxShadow: isSelected ? selectedShadow : normalShadow,
     };
-  }, [layoutStyle, designSettings, neonColor]);
+  }, [layoutStyle, designSettings, neonColor, selected, stitchNeonSettings]);
 
   return (
     <motion.div
@@ -909,20 +915,7 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
       <div className={cn("flex justify-between gap-4", layoutStyle === 'glass' ? "px-3 pb-3 pt-1" : "p-2")}>
         {/* Input Ports (Left) */}
         <div className="flex flex-col gap-0.5">
-          {inputPorts
-            .filter(p => {
-              if (layoutStyle !== 'glass') return true;
-
-              const isEnv = definition.id === 'adsr' || definition.id === 'envelope';
-              const isFilter = definition.category === BlockCategory.FILTERS || definition.id === 'svf' || definition.id === 'moog_filter';
-
-              if (!isEnv && !isFilter && p.id.endsWith('_cv')) {
-                const isCvForParam = definition.parameters.some((param: any) => p.id === `${param.id}_cv`);
-                if (isCvForParam) return false;
-              }
-              return true;
-            })
-            .map((port) => (
+          {inputPorts.map((port) => (
               <PortHandle
                 key={port.id}
                 portId={port.id}

@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daisy Delay Projects Dashboard - 2026-06-03</title>
+  <style>
+    :root {
+      --bg-red: #b51646;
+      --bg-blue: #09265f;
+      --surface: rgba(8, 10, 16, 0.78);
+      --surface-soft: rgba(15, 23, 42, 0.52);
+      --surface-strong: rgba(8, 10, 16, 0.92);
+      --border: rgba(255, 255, 255, 0.13);
+      --text: #fafafa;
+      --text-soft: #c8c8cb;
+      --muted: #8c8c91;
+      --audio: #22d3ee;
+      --cv: #facc15;
+      --trigger: #fb923c;
+      --green: #4ade80;
+      --logic: #a78bfa;
+      --source: #4361ee;
+      --filter: #4cc9f0;
+      --effect: #00e5ff;
+      --dynamic: #00ff88;
+      --utility: #b44aff;
+      --mod: #ffab00;
+      --math: #ffe800;
+      --danger: #ff5f79;
+      --radius: 16px;
+      --shadow-cyan: 0 0 88px -42px rgba(0, 229, 255, 0.9), inset 0 0 0 1px rgba(0, 229, 255, 0.13);
+      --shadow-amber: 0 0 88px -42px rgba(255, 171, 0, 0.9), inset 0 0 0 1px rgba(255, 171, 0, 0.13);
+      --shadow-purple: 0 0 88px -42px rgba(180, 74, 255, 0.82), inset 0 0 0 1px rgba(180, 74, 255, 0.13);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      min-height: 100%;
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: var(--bg-blue);
+      background:
+        radial-gradient(circle at 18% 42%, rgba(181, 22, 70, 0.30) 0%, transparent 36%),
+        radial-gradient(circle at 62% 24%, rgba(9, 38, 95, 0.22) 0%, transparent 42%),
+        linear-gradient(90deg, #b51646 0%, rgba(181, 22, 70, 0.63) 42%, #09265f 100%),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.28) 100%);
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+    }
+
+    body {
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.18;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select { font: inherit; }
+
+    .page {
+      position: relative;
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 28px 28px 44px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px;
+      color: rgba(15, 23, 42, 0.88);
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.74);
+      border-radius: 9px;
+      box-shadow: 0 18px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    .toolbar span {
+      width: 28px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      color: rgba(15, 23, 42, 0.58);
+      font-weight: 800;
+    }
+
+    .toolbar span.active {
+      color: #0f172a;
+      background: rgba(15, 23, 42, 0.08);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.12), rgba(8, 10, 16, 0.84));
+      box-shadow: var(--shadow-cyan);
+    }
+
+    .panel.amber {
+      background: linear-gradient(135deg, rgba(255, 171, 0, 0.15), rgba(8, 10, 16, 0.86));
+      box-shadow: var(--shadow-amber);
+    }
+
+    .panel.purple {
+      background: linear-gradient(135deg, rgba(180, 74, 255, 0.15), rgba(8, 10, 16, 0.86));
+      box-shadow: var(--shadow-purple);
+    }
+
+    .panel.green {
+      background: linear-gradient(135deg, rgba(0, 255, 136, 0.13), rgba(8, 10, 16, 0.86));
+      box-shadow: 0 0 88px -42px rgba(0, 255, 136, 0.9), inset 0 0 0 1px rgba(0, 255, 136, 0.13);
+    }
+
+    .section {
+      padding: 18px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: var(--audio);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 860px;
+      margin-bottom: 12px;
+      color: #fff4e4;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: 0.96;
+      letter-spacing: 0;
+      text-shadow: 0 0 26px rgba(0, 229, 255, 0.20);
+    }
+
+    h2 {
+      color: #fff4e4;
+      font-size: 20px;
+      line-height: 1.15;
+      margin-bottom: 12px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.2;
+      margin-bottom: 7px;
+    }
+
+    .lede {
+      color: var(--text-soft);
+      max-width: 860px;
+      font-size: 15px;
+      line-height: 1.58;
+    }
+
+    .opinion {
+      margin-top: 14px;
+      padding: 12px 13px;
+      color: #fff4e4;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(250, 204, 21, 0.22);
+      border-radius: 11px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .kpi {
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      background: rgba(8, 10, 16, 0.76);
+    }
+
+    .kpi .value {
+      display: block;
+      color: #fff4e4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 32px;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+
+    .kpi .label {
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+    }
+
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-7 { grid-column: span 7; }
+    .span-6 { grid-column: span 6; }
+    .span-5 { grid-column: span 5; }
+    .span-4 { grid-column: span 4; }
+
+    .pick-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .pick {
+      min-height: 184px;
+      padding: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-left: 3px solid var(--accent);
+      border-radius: 13px;
+      background: rgba(15, 23, 42, 0.62);
+      box-shadow: 0 0 44px -30px var(--accent);
+    }
+
+    .pick .use {
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 9px;
+    }
+
+    .pick a {
+      display: block;
+      color: #fff4e4;
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.25;
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+
+    .pick p {
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 180px 180px;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .control {
+      width: 100%;
+      min-height: 40px;
+      color: var(--text);
+      background: rgba(8, 10, 16, 0.64);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 10px;
+      outline: none;
+      padding: 0 12px;
+    }
+
+    .control:focus {
+      border-color: rgba(34, 211, 238, 0.72);
+      box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.16);
+    }
+
+    .bars {
+      display: grid;
+      gap: 9px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 206px 1fr 52px;
+      align-items: center;
+      gap: 10px;
+      min-height: 34px;
+    }
+
+    .bar-label {
+      color: var(--text-soft);
+      font-size: 12px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .bar-track {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: var(--w);
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(0, 229, 255, 0.42), var(--accent));
+      box-shadow: 0 0 14px var(--accent);
+    }
+
+    .bar-value {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      text-align: right;
+    }
+
+    .risk-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .risk-item {
+      display: grid;
+      grid-template-columns: 86px 1fr 42px;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-soft);
+      font-size: 12px;
+    }
+
+    .stack {
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      overflow: hidden;
+    }
+
+    .stack > span {
+      display: block;
+      height: 100%;
+      width: var(--w);
+      border-radius: inherit;
+      background: var(--accent);
+      box-shadow: 0 0 14px var(--accent);
+    }
+
+    .matrix {
+      display: grid;
+      gap: 10px;
+    }
+
+    .matrix-row {
+      display: grid;
+      grid-template-columns: 190px repeat(6, minmax(60px, 1fr));
+      gap: 8px;
+      align-items: center;
+    }
+
+    .matrix-head {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .matrix-name {
+      color: var(--text-soft);
+      font-size: 12px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.78);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 10px;
+    }
+
+    .dot.on {
+      color: #061017;
+      background: var(--accent);
+      border-color: transparent;
+      box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
+      font-weight: 900;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1040px;
+      background: rgba(8, 10, 16, 0.72);
+    }
+
+    th, td {
+      padding: 12px 11px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-align: left;
+      vertical-align: top;
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    th {
+      color: var(--muted);
+      background: rgba(8, 10, 16, 0.62);
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td.repo a {
+      color: #fff4e4;
+      font-weight: 800;
+    }
+
+    .rank {
+      color: var(--cv);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-weight: 900;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .pill.high { color: #ffd4dc; border-color: rgba(255, 95, 121, 0.44); background: rgba(255, 95, 121, 0.12); }
+    .pill.medium { color: #ffe8a4; border-color: rgba(250, 204, 21, 0.38); background: rgba(250, 204, 21, 0.10); }
+    .pill.low { color: #c9ffd9; border-color: rgba(74, 222, 128, 0.38); background: rgba(74, 222, 128, 0.10); }
+
+    .recommendations {
+      display: grid;
+      gap: 11px;
+    }
+
+    .recommendation {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(0, 0, 0, 0.22);
+    }
+
+    .recommendation strong {
+      color: #fff4e4;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .recommendation span {
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      counter-reset: checks;
+    }
+
+    .check {
+      position: relative;
+      min-height: 72px;
+      padding: 13px 13px 13px 48px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(0, 0, 0, 0.34);
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .check::before {
+      counter-increment: checks;
+      content: counter(checks);
+      position: absolute;
+      left: 13px;
+      top: 13px;
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #061017;
+      background: var(--cv);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-weight: 900;
+      box-shadow: 0 0 14px rgba(250, 204, 21, 0.58);
+    }
+
+    .weak-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .weak {
+      padding: 11px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(8, 10, 16, 0.56);
+    }
+
+    .weak strong {
+      display: block;
+      color: #fff4e4;
+      font-size: 12px;
+      margin-bottom: 5px;
+      word-break: break-word;
+    }
+
+    .weak span {
+      color: var(--text-soft);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .source-note {
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .source-note code {
+      color: var(--cv);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 5px;
+      padding: 2px 5px;
+    }
+
+    @media (max-width: 1080px) {
+      .page { padding: 20px 16px 34px; }
+      .hero { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .span-8, .span-7, .span-6, .span-5, .span-4 { grid-column: span 12; }
+      .pick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .matrix-row { grid-template-columns: 150px repeat(6, minmax(44px, 1fr)); }
+    }
+
+    @media (max-width: 720px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .toolbar { width: 100%; overflow: auto; }
+      .kpis, .pick-grid, .checklist, .weak-list { grid-template-columns: 1fr; }
+      .controls { grid-template-columns: 1fr; }
+      .bar-row { grid-template-columns: 1fr; gap: 6px; }
+      .bar-value { text-align: left; }
+      .matrix { overflow: auto; padding-bottom: 4px; }
+      .matrix-row { min-width: 660px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">Stitch Neon Technical Dashboard</div>
+      </div>
+      <div class="toolbar" aria-label="Visual mode toolbar">
+        <span>||</span><span><> </span><span>[]</span><span class="active">◇</span><span>▣</span><span>...</span>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="panel">
+        <div class="section">
+          <h1>Daisy Delay Projects and Algorithms</h1>
+          <p class="lede">
+            A visual decision dashboard for the June 3, 2026 digest of Daisy Seed delay,
+            SDRAM, reverb, tap-tempo, and pedal-firmware candidates. The dashboard keeps
+            the report's main conclusion intact: the best starting point depends on
+            whether the immediate goal is a complete pedal, long-delay memory technique,
+            or advanced ambience algorithms.
+          </p>
+          <div class="opinion">
+            Personal opinion: the strongest engineering path is the Farmer2K5 pair plus
+            balazsbencs/daisy-multifx-pedal. That trio covers memory pressure, reusable
+            delay infrastructure, algorithmic depth, and application-level pedal structure.
+          </div>
+        </div>
+      </div>
+      <aside class="panel amber">
+        <div class="section">
+          <div class="eyebrow" style="color: var(--cv)">Primary Decision</div>
+          <div class="recommendations">
+            <div class="recommendation">
+              <strong>Need complete pedal architecture?</strong>
+              <span>Start with balazsbencs/daisy-multifx-pedal for mode switching, audio-engine organization, SDRAM long delays, and pedal UX.</span>
+            </div>
+            <div class="recommendation">
+              <strong>Need reusable long delay buffers?</strong>
+              <span>Start with Farmer2K5/daisy-sdram-delaylines for focused external-memory delay-line patterns.</span>
+            </div>
+            <div class="recommendation">
+              <strong>Need ambience or FDN/reverb ideas?</strong>
+              <span>Start with Farmer2K5/daisy-reverb-playground and separate mature algorithm code from exploratory work.</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="kpis" aria-label="Dashboard headline metrics">
+      <div class="kpi"><span class="value">12</span><span class="label">ranked technical candidates in the reviewed report</span></div>
+      <div class="kpi"><span class="value">5</span><span class="label">best-pick use cases with named repository starting points</span></div>
+      <div class="kpi"><span class="value">3</span><span class="label">top engineering references forming the recommended core set</span></div>
+      <div class="kpi"><span class="value">8</span><span class="label">verification steps before treating the ranking as final</span></div>
+    </section>
+
+    <section class="grid">
+      <div class="panel span-12 green">
+        <div class="section">
+          <div class="eyebrow" style="color: var(--green)">Best Picks By Use Case</div>
+          <div class="pick-grid" id="bestPicks"></div>
+        </div>
+      </div>
+
+      <div class="panel span-8">
+        <div class="section">
+          <div class="eyebrow">Technical Reuse Signal</div>
+          <h2>Highest value is concentrated in complete-pedal, SDRAM, and delay-network references</h2>
+          <div class="bars" id="rankBars" aria-label="Ranked candidate score bars"></div>
+        </div>
+      </div>
+
+      <div class="panel span-4 purple">
+        <div class="section">
+          <div class="eyebrow" style="color: var(--utility)">Verification Risk</div>
+          <h2>Every candidate still needs source-level checking</h2>
+          <div class="risk-stack" id="riskStack"></div>
+          <p class="source-note" style="margin-top: 14px">
+            The source report was transformed from pasted Firecrawl-style data only.
+            Live GitHub metadata, build status, source paths, and benchmark claims were
+            not independently rechecked in that pass.
+          </p>
+        </div>
+      </div>
+
+      <div class="panel span-12 amber">
+        <div class="section">
+          <div class="eyebrow" style="color: var(--cv)">Coverage Matrix</div>
+          <h2>Technical capability map across the ranked repositories</h2>
+          <div class="matrix" id="coverageMatrix" aria-label="Candidate capability coverage matrix"></div>
+        </div>
+      </div>
+
+      <div class="panel span-12">
+        <div class="section">
+          <div class="eyebrow">Ranked Candidate Explorer</div>
+          <h2>Repository details, implementation value, and next checks</h2>
+          <div class="controls">
+            <input id="search" class="control" type="search" placeholder="Search repositories, families, targets, or notes">
+            <select id="riskFilter" class="control">
+              <option value="all">All risk levels</option>
+              <option value="high">High risk</option>
+              <option value="medium">Medium risk</option>
+              <option value="low">Low risk</option>
+            </select>
+            <select id="domainFilter" class="control">
+              <option value="all">All domains</option>
+              <option value="pedal">Pedal architecture</option>
+              <option value="memory">SDRAM / memory</option>
+              <option value="algorithm">Algorithms</option>
+              <option value="tap">Tap tempo</option>
+              <option value="portability">Portability</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Repository</th>
+                  <th>Target</th>
+                  <th>Delay / Algorithm Family</th>
+                  <th>Main Implementation Value</th>
+                  <th>Risk</th>
+                  <th>Next Check</th>
+                </tr>
+              </thead>
+              <tbody id="candidateRows"></tbody>
+            </table>
+          </div>
+          <p class="source-note" style="margin-top: 10px"><span id="visibleCount">12</span> candidates visible after filters.</p>
+        </div>
+      </div>
+
+      <div class="panel span-7 green">
+        <div class="section">
+          <div class="eyebrow" style="color: var(--green)">Follow-Up Verification Checklist</div>
+          <h2>Checks needed before using this as a final technical reference</h2>
+          <div class="checklist" id="checklist"></div>
+        </div>
+      </div>
+
+      <div class="panel span-5 purple">
+        <div class="section">
+          <div class="eyebrow" style="color: var(--utility)">Rejected Or Weak Leads</div>
+          <h2>Lower-priority repositories from the pasted evidence</h2>
+          <div class="weak-list" id="weakList"></div>
+        </div>
+      </div>
+
+      <div class="panel span-12">
+        <div class="section">
+          <div class="eyebrow">Source And Method</div>
+          <h2>What this dashboard is, and what it is not</h2>
+          <p class="source-note">
+            Source report: <code>2026-06-03-daisy-delay-projects-readable-report.md</code>.
+            The report states that it was transformed from pasted Firecrawl-style JSON at
+            <code>C:\Users\denko\.codex\attachments\914726da-d9da-4b70-a02b-b4eae622321c\pasted-text.txt</code>.
+            This dashboard is a structured visual reading surface for that report. It does
+            not add live GitHub verification, stars, forks, pushed dates, source-tree checks,
+            compile results, or benchmark validation. Treat it as a decision and triage view
+            until the checklist above is completed.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const bestPicks = [
+      {
+        use: "Complete delay pedal",
+        repo: "balazsbencs/daisy-multifx-pedal",
+        url: "https://github.com/balazsbencs/daisy-multifx-pedal",
+        why: "Multi-mode delay firmware with SDRAM-backed delay lines and application-level audio-engine structure.",
+        color: "#00e5ff"
+      },
+      {
+        use: "Long-delay memory",
+        repo: "Farmer2K5/daisy-sdram-delaylines",
+        url: "https://github.com/Farmer2K5/daisy-sdram-delaylines",
+        why: "Focused SDRAM-backed delay-line implementation derived from DaisySP patterns.",
+        color: "#00ff88"
+      },
+      {
+        use: "Advanced delay / reverb",
+        repo: "Farmer2K5/daisy-reverb-playground",
+        url: "https://github.com/Farmer2K5/daisy-reverb-playground",
+        why: "Broad FDN, diffusion, early-reflection, Dattorro, and long-tail ambience playground.",
+        color: "#b44aff"
+      },
+      {
+        use: "Terrarium creative FX",
+        repo: "FuzzyLotus/Phantasmagoria",
+        url: "https://github.com/FuzzyLotus/Phantasmagoria",
+        why: "Single-file Terrarium effect with shimmer, spectral delay, reverse behavior, freeze, and tape warble ideas.",
+        color: "#ffab00"
+      },
+      {
+        use: "Tap-tempo behavior",
+        repo: "Philcaster/Daisy-Tap-Delay",
+        url: "https://github.com/Philcaster/Daisy-Tap-Delay",
+        why: "Focused tap-tempo delay with subdivisions, filtering, modulation, and tap-update glitch mitigation.",
+        color: "#facc15"
+      }
+    ];
+
+    const candidates = [
+      {
+        rank: 1,
+        repo: "balazsbencs/daisy-multifx-pedal",
+        url: "https://github.com/balazsbencs/daisy-multifx-pedal",
+        target: "Daisy Seed / STM32H750 + AKM AK4556",
+        family: "Digital, tape, dual, duck, filter, lofi, pattern, swell, and trem delay modes",
+        value: "Complete multi-effect pedal architecture; SDRAM for long delays and DTCMRAM for modulation; static allocation reported in pasted data.",
+        risk: "Needs live source check of audio engine, SDRAM delay-line files, and mode files.",
+        riskLevel: "medium",
+        domain: "pedal",
+        tags: ["pedal", "memory", "algorithm"],
+        accent: "#00e5ff"
+      },
+      {
+        rank: 2,
+        repo: "Farmer2K5/daisy-sdram-delaylines",
+        url: "https://github.com/Farmer2K5/daisy-sdram-delaylines",
+        target: "Daisy Seed / STM32H750",
+        family: "SDRAM-backed delay lines for long delay and reverb",
+        value: "Best focused memory reference; pasted data reports 190 KB SRAM savings and 0.25 percent absolute CPU overhead.",
+        risk: "Needs benchmark-method confirmation and current README/source inspection.",
+        riskLevel: "medium",
+        domain: "memory",
+        tags: ["memory", "algorithm"],
+        accent: "#00ff88"
+      },
+      {
+        rank: 3,
+        repo: "Farmer2K5/daisy-reverb-playground",
+        url: "https://github.com/Farmer2K5/daisy-reverb-playground",
+        target: "Daisy Seed",
+        family: "FDN, diffusion networks, early reflections, cloud/tail enhancement",
+        value: "Broadest delay-network algorithm playground; useful for reverb and complex ambience work.",
+        risk: "Needs build check and per-algorithm CPU/memory inspection.",
+        riskLevel: "high",
+        domain: "algorithm",
+        tags: ["memory", "algorithm"],
+        accent: "#b44aff"
+      },
+      {
+        rank: 4,
+        repo: "FuzzyLotus/Phantasmagoria",
+        url: "https://github.com/FuzzyLotus/Phantasmagoria",
+        target: "Daisy Seed / PedalPCB Terrarium",
+        family: "Shimmer, spectral delay, multi-tap echo, reverse delay, tape warble",
+        value: "Strong creative-effect reference for reverse, freeze, shimmer, and modulated-delay behavior.",
+        risk: "Memory strategy was missing in the pasted data.",
+        riskLevel: "high",
+        domain: "algorithm",
+        tags: ["pedal", "algorithm"],
+        accent: "#ffab00"
+      },
+      {
+        rank: 5,
+        repo: "clevelandmusicco/HothouseExamples",
+        url: "https://github.com/clevelandmusicco/HothouseExamples",
+        target: "Daisy Seed / Hothouse",
+        family: "Dattorro plate, interpolated delay lines, allpass filters",
+        value: "Educational multi-framework reference spanning libDaisy, DaisySP, Pure Data, Faust, and Gen-style examples.",
+        risk: "Example corpus needs extraction of the cleanest reusable C++ delay path.",
+        riskLevel: "medium",
+        domain: "algorithm",
+        tags: ["algorithm"],
+        accent: "#4cc9f0"
+      },
+      {
+        rank: 6,
+        repo: "joulupukki/Flick",
+        url: "https://github.com/joulupukki/Flick",
+        target: "Daisy Seed / FunBox / Hothouse",
+        family: "Digital delay, Dattorro plate reverb, modulated delay",
+        value: "Complete pedal-style firmware with delay, reverb, and tremolo modules.",
+        risk: "Needs source-level confirmation of buffer and interpolation strategy.",
+        riskLevel: "medium",
+        domain: "pedal",
+        tags: ["pedal", "algorithm"],
+        accent: "#4361ee"
+      },
+      {
+        rank: 7,
+        repo: "DADDesign-Projects/PENDA-Software",
+        url: "https://github.com/DADDesign-Projects/PENDA-Software",
+        target: "Daisy Seed / STM32H750 / PENDA hardware",
+        family: "Main delay, rhythmic subdivision delay, chorus/flanger-style modulation",
+        value: "Hardware/product framework reference for a Daisy-based pedal platform with display/UI storage concerns.",
+        risk: "Pasted evidence is more framework-level than file-level.",
+        riskLevel: "high",
+        domain: "pedal",
+        tags: ["pedal", "tap"],
+        accent: "#fb923c"
+      },
+      {
+        rank: 8,
+        repo: "snail23/ironpedal",
+        url: "https://github.com/snail23/ironpedal",
+        target: "Daisy Seed / PedalPCB Terrarium",
+        family: "Delay, chorus, flanger, 5-minute looper",
+        value: "Interesting long-buffer reference because the looper implies heavy external-memory use.",
+        risk: "SDRAM use is inferred in pasted data and needs direct verification.",
+        riskLevel: "high",
+        domain: "memory",
+        tags: ["pedal", "memory"],
+        accent: "#00ff88"
+      },
+      {
+        rank: 9,
+        repo: "jah226/Tunable-Fractional-Delay---DaisySeed-MCU",
+        url: "https://github.com/jah226/Tunable-Fractional-Delay---DaisySeed-MCU",
+        target: "Daisy Seed",
+        family: "Fractional delay",
+        value: "Small focused reference for tunable fractional delay parameters and interpolation study.",
+        risk: "Likely narrow demo; inspect interpolation quality and real-time safety.",
+        riskLevel: "medium",
+        domain: "algorithm",
+        tags: ["algorithm"],
+        accent: "#ffe800"
+      },
+      {
+        rank: 10,
+        repo: "Philcaster/Daisy-Tap-Delay",
+        url: "https://github.com/Philcaster/Daisy-Tap-Delay",
+        target: "Daisy Seed / PedalPCB Terrarium",
+        family: "Tap-tempo delay with quarter and dotted-eighth subdivisions",
+        value: "Practical tap-tempo behavior, filtering, modulation, ReverbSc, and feedback-zeroing during tap updates.",
+        risk: "Needs source confirmation of smoothing and buffer handling.",
+        riskLevel: "medium",
+        domain: "tap",
+        tags: ["pedal", "tap", "algorithm"],
+        accent: "#facc15"
+      },
+      {
+        rank: 11,
+        repo: "keelan-hough/FDN-Reverb-Unit",
+        url: "https://github.com/keelan-hough/FDN-Reverb-Unit",
+        target: "Daisy Seed",
+        family: "Feedback Delay Network",
+        value: "Compact FDN reverb reference for multiple delay-line feedback structures.",
+        risk: "Pasted evidence is high level; source-level verification needed before treating it as more than a lead.",
+        riskLevel: "high",
+        domain: "algorithm",
+        tags: ["algorithm"],
+        accent: "#b44aff"
+      },
+      {
+        rank: 12,
+        repo: "rheslip/DaisySP_Teensy",
+        url: "https://github.com/rheslip/DaisySP_Teensy",
+        target: "Teensy 4.x",
+        family: "DaisySP port including delayline.h",
+        value: "Useful portability baseline for moving DaisySP-style blocks to Teensy 4.x.",
+        risk: "Not a distinct delay effect; current Teensy 4.1 PSRAM status still needs confirmation.",
+        riskLevel: "medium",
+        domain: "portability",
+        tags: ["portability"],
+        accent: "#a78bfa"
+      }
+    ];
+
+    const weakCandidates = [
+      ["electro-smith/DaisySP", "Core DSP library, not a complete delay effect. Use as baseline API/reference."],
+      ["electro-smith/libDaisy", "Hardware abstraction library, not a delay algorithm."],
+      ["blkunze1537/Daisy-Seed-Reverse-Delay", "Basic reverse delay with little documentation."],
+      ["echamman/Ouroboros", "Minimal documentation and unclear DSP depth."],
+      ["Jack-Hannon/Senior-Project-DSP", "Tree API returned not found."],
+      ["max-bispham/daisy-linux-pedal", "Linux driver research, out of embedded delay DSP scope."],
+      ["shawlty/Daisy-Eurorack-Audio-Module", "Very new and minimal; watchlist only."],
+      ["DADDesign-Projects/PENDAII-Software", "Redundant with PENDA-Software and less mature."],
+      ["pms67/LeDSP-Audio-SoM", "Hardware SoM without specific delay algorithms."],
+      ["bertankuzeyli/STM32-Audio-Processing-Suite", "FFT/general processing, no delay focus."],
+      ["PoliTeK/PSP-PlantSignalProcessing", "Plant biorhythm synthesis, not delay effects."],
+      ["electro-smith/DaisySP-LGPL", "Licensing fork / Csound-derived modules, no new delay implementation."],
+      ["MrBlueXav/Dekrispator_H747", "Automatic music synthesizer, out of scope."],
+      ["MrBlueXav/Stocharythm-box", "Drum machine, out of scope."]
+    ];
+
+    const checklist = [
+      "Fetch current GitHub metadata for each top candidate: stars, forks, pushed date, default branch, and license.",
+      "Fetch each repository tree and confirm the source paths named in the report still exist.",
+      "For the top three, inspect the actual audio callback path and initialization path.",
+      "Confirm whether any delay buffers allocate on the heap after startup.",
+      "Record exact buffer sizes, sample-rate assumptions, and maximum delay time.",
+      "Build at least the top memory candidate and one complete-pedal candidate.",
+      "Separate measured CPU/memory numbers from README claims.",
+      "Add a comparison table for interpolation, buffer memory, tap-tempo support, modulation smoothing, and feedback stability."
+    ];
+
+    const coverageColumns = [
+      ["pedal", "Pedal"],
+      ["memory", "SDRAM"],
+      ["algorithm", "Algo"],
+      ["tap", "Tap"],
+      ["portability", "Port"],
+      ["verified", "Live?"]
+    ];
+
+    const html = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[char]));
+
+    function renderBestPicks() {
+      document.getElementById("bestPicks").innerHTML = bestPicks.map((pick) => `
+        <article class="pick" style="--accent: ${pick.color}">
+          <div class="use">${html(pick.use)}</div>
+          <a href="${pick.url}" target="_blank" rel="noreferrer">${html(pick.repo)}</a>
+          <p>${html(pick.why)}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderBars() {
+      document.getElementById("rankBars").innerHTML = candidates.map((candidate) => {
+        const score = 13 - candidate.rank;
+        const width = Math.round((score / 12) * 100);
+        return `
+          <div class="bar-row" title="${html(candidate.value)}">
+            <div class="bar-label">${candidate.rank}. ${html(candidate.repo)}</div>
+            <div class="bar-track"><div class="bar-fill" style="--w: ${width}%; --accent: ${candidate.accent}"></div></div>
+            <div class="bar-value">${score}/12</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderRiskStack() {
+      const counts = candidates.reduce((acc, item) => {
+        acc[item.riskLevel] = (acc[item.riskLevel] || 0) + 1;
+        return acc;
+      }, {});
+      const rows = [
+        ["high", "High", counts.high || 0, "#ff5f79"],
+        ["medium", "Medium", counts.medium || 0, "#facc15"],
+        ["low", "Low", counts.low || 0, "#4ade80"]
+      ];
+      document.getElementById("riskStack").innerHTML = rows.map((row) => {
+        const width = Math.round((row[2] / candidates.length) * 100);
+        return `
+          <div class="risk-item">
+            <span>${row[1]}</span>
+            <div class="stack"><span style="--w:${width}%; --accent:${row[3]}"></span></div>
+            <strong>${row[2]}</strong>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderCoverageMatrix() {
+      const header = `
+        <div class="matrix-row matrix-head">
+          <div>Repository</div>
+          ${coverageColumns.map(([, label]) => `<div>${label}</div>`).join("")}
+        </div>
+      `;
+      const rows = candidates.map((candidate) => `
+        <div class="matrix-row">
+          <div class="matrix-name">${candidate.rank}. ${html(candidate.repo)}</div>
+          ${coverageColumns.map(([tag]) => {
+            const active = tag === "verified" ? false : candidate.tags.includes(tag);
+            const label = active ? "yes" : tag === "verified" ? "no" : "";
+            return `<div class="dot ${active ? "on" : ""}" style="--accent:${candidate.accent}">${label}</div>`;
+          }).join("")}
+        </div>
+      `).join("");
+      document.getElementById("coverageMatrix").innerHTML = header + rows;
+    }
+
+    function renderRows() {
+      const search = document.getElementById("search").value.trim().toLowerCase();
+      const risk = document.getElementById("riskFilter").value;
+      const domain = document.getElementById("domainFilter").value;
+      const filtered = candidates.filter((candidate) => {
+        const haystack = [candidate.repo, candidate.target, candidate.family, candidate.value, candidate.risk, candidate.domain].join(" ").toLowerCase();
+        return (!search || haystack.includes(search))
+          && (risk === "all" || candidate.riskLevel === risk)
+          && (domain === "all" || candidate.domain === domain || candidate.tags.includes(domain));
+      });
+
+      document.getElementById("candidateRows").innerHTML = filtered.map((candidate) => `
+        <tr>
+          <td><span class="rank">${candidate.rank}</span></td>
+          <td class="repo"><a href="${candidate.url}" target="_blank" rel="noreferrer">${html(candidate.repo)}</a></td>
+          <td>${html(candidate.target)}</td>
+          <td>${html(candidate.family)}</td>
+          <td>${html(candidate.value)}</td>
+          <td><span class="pill ${candidate.riskLevel}">${candidate.riskLevel}</span></td>
+          <td>${html(candidate.risk)}</td>
+        </tr>
+      `).join("");
+      document.getElementById("visibleCount").textContent = filtered.length;
+    }
+
+    function renderChecklist() {
+      document.getElementById("checklist").innerHTML = checklist.map((item) => `<div class="check">${html(item)}</div>`).join("");
+    }
+
+    function renderWeakList() {
+      document.getElementById("weakList").innerHTML = weakCandidates.map(([name, reason]) => `
+        <div class="weak">
+          <strong>${html(name)}</strong>
+          <span>${html(reason)}</span>
+        </div>
+      `).join("");
+    }
+
+    renderBestPicks();
+    renderBars();
+    renderRiskStack();
+    renderCoverageMatrix();
+    renderRows();
+    renderChecklist();
+    renderWeakList();
+
+    document.getElementById("search").addEventListener("input", renderRows);
+    document.getElementById("riskFilter").addEventListener("change", renderRows);
+    document.getElementById("domainFilter").addEventListener("change", renderRows);
+  </script>
+</body>
+</html>

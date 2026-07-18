@@ -204,22 +204,35 @@ const Inspector: React.FC = () => {
 
   const blocks = usePatchStore((state) => state.blocks);
   const connections = usePatchStore((state) => state.connections);
+  const polyVoiceBlankets = usePatchStore((state) => state.polyVoiceBlankets);
+  const selectedPolyVoiceBlanketIds = usePatchStore((state) => state.selectedPolyVoiceBlanketIds);
   const updateBlockParameter = usePatchStore((state) => state.updateBlockParameter);
   const setBlockLabel = usePatchStore((state) => state.setBlockLabel);
+  const updatePolyVoiceBlanket = usePatchStore((state) => state.updatePolyVoiceBlanket);
+  const refreshPolyVoiceBlanketMembers = usePatchStore((state) => state.refreshPolyVoiceBlanketMembers);
+  const removePolyVoiceBlanket = usePatchStore((state) => state.removePolyVoiceBlanket);
 
   const [activeTab, setActiveTab] = React.useState<'params' | 'design'>('params');
 
   // Auto-switch to params when a block is selected
   React.useEffect(() => {
-    if (inspectedBlockId) {
+    if (inspectedBlockId || selectedPolyVoiceBlanketIds.length > 0) {
       setActiveTab('params');
     }
-  }, [inspectedBlockId]);
+  }, [inspectedBlockId, selectedPolyVoiceBlanketIds.length]);
 
   // Get inspected block
   const block = useMemo(
     () => blocks.find((b) => b.id === inspectedBlockId),
     [blocks, inspectedBlockId]
+  );
+
+  const selectedBlanket = useMemo(
+    () =>
+      !inspectedBlockId && selectedPolyVoiceBlanketIds.length === 1
+        ? polyVoiceBlankets.find((blanket) => blanket.id === selectedPolyVoiceBlanketIds[0]) || null
+        : null,
+    [inspectedBlockId, polyVoiceBlankets, selectedPolyVoiceBlanketIds]
   );
 
   // Get block definition
@@ -254,7 +267,22 @@ const Inspector: React.FC = () => {
   // Handle close
   const handleClose = useCallback(() => {
     inspectBlock(null);
-  }, [inspectBlock]);
+    if (selectedBlanket) {
+      usePatchStore.setState({ selectedPolyVoiceBlanketIds: [] });
+    }
+  }, [inspectBlock, selectedBlanket]);
+
+  const handleBlanketNumberChange = useCallback(
+    (field: 'voiceCount' | 'octave', rawValue: string, min: number, max: number) => {
+      if (!selectedBlanket) return;
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed)) return;
+      updatePolyVoiceBlanket(selectedBlanket.id, {
+        [field]: Math.max(min, Math.min(max, Math.round(parsed))),
+      });
+    },
+    [selectedBlanket, updatePolyVoiceBlanket]
+  );
 
   // Get icon component
   const IconComponent = useMemo(() => {
@@ -329,6 +357,163 @@ const Inspector: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'design' ? (
           <DesignExperimentator />
+        ) : selectedBlanket ? (
+          <>
+            <Section
+              title="Poly Voice Blanket"
+              icon={<Icons.Boxes className="w-4 h-4" />}
+            >
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="poly-blanket-label" className="text-xs text-text-tertiary mb-1 block">
+                    Label
+                  </label>
+                  <input
+                    id="poly-blanket-label"
+                    type="text"
+                    value={selectedBlanket.label || ''}
+                    onChange={(e) =>
+                      updatePolyVoiceBlanket(selectedBlanket.id, { label: e.target.value })
+                    }
+                    className={cn(
+                      'w-full px-3 py-1.5 rounded bg-surface-primary border border-border',
+                      'text-sm text-text-primary placeholder-text-tertiary',
+                      'focus:outline-none focus:ring-2 focus:ring-amber-400/50'
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="poly-blanket-voice-count" className="text-xs text-text-tertiary mb-1 block">
+                      Voice Count
+                    </label>
+                    <input
+                      id="poly-blanket-voice-count"
+                      aria-label="Voice Count"
+                      type="number"
+                      min={1}
+                      max={32}
+                      value={selectedBlanket.voiceCount}
+                      onChange={(e) => handleBlanketNumberChange('voiceCount', e.target.value, 1, 32)}
+                      className={cn(
+                        'w-full px-3 py-1.5 rounded bg-surface-primary border border-border',
+                        'text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-amber-400/50'
+                      )}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="poly-blanket-octave" className="text-xs text-text-tertiary mb-1 block">
+                      Octave
+                    </label>
+                    <input
+                      id="poly-blanket-octave"
+                      type="number"
+                      min={0}
+                      max={8}
+                      value={selectedBlanket.octave}
+                      onChange={(e) => handleBlanketNumberChange('octave', e.target.value, 0, 8)}
+                      className={cn(
+                        'w-full px-3 py-1.5 rounded bg-surface-primary border border-border',
+                        'text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-amber-400/50'
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="poly-blanket-allocator" className="text-xs text-text-tertiary mb-1 block">
+                    Allocator
+                  </label>
+                  <select
+                    id="poly-blanket-allocator"
+                    value={selectedBlanket.allocator}
+                    onChange={(e) =>
+                      updatePolyVoiceBlanket(selectedBlanket.id, {
+                        allocator: e.target.value as typeof selectedBlanket.allocator,
+                      })
+                    }
+                    className={cn(
+                      'w-full px-3 py-1.5 rounded bg-surface-primary border border-border',
+                      'text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-amber-400/50'
+                    )}
+                  >
+                    <option value="reuse_free_oldest">Same key reuse - free voice - oldest steal</option>
+                  </select>
+                </div>
+              </div>
+            </Section>
+
+            <Section
+              title="Geometry"
+              icon={<Icons.RectangleHorizontal className="w-4 h-4" />}
+              collapsible
+            >
+              <div className="grid grid-cols-2 gap-3 text-xs text-text-secondary">
+                <div className="rounded bg-surface-primary border border-border p-2">
+                  X: {Math.round(selectedBlanket.position.x)}
+                </div>
+                <div className="rounded bg-surface-primary border border-border p-2">
+                  Y: {Math.round(selectedBlanket.position.y)}
+                </div>
+                <div className="rounded bg-surface-primary border border-border p-2">
+                  W: {Math.round(selectedBlanket.size.width)}
+                </div>
+                <div className="rounded bg-surface-primary border border-border p-2">
+                  H: {Math.round(selectedBlanket.size.height)}
+                </div>
+              </div>
+            </Section>
+
+            <Section
+              title="Membership"
+              icon={<Icons.ListTree className="w-4 h-4" />}
+              collapsible
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-text-secondary">
+                    {selectedBlanket.memberBlockIds.length} member blocks
+                  </span>
+                  <button
+                    onClick={() => refreshPolyVoiceBlanketMembers(selectedBlanket.id)}
+                    className="px-2 py-1 rounded bg-amber-400/15 text-xs text-amber-200 hover:bg-amber-400/25"
+                  >
+                    Refresh
+                  </button>
+                </div>
+
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {selectedBlanket.memberBlockIds.length > 0 ? (
+                    selectedBlanket.memberBlockIds.map((memberId) => {
+                      const memberBlock = blocks.find((item) => item.id === memberId);
+                      const memberDef = memberBlock ? BlockRegistry.get(memberBlock.definitionId) : null;
+                      return (
+                        <div key={memberId} className="rounded bg-surface-primary border border-border px-2 py-1 text-xs">
+                          <span className="text-text-primary">
+                            {memberBlock?.label || memberDef?.displayName || memberId}
+                          </span>
+                          <span className="ml-2 text-text-tertiary">{memberId}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-xs text-text-tertiary">
+                      No member blocks stored yet.
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => removePolyVoiceBlanket(selectedBlanket.id)}
+                  className="w-full px-3 py-1.5 rounded bg-red-500/15 text-sm text-red-300 hover:bg-red-500/25"
+                >
+                  Delete Blanket
+                </button>
+              </div>
+            </Section>
+          </>
         ) : block && definition ? (
           <>
             {/* Module Identity */}

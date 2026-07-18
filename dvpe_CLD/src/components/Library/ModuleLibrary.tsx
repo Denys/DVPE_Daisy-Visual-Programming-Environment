@@ -7,7 +7,7 @@
 
 import React, { useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronDown, GripVertical, Upload, Sparkles } from 'lucide-react';
+import { Search, ChevronDown, GripVertical, Upload, Sparkles, Boxes } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -20,6 +20,11 @@ import { ImportBlockDialog } from './ImportBlockDialog';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import { CustomBlockEditorModal } from '@/components/Canvas/CustomBlockEditorModal';
 import { getGlassNeonColor } from '@/components/Canvas/BlockNode';
+import {
+  DVPE_BLOCK_DRAG_TYPE,
+  DVPE_POLY_VOICE_BLANKET_DRAG_TYPE,
+  DVPE_POLY_VOICE_BLANKET_PAYLOAD,
+} from '@/components/Canvas/dragTypes';
 
 // ============================================================================
 // CATEGORY STYLING
@@ -64,7 +69,7 @@ const BlockItem: React.FC<BlockItemProps> = ({
       console.log('Drag start:', id);
       useUIStore.getState().setDraggingBlock(id);
 
-      e.dataTransfer.setData('application/dvpe-block', id);
+      e.dataTransfer.setData(DVPE_BLOCK_DRAG_TYPE, id);
       e.dataTransfer.setData('text/plain', id); // Fallback for compatibility
       e.dataTransfer.effectAllowed = 'copyMove'; // Allow copy or move
     },
@@ -125,6 +130,52 @@ const BlockItem: React.FC<BlockItemProps> = ({
         </div>
         <div className="text-xs text-text-tertiary truncate">
           {isCustom ? 'Custom • ' : ''}{description}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// CANVAS DIRECTIVE ITEM COMPONENT
+// ============================================================================
+
+const PolyVoiceBlanketItem: React.FC = () => {
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    useUIStore.getState().setDraggingBlock(DVPE_POLY_VOICE_BLANKET_PAYLOAD);
+
+    e.dataTransfer.setData(DVPE_POLY_VOICE_BLANKET_DRAG_TYPE, DVPE_POLY_VOICE_BLANKET_PAYLOAD);
+    e.dataTransfer.setData('text/plain', DVPE_POLY_VOICE_BLANKET_PAYLOAD);
+    e.dataTransfer.effectAllowed = 'copyMove';
+  }, []);
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      className={cn(
+        'group flex items-center gap-2 p-2 rounded-lg border cursor-grab active:cursor-grabbing',
+        'transition-colors duration-150 hover:bg-amber-400/10'
+      )}
+      style={{
+        borderColor: 'rgba(245, 158, 11, 0.45)',
+        backgroundColor: 'rgba(245, 158, 11, 0.12)',
+      }}
+    >
+      <GripVertical className="w-3 h-3 text-text-tertiary flex-shrink-0" />
+
+      <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 bg-amber-400/20 text-amber-300">
+        <Boxes className="w-4 h-4" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-medium text-text-primary truncate">
+            POLY VOICE BLANKET
+          </span>
+        </div>
+        <div className="text-xs text-text-tertiary truncate">
+          Canvas directive for visible poly voice templates
         </div>
       </div>
     </div>
@@ -271,6 +322,14 @@ const ModuleLibrary: React.FC = () => {
     return grouped;
   }, [searchQuery, blocksByCategory]);
 
+  const showCanvasDirectives = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    return ['poly voice blanket', 'poly', 'voice', 'blanket', 'directive'].some((term) =>
+      term.includes(query)
+    );
+  }, [searchQuery]);
+
   // Handle search input
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -382,6 +441,26 @@ const ModuleLibrary: React.FC = () => {
 
         {/* Categories */}
         <div className="flex-1 overflow-y-auto p-2">
+          {showCanvasDirectives && (
+            <div className="mb-2">
+              <button
+                className={cn(
+                  'flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#0f172a]/40',
+                  'text-sm font-bold tracking-wide transition-colors',
+                  'hover:bg-[#0f172a]/80'
+                )}
+                style={{ color: '#f59e0b', borderLeft: '3px solid rgba(245, 158, 11, 0.5)' }}
+              >
+                <ChevronDown className="w-4 h-4" />
+                <span>Canvas Directives</span>
+                <span className="text-xs text-text-tertiary ml-auto">1</span>
+              </button>
+              <div className="space-y-1.5 pt-1.5 pb-2">
+                <PolyVoiceBlanketItem />
+              </div>
+            </div>
+          )}
+
           {Array.from(filteredBlocks.entries()).map(([category, blocks]) =>
             blocks.length > 0 ? (
               <CategorySection

@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "patch": {
+    "metadata": {
+      "name": "Seed Physical String",
+      "author": "DVPE AI Assistant",
+      "description": "Karplus-Strong pluck with reverb",
+      "created": "2026-05-17T10:40:02Z",
+      "modified": "2026-05-17T10:40:02Z",
+      "version": "1.0.0",
+      "targetHardware": "seed",
+      "sampleRate": 48000,
+      "blockSize": 4
+    },
+    "blocks": [
+      {
+        "id": "trig",
+        "definitionId": "gate_trigger_in",
+        "position": {
+          "x": 50,
+          "y": 100
+        },
+        "parameterValues": {
+          "channel": "0"
+        },
+        "label": "Trigger"
+      },
+      {
+        "id": "string",
+        "definitionId": "pluck",
+        "position": {
+          "x": 300,
+          "y": 100
+        },
+        "parameterValues": {
+          "freq": 220,
+          "decay": 0.8,
+          "damp": 0.5
+        },
+        "label": "Pluck String"
+      },
+      {
+        "id": "reverb",
+        "definitionId": "reverb_sc",
+        "position": {
+          "x": 550,
+          "y": 100
+        },
+        "parameterValues": {
+          "feedback": 0.8,
+          "lpfreq": 10000
+        },
+        "label": "Reverb"
+      },
+      {
+        "id": "out",
+        "definitionId": "audio_output",
+        "position": {
+          "x": 800,
+          "y": 100
+        },
+        "parameterValues": {},
+        "label": "Output"
+      }
+    ],
+    "connections": [
+      {
+        "id": "c1",
+        "sourceBlockId": "trig",
+        "sourcePortId": "trig",
+        "targetBlockId": "string",
+        "targetPortId": "trig",
+        "type": "trigger"
+      },
+      {
+        "id": "c2",
+        "sourceBlockId": "string",
+        "sourcePortId": "out",
+        "targetBlockId": "reverb",
+        "targetPortId": "in_l",
+        "type": "audio"
+      },
+      {
+        "id": "c3",
+        "sourceBlockId": "string",
+        "sourcePortId": "out",
+        "targetBlockId": "reverb",
+        "targetPortId": "in_r",
+        "type": "audio"
+      },
+      {
+        "id": "c4",
+        "sourceBlockId": "reverb",
+        "sourcePortId": "out_l",
+        "targetBlockId": "out",
+        "targetPortId": "left",
+        "type": "audio"
+      },
+      {
+        "id": "c5",
+        "sourceBlockId": "reverb",
+        "sourcePortId": "out_r",
+        "targetBlockId": "out",
+        "targetPortId": "right",
+        "type": "audio"
+      }
+    ]
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "version": "1.0.0",
+  "patch": {
+    "metadata": {
+      "name": "Pod Drum Machine",
+      "author": "DVPE AI Assistant",
+      "description": "Kick, snare, and hihat for Pod",
+      "created": "2026-05-17T10:40:02Z",
+      "modified": "2026-05-17T10:40:02Z",
+      "version": "1.0.0",
+      "targetHardware": "pod",
+      "sampleRate": 48000,
+      "blockSize": 4
+    },
+    "blocks": [
+      {
+        "id": "kick_trig",
+        "definitionId": "key",
+        "position": {
+          "x": 50,
+          "y": 100
+        },
+        "parameterValues": {
+          "channel": "0"
+        },
+        "label": "Kick Button"
+      },
+      {
+        "id": "snare_trig",
+        "definitionId": "key",
+        "position": {
+          "x": 50,
+          "y": 220
+        },
+        "parameterValues": {
+          "channel": "1"
+        },
+        "label": "Snare Button"
+      },
+      {
+        "id": "hat_trig",
+        "definitionId": "encoder",
+        "position": {
+          "x": 50,
+          "y": 340
+        },
+        "parameterValues": {},
+        "label": "Hat Encoder"
+      },
+      {
+        "id": "kick_voice",
+        "definitionId": "analog_bass_drum",
+        "position": {
+          "x": 320,
+          "y": 100
+        },
+        "parameterValues": {
+          "freq": 55.0,
+          "tone": 0.4,
+          "decay": 0.2
+        },
+        "label": "Kick"
+      },
+      {
+        "id": "snare_voice",
+        "definitionId": "analog_snare_drum",
+        "position": {
+          "x": 320,
+          "y": 220
+        },
+        "parameterValues": {
+          "freq": 180.0,
+          "tone": 0.5,
+          "decay": 0.1,
+          "snappy": 0.6
+        },
+        "label": "Snare"
+      },
+      {
+        "id": "hat_voice",
+        "definitionId": "hihat",
+        "position": {
+          "x": 320,
+          "y": 340
+        },
+        "parameterValues": {
+          "freq": 3000.0,
+          "tone": 0.5,
+          "decay": 0.1,
+          "noisiness": 0.7
+        },
+        "label": "HiHat"
+      },
+      {
+        "id": "mix",
+        "definitionId": "mixer",
+        "position": {
+          "x": 580,
+          "y": 220
+        },
+        "parameterValues": {
+          "inputCount": "3",
+          "level_1": 0.8,
+          "level_2": 0.7,
+          "level_3": 0.6
+        },
+        "label": "Mixer"
+      },
+      {
+        "id": "audio_out",
+        "definitionId": "audio_output",
+        "position": {
+          "x": 820,
+          "y": 220
+        },
+        "parameterValues": {},
+        "label": "Audio Out"
+      }
+    ],
+    "connections": [
+      {
+        "id": "c1",
+        "sourceBlockId": "kick_trig",
+        "sourcePortId": "gate_out",
+        "targetBlockId": "kick_voice",
+        "targetPortId": "trig",
+        "type": "trigger"
+      },
+      {
+        "id": "c2",
+        "sourceBlockId": "snare_trig",
+        "sourcePortId": "gate_out",
+        "targetBlockId": "snare_voice",
+        "targetPortId": "trig",
+        "type": "trigger"
+      },
+      {
+        "id": "c3",
+        "sourceBlockId": "hat_trig",
+        "sourcePortId": "press",
+        "targetBlockId": "hat_voice",
+        "targetPortId": "trig",
+        "type": "trigger"
+      },
+      {
+        "id": "c4",
+        "sourceBlockId": "kick_voice",
+        "sourcePortId": "out",
+        "targetBlockId": "mix",
+        "targetPortId": "in_1",
+        "type": "audio"
+      },
+      {
+        "id": "c5",
+        "sourceBlockId": "snare_voice",
+        "sourcePortId": "out",
+        "targetBlockId": "mix",
+        "targetPortId": "in_2",
+        "type": "audio"
+      },
+      {
+        "id": "c6",
+        "sourceBlockId": "hat_voice",
+        "sourcePortId": "out",
+        "targetBlockId": "mix",
+        "targetPortId": "in_3",
+        "type": "audio"
+      },
+      {
+        "id": "c7",
+        "sourceBlockId": "mix",
+        "sourcePortId": "out",
+        "targetBlockId": "audio_out",
+        "targetPortId": "left",
+        "type": "audio"
+      },
+      {
+        "id": "c8",
+        "sourceBlockId": "mix",
+        "sourcePortId": "out",
+        "targetBlockId": "audio_out",
+        "targetPortId": "right",
+        "type": "audio"
+      }
+    ]
+  }
+}

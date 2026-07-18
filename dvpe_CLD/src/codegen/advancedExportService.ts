@@ -12,19 +12,35 @@ export type AIProvider = 'gemini' | 'openai' | 'anthropic';
 
 export const AI_MODELS: Record<AIProvider, { id: string; label: string }[]> = {
   gemini: [
-    { id: 'gemini-3.1-pro-high', label: 'Gemini 3.1 Pro (High)' },
-    { id: 'gemini-3.1-pro-low', label: 'Gemini 3.1 Pro (Low)' },
-    { id: 'gemini-3-flash', label: 'Gemini 3 Flash' },
+    { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite' },
+    { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
+    { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview' },
+    { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash-Lite Preview' },
   ],
   openai: [
-    { id: 'gpt-5.4', label: 'GPT-5.4 (Thinking)' },
-    { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex' },
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' },
+    { id: 'gpt-5.5', label: 'GPT-5.5' },
+    { id: 'gpt-5.4', label: 'GPT-5.4' },
+    { id: 'gpt-5.4-nano', label: 'GPT-5.4 Nano' },
   ],
   anthropic: [
     { id: 'claude-sonnet-4-6-thinking', label: 'Claude Sonnet 4.6 (Thinking)' },
-    { id: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 (Thinking)' },
+    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+    { id: 'claude-opus-4-7-thinking', label: 'Claude Opus 4.7 (Thinking)' },
   ],
 };
+
+export function getDefaultAIModel(provider: AIProvider): string {
+  return AI_MODELS[provider][0].id;
+}
+
+export function isSupportedAIModel(provider: AIProvider, modelId: string): boolean {
+  return AI_MODELS[provider].some((model) => model.id === modelId);
+}
+
+export function normalizeAIModel(provider: AIProvider, modelId: string): string {
+  return isSupportedAIModel(provider, modelId) ? modelId : getDefaultAIModel(provider);
+}
 
 export interface AdvancedExportInput {
   mainCpp: string;
@@ -124,7 +140,7 @@ async function callGemini(prompt: string, modelId: string, apiKey: string): Prom
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+      generationConfig: { maxOutputTokens: 8192 },
     }),
   });
   if (!res.ok) throw new Error(`Gemini API error ${res.status}: ${await res.text()}`);

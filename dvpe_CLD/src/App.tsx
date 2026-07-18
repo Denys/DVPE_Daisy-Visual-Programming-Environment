@@ -8,13 +8,23 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Toaster, toast } from 'sonner';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { Palette, Loader2 } from 'lucide-react';
-import { advancedExportWithAI, getHardwarePrefix, type AdvancedExportOutput } from '@/codegen/advancedExportService';
+import { Clock3, FolderOpen, Loader2, Palette } from 'lucide-react';
+import { advancedExportWithAI, getHardwarePrefix, normalizeAIModel, type AdvancedExportOutput } from '@/codegen/advancedExportService';
 
 import { cn } from '@/lib/utils';
 import { useUIStore, usePatchStore } from '@/stores';
 import { useBlockDesignerStore } from '@/stores/blockDesignerStore';
 import { useCustomBlockStore, collectReferencedCustomBlocks } from '@/stores/customBlockStore';
+import type { SerializedProject } from '@/types';
+import {
+  clearAutosavedProject,
+  loadAutosavedProject,
+  loadRecentProjectSnapshot,
+  getRecentProjects,
+  recordRecentProject,
+  saveAutosavedProject,
+  type RecentProject,
+} from '@/services/projectPersistence';
 import Canvas from '@/components/Canvas/Canvas';
 import { CustomBlockInternalsModal } from '@/components/Canvas/CustomBlockInternalsModal';
 import { CustomBlockEditorModal } from '@/components/Canvas/CustomBlockEditorModal';
@@ -24,6 +34,19 @@ import Inspector from '@/components/Inspector/Inspector';
 import { HelpMenu } from '@/components/TopBar/HelpMenu';
 import { ArchitectureWindow } from '@/components/architecture/ArchitectureWindow';
 import { BlockUIDesigner } from '@/components/BlockDesigner/BlockUIDesigner';
+
+const registerEmbeddedCustomBlocks = (project: Partial<SerializedProject>) => {
+  if (!project.customBlocks || !Array.isArray(project.customBlocks)) {
+    return;
+  }
+
+  const { addCustomBlock } = useCustomBlockStore.getState();
+  for (const customDef of project.customBlocks) {
+    if (customDef.id && customDef.isCustom === true) {
+      addCustomBlock(customDef);
+    }
+  }
+};
 
 // ============================================================================
 // TITLEBAR COMPONENT
@@ -39,6 +62,9 @@ interface TitleBarProps {
   handleAdvancedExport: () => void;
   isAdvancedExporting: boolean;
   handleOpenShortcuts: () => void;
+  recentProjects: RecentProject[];
+  handleOpenRecentProject: (project: RecentProject) => void;
+  handleOpenRecentFolder: () => void;
 }
 
 const TitleBar: React.FC<TitleBarProps> = ({
@@ -51,8 +77,12 @@ const TitleBar: React.FC<TitleBarProps> = ({
   handleAdvancedExport,
   isAdvancedExporting,
   handleOpenShortcuts,
+  recentProjects,
+  handleOpenRecentProject,
+  handleOpenRecentFolder,
 }) => {
   const openModal = useUIStore((state) => state.openModal);
+  const [recentOpen, setRecentOpen] = React.useState(false);
 
   return (
     <div
@@ -113,6 +143,56 @@ const TitleBar: React.FC<TitleBarProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
           </svg>
         </button>
+        <div className="relative">
+          <button
+            onClick={() => setRecentOpen((open) => !open)}
+            title="Recent projects and folders"
+            className={cn(
+              'p-1.5 rounded hover:bg-surface-tertiary text-text-secondary transition-colors',
+              'flex items-center gap-1'
+            )}
+          >
+            <Clock3 className="w-4 h-4" />
+          </button>
+          {recentOpen && (
+            <div className="absolute left-0 top-8 z-50 w-80 rounded-md border border-border bg-surface-secondary shadow-xl">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span className="text-xs font-semibold text-text-primary">Recent</span>
+                <button
+                  onClick={() => {
+                    handleOpenRecentFolder();
+                    setRecentOpen(false);
+                  }}
+                  className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  Folder
+                </button>
+              </div>
+              <div className="max-h-72 overflow-auto py-1">
+                {recentProjects.length === 0 ? (
+                  <div className="px-3 py-3 text-xs text-text-tertiary">No recent projects yet</div>
+                ) : (
+                  recentProjects.map((project) => (
+                    <button
+                      key={project.id}
+                      onClick={() => {
+                        handleOpenRecentProject(project);
+                        setRecentOpen(false);
+                      }}
+                      className="block w-full px-3 py-2 text-left hover:bg-surface-tertiary"
+                    >
+                      <span className="block truncate text-xs font-medium text-text-primary">{project.name}</span>
+                      <span className="block truncate text-[10px] text-text-tertiary">
+                        {project.source === 'folder' ? 'Folder' : 'Project'} · {project.path || project.source}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
         {/* Input handled by parent App component */}
       </div>
 
@@ -259,6 +339,8 @@ const App: React.FC = () => {
   const metadata = usePatchStore((state) => state.metadata);
   const blocks = usePatchStore((state) => state.blocks);
   const connections = usePatchStore((state) => state.connections);
+  const polyVoiceBlankets = usePatchStore((state) => state.polyVoiceBlankets);
+  const hardwareConfig = usePatchStore((state) => state.hardwareConfig);
   const { newPatch, loadPatch, getPatch, markClean } = usePatchStore();
 
   // App-level state for file handling and exports
@@ -268,7 +350,48 @@ const App: React.FC = () => {
   const [aiCorrectedCode, setAiCorrectedCode] = React.useState<AdvancedExportOutput | null>(null);
   const [isAdvancedExporting, setIsAdvancedExporting] = React.useState(false);
   const [codePreviewTab, setCodePreviewTab] = React.useState<'raw' | 'ai'>('raw');
+  const [recentProjects, setRecentProjects] = React.useState<RecentProject[]>(() => getRecentProjects());
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const getSerializedProject = React.useCallback((): SerializedProject => {
+    const patch = getPatch();
+    const allCustomBlocks = useCustomBlockStore.getState().customBlocks;
+    const referencedCustomBlocks = collectReferencedCustomBlocks(patch.blocks, allCustomBlocks);
+    const project: SerializedProject = { version: '1.0.0', patch };
+    if (referencedCustomBlocks.length > 0) {
+      project.customBlocks = referencedCustomBlocks;
+    }
+    return project;
+  }, [getPatch]);
+
+  useEffect(() => {
+    const autosaved = loadAutosavedProject();
+    if (!autosaved) {
+      return;
+    }
+
+    try {
+      registerEmbeddedCustomBlocks(autosaved.project);
+      loadPatch(autosaved.project.patch);
+      markClean();
+      setRecentProjects(getRecentProjects());
+      toast.info('Restored autosaved patch');
+    } catch (error) {
+      console.error('Failed to restore autosaved patch:', error);
+      clearAutosavedProject();
+      setRecentProjects(getRecentProjects());
+      toast.error('Autosaved patch could not be restored and was cleared');
+    }
+  }, [loadPatch, markClean]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      saveAutosavedProject(getSerializedProject());
+      setRecentProjects(getRecentProjects());
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+  }, [blocks, connections, polyVoiceBlankets, hardwareConfig, metadata, getSerializedProject]);
 
   // File Handlers
   const handleNew = () => {
@@ -282,13 +405,7 @@ const App: React.FC = () => {
   };
 
   const handleSave = async () => {
-    const patch = getPatch();
-    const allCustomBlocks = useCustomBlockStore.getState().customBlocks;
-    const referencedCustomBlocks = collectReferencedCustomBlocks(patch.blocks, allCustomBlocks);
-    const project: Record<string, unknown> = { version: '1.0.0', patch };
-    if (referencedCustomBlocks.length > 0) {
-      project.customBlocks = referencedCustomBlocks;
-    }
+    const project = getSerializedProject();
     const json = JSON.stringify(project, null, 2);
     const fileName = `${(metadata.name || 'Untitled_Patch').replace(/[^a-z0-9]/gi, '_')}.dvpe`;
 
@@ -306,6 +423,14 @@ const App: React.FC = () => {
         if (filePath) {
           await writeTextFile(filePath, json);
           markClean();
+          recordRecentProject({
+            id: filePath,
+            name: project.patch.metadata.name || fileName,
+            source: 'tauri',
+            path: filePath,
+            snapshot: project,
+          });
+          setRecentProjects(getRecentProjects());
           toast.success('Project saved successfully');
         }
       } catch (err) {
@@ -321,6 +446,13 @@ const App: React.FC = () => {
     const blob = new Blob([json], { type: 'application/json' });
     saveAs(blob, fileName);
     markClean();
+    recordRecentProject({
+      id: `browser:${fileName}`,
+      name: metadata.name || fileName,
+      source: 'browser',
+      snapshot: JSON.parse(json),
+    });
+    setRecentProjects(getRecentProjects());
     toast.success(`Project saved as ${fileName}`);
   };
 
@@ -336,7 +468,7 @@ const App: React.FC = () => {
         });
         if (selected && typeof selected === 'string') {
           const contents = await readTextFile(selected);
-          processLoadedPatch(contents);
+          processLoadedPatch(contents, { source: 'tauri', path: selected });
         }
       } catch (err) {
         console.error('Tauri open error:', err);
@@ -347,22 +479,26 @@ const App: React.FC = () => {
     }
   };
 
-  const processLoadedPatch = (json: string) => {
+  const processLoadedPatch = (json: string, recent?: { source: 'browser' | 'tauri'; path?: string; fileName?: string }) => {
     try {
       const data = JSON.parse(json);
       if (!data.patch || !data.patch.blocks) {
         throw new Error('Invalid project file format');
       }
       // Register embedded custom blocks BEFORE loading patch
-      if (data.customBlocks && Array.isArray(data.customBlocks)) {
-        const { addCustomBlock } = useCustomBlockStore.getState();
-        for (const customDef of data.customBlocks) {
-          if (customDef.id && customDef.isCustom === true) {
-            addCustomBlock(customDef);
-          }
-        }
-      }
+      registerEmbeddedCustomBlocks(data);
       loadPatch(data.patch);
+      markClean();
+      if (recent) {
+        recordRecentProject({
+          id: recent.path || `browser:${recent.fileName || data.patch.metadata?.name || 'loaded-patch'}`,
+          name: data.patch.metadata?.name || recent.fileName || 'Loaded Patch',
+          source: recent.source,
+          path: recent.path,
+          snapshot: data,
+        });
+        setRecentProjects(getRecentProjects());
+      }
       toast.success('Project loaded successfully');
     } catch (err) {
       console.error('Failed to parse project file:', err);
@@ -377,11 +513,75 @@ const App: React.FC = () => {
     reader.onload = (event) => {
       const contents = event.target?.result;
       if (typeof contents === 'string') {
-        processLoadedPatch(contents);
+        processLoadedPatch(contents, { source: 'browser', fileName: file.name });
       }
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handleOpenRecentProject = async (project: RecentProject) => {
+    if (project.source === 'folder') {
+      toast.info(project.path ? `Recent folder: ${project.path}` : 'Recent folder has no saved path');
+      return;
+    }
+
+    const snapshot = loadRecentProjectSnapshot(project.id);
+    if (snapshot) {
+      registerEmbeddedCustomBlocks(snapshot);
+      loadPatch(snapshot.patch);
+      markClean();
+      toast.success(`Opened ${snapshot.patch.metadata.name || project.name}`);
+      return;
+    }
+
+    const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+    if (isTauri && project.path) {
+      try {
+        const { readTextFile } = await import('@tauri-apps/api/fs');
+        const contents = await readTextFile(project.path);
+        processLoadedPatch(contents, { source: 'tauri', path: project.path });
+        return;
+      } catch (err) {
+        console.error('Failed to open recent project:', err);
+        toast.error('Failed to open recent project');
+        return;
+      }
+    }
+
+    toast.info('Select the project file again to reopen it');
+    fileInputRef.current?.click();
+  };
+
+  const handleOpenRecentFolder = async () => {
+    const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+    if (!isTauri) {
+      toast.info('Folder recents are available in the desktop app');
+      return;
+    }
+
+    try {
+      const { open } = await import('@tauri-apps/api/dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: 'Open Recent Folder',
+      });
+      if (selected && typeof selected === 'string') {
+        const name = selected.split(/[\\/]/).filter(Boolean).at(-1) || selected;
+        recordRecentProject({
+          id: `folder:${selected}`,
+          name,
+          source: 'folder',
+          path: selected,
+        });
+        setRecentProjects(getRecentProjects());
+        toast.success(`Added recent folder: ${name}`);
+      }
+    } catch (err) {
+      console.error('Failed to open folder:', err);
+      toast.error('Failed to open folder');
+    }
   };
 
   // Export Handlers
@@ -427,6 +627,7 @@ const App: React.FC = () => {
       const projectName = `${prefix}_${baseName}`;
 
       const { aiProvider, aiModel } = useUIStore.getState();
+      const normalizedModel = normalizeAIModel(aiProvider, aiModel);
 
       toast.loading('Sending to AI for Daisy/Noderr correction pass…', { id: 'adv-export' });
 
@@ -436,7 +637,7 @@ const App: React.FC = () => {
         projectName,
         targetHardware: hw,
         provider: aiProvider,
-        modelId: aiModel,
+        modelId: normalizedModel,
       });
 
       setAiCorrectedCode(corrected);
@@ -569,7 +770,7 @@ const App: React.FC = () => {
                 });
                 if (selected && typeof selected === 'string') {
                   const contents = await readTextFile(selected);
-                  processLoadedPatch(contents);
+                  processLoadedPatch(contents, { source: 'tauri', path: selected });
                 }
               } catch (err) {
                 console.error('Tauri menu open error:', err);
@@ -586,7 +787,7 @@ const App: React.FC = () => {
                 const metadata = usePatchStore.getState().metadata;
                 const cbAll = useCustomBlockStore.getState().customBlocks;
                 const cbRefs = collectReferencedCustomBlocks(patch.blocks, cbAll);
-                const project: Record<string, unknown> = { version: '1.0.0', patch };
+                const project: SerializedProject = { version: '1.0.0', patch };
                 if (cbRefs.length > 0) {
                   project.customBlocks = cbRefs;
                 }
@@ -600,6 +801,14 @@ const App: React.FC = () => {
                 if (filePath) {
                   await writeTextFile(filePath, JSON.stringify(project, null, 2));
                   usePatchStore.getState().markClean();
+                  recordRecentProject({
+                    id: filePath,
+                    name: metadata.name || fileName,
+                    source: 'tauri',
+                    path: filePath,
+                    snapshot: project,
+                  });
+                  setRecentProjects(getRecentProjects());
                   toast.success('Project saved');
                 }
               } catch (err) {
@@ -811,6 +1020,9 @@ const App: React.FC = () => {
         handleAdvancedExport={handleAdvancedExport}
         isAdvancedExporting={isAdvancedExporting}
         handleOpenShortcuts={() => openModal('shortcuts')}
+        recentProjects={recentProjects}
+        handleOpenRecentProject={handleOpenRecentProject}
+        handleOpenRecentFolder={handleOpenRecentFolder}
       />
 
       {/* Main Content with Resizable Panels */}

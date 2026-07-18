@@ -1,0 +1,130 @@
+{
+  "version": "1.0.0",
+  "patch": {
+    "metadata": {
+      "name": "Seed Drum Machine",
+      "author": "DVPE AI Assistant",
+      "description": "Simple two-voice drum patch",
+      "created": "2026-05-17T10:40:02Z",
+      "modified": "2026-05-17T10:40:02Z",
+      "version": "1.0.0",
+      "targetHardware": "seed",
+      "sampleRate": 48000,
+      "blockSize": 4
+    },
+    "blocks": [
+      {
+        "id": "metro",
+        "definitionId": "metro",
+        "position": {
+          "x": 50,
+          "y": 200
+        },
+        "parameterValues": {
+          "freq": 2.0
+        },
+        "label": "Clock"
+      },
+      {
+        "id": "kick",
+        "definitionId": "analog_bass_drum",
+        "position": {
+          "x": 300,
+          "y": 100
+        },
+        "parameterValues": {
+          "freq": 60,
+          "decay": 0.5
+        },
+        "label": "Kick"
+      },
+      {
+        "id": "snare",
+        "definitionId": "analog_snare_drum",
+        "position": {
+          "x": 300,
+          "y": 300
+        },
+        "parameterValues": {
+          "freq": 200,
+          "decay": 0.2
+        },
+        "label": "Snare"
+      },
+      {
+        "id": "mix",
+        "definitionId": "mixer",
+        "position": {
+          "x": 600,
+          "y": 200
+        },
+        "parameterValues": {
+          "inputCount": "2",
+          "level_1": 0.7,
+          "level_2": 0.7
+        },
+        "label": "Mixer"
+      },
+      {
+        "id": "out",
+        "definitionId": "audio_output",
+        "position": {
+          "x": 800,
+          "y": 200
+        },
+        "parameterValues": {},
+        "label": "Output"
+      }
+    ],
+    "connections": [
+      {
+        "id": "c1",
+        "sourceBlockId": "metro",
+        "sourcePortId": "out",
+        "targetBlockId": "kick",
+        "targetPortId": "trig",
+        "type": "trigger"
+      },
+      {
+        "id": "c2",
+        "sourceBlockId": "metro",
+        "sourcePortId": "out",
+        "targetBlockId": "snare",
+        "targetPortId": "trig",
+        "type": "trigger"
+      },
+      {
+        "id": "c3",
+        "sourceBlockId": "kick",
+        "sourcePortId": "out",
+        "targetBlockId": "mix",
+        "targetPortId": "in_1",
+        "type": "audio"
+      },
+      {
+        "id": "c4",
+        "sourceBlockId": "snare",
+        "sourcePortId": "out",
+        "targetBlockId": "mix",
+        "targetPortId": "in_2",
+        "type": "audio"
+      },
+      {
+        "id": "c5",
+        "sourceBlockId": "mix",
+        "sourcePortId": "out",
+        "targetBlockId": "out",
+        "targetPortId": "left",
+        "type": "audio"
+      },
+      {
+        "id": "c6",
+        "sourceBlockId": "mix",
+        "sourcePortId": "out",
+        "targetBlockId": "out",
+        "targetPortId": "right",
+        "type": "audio"
+      }
+    ]
+  }
+}

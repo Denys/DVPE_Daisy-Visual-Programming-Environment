@@ -11,6 +11,39 @@ describe('Global Block Validation (Audit)', () => {
         console.log(`Auditing ${allBlocks.length} blocks`);
     });
 
+    describe('Polyphonic Field voice blocks', () => {
+        it('poly_grainlet_voice should expose compact GranularSynth controls and stereo output', () => {
+            const block = allBlocks.find((candidate) => candidate.id === 'poly_grainlet_voice');
+
+            expect(block, 'poly_grainlet_voice should be registered').toBeDefined();
+            expect(block?.parameters.map((param) => param.id)).toEqual(
+                expect.arrayContaining([
+                    'voice_count',
+                    'octave',
+                    'shape',
+                    'formant_freq',
+                    'bleed',
+                    'attack',
+                    'release',
+                    'spread',
+                    'output_gain',
+                ])
+            );
+            expect(block?.ports.map((port) => port.id)).toEqual(
+                expect.arrayContaining([
+                    'shape_cv',
+                    'formant_freq_cv',
+                    'bleed_cv',
+                    'attack_cv',
+                    'release_cv',
+                    'spread_cv',
+                    'left',
+                    'right',
+                ])
+            );
+        });
+    });
+
     describe('CV Port Consistency', () => {
         allBlocks.forEach(block => {
             const cvParams = block.parameters.filter(p => p.cvModulatable === true);

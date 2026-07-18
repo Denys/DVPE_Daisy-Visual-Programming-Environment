@@ -1,0 +1,335 @@
+{
+  "version": "1.0.0",
+  "patch": {
+    "metadata": {
+      "name": "GranularSynth Poly Voice Group V1 Demo",
+      "author": "OpenAI Codex",
+      "description": "Loadable V1 codegen demo of GranularSynth using an embedded poly_voice_group custom block. Codegen clones the internal mono Grainlet voice patch 8 times, scans Daisy Field keys, allocates notes, and mixes voices to stereo audio.",
+      "created": "2026-05-15T00:00:00.000Z",
+      "modified": "2026-05-15T00:00:00.000Z",
+      "version": "1.0.0",
+      "targetHardware": "field",
+      "sampleRate": 48000,
+      "blockSize": 48
+    },
+    "hardwareConfig": {
+      "platform": "field",
+      "pinMapping": {},
+      "audioIOMapping": {
+        "inputs": [],
+        "outputs": []
+      }
+    },
+    "blocks": [
+      {
+        "id": "knob_shape",
+        "definitionId": "knob",
+        "position": { "x": 60, "y": 60 },
+        "parameterValues": { "channel": "0", "min": 0, "max": 1, "curve": "linear" },
+        "label": "K1 Shape"
+      },
+      {
+        "id": "knob_formant",
+        "definitionId": "knob",
+        "position": { "x": 60, "y": 160 },
+        "parameterValues": { "channel": "1", "min": 120, "max": 6000, "curve": "exponential" },
+        "label": "K2 Formant"
+      },
+      {
+        "id": "knob_bleed",
+        "definitionId": "knob",
+        "position": { "x": 60, "y": 260 },
+        "parameterValues": { "channel": "2", "min": 0, "max": 1, "curve": "linear" },
+        "label": "K3 Bleed"
+      },
+      {
+        "id": "knob_attack",
+        "definitionId": "knob",
+        "position": { "x": 60, "y": 360 },
+        "parameterValues": { "channel": "3", "min": 0.001, "max": 1.25, "curve": "exponential" },
+        "label": "K4 Attack"
+      },
+      {
+        "id": "knob_release",
+        "definitionId": "knob",
+        "position": { "x": 60, "y": 460 },
+        "parameterValues": { "channel": "4", "min": 0.02, "max": 2.5, "curve": "exponential" },
+        "label": "K5 Release"
+      },
+      {
+        "id": "knob_cutoff",
+        "definitionId": "knob",
+        "position": { "x": 60, "y": 560 },
+        "parameterValues": { "channel": "5", "min": 180, "max": 12000, "curve": "exponential" },
+        "label": "K6 Cutoff"
+      },
+      {
+        "id": "knob_spread",
+        "definitionId": "knob",
+        "position": { "x": 60, "y": 660 },
+        "parameterValues": { "channel": "6", "min": 0, "max": 1, "curve": "linear" },
+        "label": "K7 Spread"
+      },
+      {
+        "id": "knob_reverb",
+        "definitionId": "knob",
+        "position": { "x": 60, "y": 760 },
+        "parameterValues": { "channel": "7", "min": 0, "max": 1, "curve": "linear" },
+        "label": "K8 Reverb"
+      },
+      {
+        "id": "poly_group",
+        "definitionId": "poly_voice_group",
+        "position": { "x": 350, "y": 260 },
+        "parameterValues": {
+          "voice_count": 8,
+          "octave": 2,
+          "allocator": "reuse_free_oldest"
+        },
+        "label": "Poly Voice Group V1"
+      },
+      {
+        "id": "lowpass_left",
+        "definitionId": "svf",
+        "position": { "x": 650, "y": 190 },
+        "parameterValues": { "freq": 0, "res": 0.35, "drive": 0.6 },
+        "enabledCvPorts": [ "freq" ],
+        "label": "Left Lowpass"
+      },
+      {
+        "id": "lowpass_right",
+        "definitionId": "svf",
+        "position": { "x": 650, "y": 370 },
+        "parameterValues": { "freq": 0, "res": 0.35, "drive": 0.6 },
+        "enabledCvPorts": [ "freq" ],
+        "label": "Right Lowpass"
+      },
+      {
+        "id": "reverb_sc",
+        "definitionId": "reverb_sc",
+        "position": { "x": 900, "y": 280 },
+        "parameterValues": { "feedback": 0.8, "lpfreq": 8000, "wet_dry": 0 },
+        "enabledCvPorts": [ "wet_dry" ],
+        "label": "Reverb"
+      },
+      {
+        "id": "main_output",
+        "definitionId": "audio_output",
+        "position": { "x": 1150, "y": 300 },
+        "parameterValues": {},
+        "label": "Audio Out"
+      }
+    ],
+    "connections": [
+      { "id": "c_shape_poly", "sourceBlockId": "knob_shape", "sourcePortId": "out", "targetBlockId": "poly_group", "targetPortId": "shape_cv", "type": "cv" },
+      { "id": "c_formant_poly", "sourceBlockId": "knob_formant", "sourcePortId": "out", "targetBlockId": "poly_group", "targetPortId": "formant_freq_cv", "type": "cv" },
+      { "id": "c_bleed_poly", "sourceBlockId": "knob_bleed", "sourcePortId": "out", "targetBlockId": "poly_group", "targetPortId": "bleed_cv", "type": "cv" },
+      { "id": "c_attack_poly", "sourceBlockId": "knob_attack", "sourcePortId": "out", "targetBlockId": "poly_group", "targetPortId": "attack_cv", "type": "cv" },
+      { "id": "c_release_poly", "sourceBlockId": "knob_release", "sourcePortId": "out", "targetBlockId": "poly_group", "targetPortId": "release_cv", "type": "cv" },
+      { "id": "c_spread_poly", "sourceBlockId": "knob_spread", "sourcePortId": "out", "targetBlockId": "poly_group", "targetPortId": "spread_cv", "type": "cv" },
+      { "id": "c_cutoff_left", "sourceBlockId": "knob_cutoff", "sourcePortId": "out", "targetBlockId": "lowpass_left", "targetPortId": "freq_cv", "type": "cv" },
+      { "id": "c_cutoff_right", "sourceBlockId": "knob_cutoff", "sourcePortId": "out", "targetBlockId": "lowpass_right", "targetPortId": "freq_cv", "type": "cv" },
+      { "id": "c_reverb_mix", "sourceBlockId": "knob_reverb", "sourcePortId": "out", "targetBlockId": "reverb_sc", "targetPortId": "wet_dry_cv", "type": "cv" },
+      { "id": "c_poly_left_filter", "sourceBlockId": "poly_group", "sourcePortId": "left", "targetBlockId": "lowpass_left", "targetPortId": "in", "type": "audio" },
+      { "id": "c_poly_right_filter", "sourceBlockId": "poly_group", "sourcePortId": "right", "targetBlockId": "lowpass_right", "targetPortId": "in", "type": "audio" },
+      { "id": "c_left_filter_reverb", "sourceBlockId": "lowpass_left", "sourcePortId": "low", "targetBlockId": "reverb_sc", "targetPortId": "in_l", "type": "audio" },
+      { "id": "c_right_filter_reverb", "sourceBlockId": "lowpass_right", "sourcePortId": "low", "targetBlockId": "reverb_sc", "targetPortId": "in_r", "type": "audio" },
+      { "id": "c_reverb_left_out", "sourceBlockId": "reverb_sc", "sourcePortId": "out_l", "targetBlockId": "main_output", "targetPortId": "left", "type": "audio" },
+      { "id": "c_reverb_right_out", "sourceBlockId": "reverb_sc", "sourcePortId": "out_r", "targetBlockId": "main_output", "targetPortId": "right", "type": "audio" }
+    ]
+  },
+  "customBlocks": [
+    {
+      "id": "poly_voice_group",
+      "className": "Custom_poly_voice_group",
+      "displayName": "POLY VOICE GROUP",
+      "category": "Custom",
+      "description": "V1 codegen proxy for the proposed Generic Poly Bus step. The generator scans Daisy Field keys, allocates 8 voices, clones this internal mono voice patch per voice, then mixes the mapped left/right outputs to stereo.",
+      "documentation": "Codegen-capable GranularSynth V1 demo. This remains narrower than the future generic poly bus: it supports Daisy Field keyboard allocation and cloning of this custom block voice template, without adding a visible poly signal type.",
+      "colorScheme": "user",
+      "icon": "Layers3",
+      "headerFile": "",
+      "initMethod": "",
+      "initParams": [],
+      "processMethod": "",
+      "processReturnType": "void",
+      "parameters": [
+        {
+          "id": "voice_count",
+          "displayName": "Voices",
+          "type": "int",
+          "defaultValue": 8,
+          "range": { "min": 1, "max": 16, "step": 1 },
+          "group": "Polyphony",
+          "description": "Number of cloned internal voice instances"
+        },
+        {
+          "id": "octave",
+          "displayName": "Octave",
+          "type": "int",
+          "defaultValue": 2,
+          "range": { "min": 0, "max": 4, "step": 1 },
+          "group": "Keyboard",
+          "description": "Base octave for Field key allocation"
+        },
+        {
+          "id": "allocator",
+          "displayName": "Allocator",
+          "type": "enum",
+          "defaultValue": "reuse_free_oldest",
+          "enumValues": [
+            { "label": "Reuse / Free / Oldest", "value": "reuse_free_oldest" }
+          ],
+          "group": "Polyphony",
+          "description": "Voice allocation policy"
+        }
+      ],
+      "ports": [
+        {
+          "id": "pitch_cv",
+          "displayName": "PITCH",
+          "signalType": "cv",
+          "direction": "input",
+          "description": "Allocator pitch into each cloned voice"
+        },
+        {
+          "id": "gate",
+          "displayName": "GATE",
+          "signalType": "trigger",
+          "direction": "input",
+          "description": "Allocator gate into each cloned voice"
+        },
+        {
+          "id": "shape_cv",
+          "displayName": "SHP",
+          "signalType": "cv",
+          "direction": "input",
+          "description": "Shared shape macro into the internal voice template"
+        },
+        {
+          "id": "formant_freq_cv",
+          "displayName": "FORM",
+          "signalType": "cv",
+          "direction": "input",
+          "description": "Shared formant macro into the internal voice template"
+        },
+        {
+          "id": "bleed_cv",
+          "displayName": "BLEED",
+          "signalType": "cv",
+          "direction": "input",
+          "description": "Shared bleed macro into the internal voice template"
+        },
+        {
+          "id": "attack_cv",
+          "displayName": "ATK",
+          "signalType": "cv",
+          "direction": "input",
+          "description": "Shared attack macro into the internal voice template"
+        },
+        {
+          "id": "release_cv",
+          "displayName": "REL",
+          "signalType": "cv",
+          "direction": "input",
+          "description": "Shared release macro into the internal voice template"
+        },
+        {
+          "id": "spread_cv",
+          "displayName": "SPREAD",
+          "signalType": "cv",
+          "direction": "input",
+          "description": "Shared spread macro; mapped to pan in the dummy mono template"
+        },
+        {
+          "id": "left",
+          "displayName": "L",
+          "signalType": "audio",
+          "direction": "output",
+          "description": "Left voice-mix output"
+        },
+        {
+          "id": "right",
+          "displayName": "R",
+          "signalType": "audio",
+          "direction": "output",
+          "description": "Right voice-mix output"
+        }
+      ],
+      "isCustom": true,
+      "internalPatch": {
+        "metadata": {
+          "name": "Poly Voice Group Internal Dummy",
+          "author": "OpenAI Codex",
+          "description": "Editable mono Grainlet voice template. The V1 poly_voice_group codegen clones this internal patch once per voice, drives pitch/gate from the Field-key allocator, then mixes the left/right outputs.",
+          "created": "2026-05-15T00:00:00.000Z",
+          "modified": "2026-05-15T00:00:00.000Z",
+          "version": "1.0.0",
+          "targetHardware": "field",
+          "sampleRate": 48000,
+          "blockSize": 48
+        },
+        "blocks": [
+          {
+            "id": "voice_grain",
+            "definitionId": "grainlet_oscillator",
+            "position": { "x": 220, "y": 160 },
+            "parameterValues": { "freq": 0, "formant_freq": 0, "shape": 0, "bleed": 0 },
+            "enabledCvPorts": [ "freq", "formant_freq", "shape", "bleed" ],
+            "label": "Voice Grainlet"
+          },
+          {
+            "id": "voice_env",
+            "definitionId": "adsr",
+            "position": { "x": 220, "y": 360 },
+            "parameterValues": { "attack": 0, "decay": 0.08, "sustain": 0.85, "release": 0 },
+            "enabledCvPorts": [ "attack", "release" ],
+            "label": "Voice ADSR"
+          },
+          {
+            "id": "voice_vca",
+            "definitionId": "vca",
+            "position": { "x": 470, "y": 220 },
+            "parameterValues": { "gain": 0.7 },
+            "label": "Voice VCA"
+          },
+          {
+            "id": "voice_pan",
+            "definitionId": "pan",
+            "position": { "x": 690, "y": 220 },
+            "parameterValues": { "pan": 0.5 },
+            "enabledCvPorts": [ "pan" ],
+            "label": "Voice Pan / Spread Proxy"
+          },
+          {
+            "id": "voice_output",
+            "definitionId": "audio_output",
+            "position": { "x": 930, "y": 240 },
+            "parameterValues": {},
+            "label": "Voice Template Output"
+          }
+        ],
+        "connections": [
+          { "id": "ic_grain_vca", "sourceBlockId": "voice_grain", "sourcePortId": "out", "targetBlockId": "voice_vca", "targetPortId": "in", "type": "audio" },
+          { "id": "ic_env_vca", "sourceBlockId": "voice_env", "sourcePortId": "out", "targetBlockId": "voice_vca", "targetPortId": "gain_cv", "type": "cv" },
+          { "id": "ic_vca_pan", "sourceBlockId": "voice_vca", "sourcePortId": "out", "targetBlockId": "voice_pan", "targetPortId": "in", "type": "audio" },
+          { "id": "ic_pan_out_l", "sourceBlockId": "voice_pan", "sourcePortId": "left", "targetBlockId": "voice_output", "targetPortId": "left", "type": "audio" },
+          { "id": "ic_pan_out_r", "sourceBlockId": "voice_pan", "sourcePortId": "right", "targetBlockId": "voice_output", "targetPortId": "right", "type": "audio" }
+        ]
+      },
+      "exposedPorts": {
+        "pitch_cv": { "blockId": "voice_grain", "portId": "freq_cv" },
+        "gate": { "blockId": "voice_env", "portId": "gate" },
+        "shape_cv": { "blockId": "voice_grain", "portId": "shape_cv" },
+        "formant_freq_cv": { "blockId": "voice_grain", "portId": "formant_freq_cv" },
+        "bleed_cv": { "blockId": "voice_grain", "portId": "bleed_cv" },
+        "attack_cv": { "blockId": "voice_env", "portId": "attack_cv" },
+        "release_cv": { "blockId": "voice_env", "portId": "release_cv" },
+        "spread_cv": { "blockId": "voice_pan", "portId": "pan_cv" },
+        "left": { "blockId": "voice_pan", "portId": "left" },
+        "right": { "blockId": "voice_pan", "portId": "right" }
+      },
+      "exposedParameters": {}
+    }
+  ]
+}

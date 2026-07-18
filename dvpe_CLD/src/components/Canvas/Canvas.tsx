@@ -21,8 +21,10 @@ import {
   NodeTypes,
   EdgeTypes,
   SelectionMode,
+  OnNodeDrag,
   useReactFlow,
   ReactFlowProvider,
+  useNodesInitialized,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -34,10 +36,17 @@ import { usePatchStore, useUIStore } from '@/stores';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import BlockNode, { BlockNodeData } from './BlockNode';
 import CommentNode from './CommentNode'; // CommentNodeData unused
+import PolyVoiceBlanketNode, { PolyVoiceBlanketNodeData } from './PolyVoiceBlanketNode';
 import ConnectionEdge, { ConnectionEdgeData } from './ConnectionEdge';
 import AlignmentToolbar from './AlignmentToolbar';
 import { DragOverlay } from './DragOverlay';
 import { resolveNodeDoubleClickAction } from './doubleClickActions';
+import { getStitchNeonCanvasStyle } from '@/lib/stitchNeonStyle';
+import {
+  DVPE_BLOCK_DRAG_TYPE,
+  DVPE_POLY_VOICE_BLANKET_DRAG_TYPE,
+  DVPE_POLY_VOICE_BLANKET_PAYLOAD,
+} from './dragTypes';
 
 // ============================================================================
 // NODE TYPES REGISTRATION
@@ -46,11 +55,22 @@ import { resolveNodeDoubleClickAction } from './doubleClickActions';
 const nodeTypes: NodeTypes = {
   dspBlock: BlockNode as any, // Type assertion required for memo-wrapped component
   comment: CommentNode as any,
+  polyVoiceBlanket: PolyVoiceBlanketNode as any,
 };
 
 const edgeTypes: EdgeTypes = {
   connection: ConnectionEdge as any, // Type assertion required for memo-wrapped component
 };
+
+const hasPositionChanged = (
+  current: { x: number; y: number } | undefined,
+  next: { x: number; y: number }
+): boolean => !current || Math.abs(current.x - next.x) > 0.5 || Math.abs(current.y - next.y) > 0.5;
+
+const hasSizeChanged = (
+  current: { width: number; height: number } | undefined,
+  next: { width: number; height: number }
+): boolean => !current || Math.abs(current.width - next.width) > 0.5 || Math.abs(current.height - next.height) > 0.5;
 
 // ============================================================================
 // CANVAS INNER COMPONENT (needs ReactFlow context)
@@ -58,22 +78,34 @@ const edgeTypes: EdgeTypes = {
 
 const CanvasInner: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const suppressDragPositionUpdatesRef = useRef(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
 
   // Store state
   const blocks = usePatchStore((state) => state.blocks);
   const connections = usePatchStore((state) => state.connections);
+  const polyVoiceBlankets = usePatchStore((state) => state.polyVoiceBlankets);
   const selectedBlockIds = usePatchStore((state) => state.selectedBlockIds);
   const selectedConnectionIds = usePatchStore((state) => state.selectedConnectionIds);
+  const selectedPolyVoiceBlanketIds = usePatchStore((state) => state.selectedPolyVoiceBlanketIds);
   const addBlock = usePatchStore((state) => state.addBlock);
+  const addPolyVoiceBlanket = usePatchStore((state) => state.addPolyVoiceBlanket);
   const addConnection = usePatchStore((state) => state.addConnection);
   const updateBlockPositions = usePatchStore((state) => state.updateBlockPositions);
+  const updatePolyVoiceBlanket = usePatchStore((state) => state.updatePolyVoiceBlanket);
   const removeBlocks = usePatchStore((state) => state.removeBlocks);
+  const removePolyVoiceBlanket = usePatchStore((state) => state.removePolyVoiceBlanket);
   const removeConnections = usePatchStore((state) => state.removeConnections);
   const selectBlocks = usePatchStore((state) => state.selectBlocks);
-  const selectConnection = usePatchStore((state) => state.selectConnection);
   const clearSelection = usePatchStore((state) => state.clearSelection);
   const deleteSelection = usePatchStore((state) => state.deleteSelection);
+  const copySelection = usePatchStore((state) => state.copySelection);
+  const cutSelection = usePatchStore((state) => state.cutSelection);
+  const pasteClipboard = usePatchStore((state) => state.pasteClipboard);
+  const beginMoveTransaction = usePatchStore((state) => state.beginMoveTransaction);
+  const cancelMoveTransaction = usePatchStore((state) => state.cancelMoveTransaction);
+  const commitMoveTransaction = usePatchStore((state) => state.commitMoveTransaction);
   const undo = usePatchStore((state) => state.undo);
   const redo = usePatchStore((state) => state.redo);
 
@@ -91,20 +123,36 @@ const CanvasInner: React.FC = () => {
   const draggingBlockId = useUIStore((state) => state.draggingBlockId);
   const setDraggingBlock = useUIStore((state) => state.setDraggingBlock);
   const layoutStyle = useUIStore((state) => state.layoutStyle);
+  const stitchNeonSettings = useUIStore((state) => state.stitchNeonSettings);
 
   // Convert blocks to React Flow nodes
   // Convert blocks to React Flow nodes
-  const nodes: FlowNode<BlockNodeData>[] = useMemo(
+  const nodes: FlowNode<BlockNodeData | PolyVoiceBlanketNodeData>[] = useMemo(
     () =>
-      blocks.map((block) => ({
+      [
+        ...polyVoiceBlankets.map((blanket) => ({
+          id: blanket.id,
+          type: 'polyVoiceBlanket',
+          position: blanket.position,
+          data: { blanket } as PolyVoiceBlanketNodeData,
+          selected: selectedPolyVoiceBlanketIds.includes(blanket.id),
+          style: {
+            width: blanket.size.width,
+            height: blanket.size.height,
+          },
+          zIndex: 0,
+        })),
+        ...blocks.map((block) => ({
         id: block.id,
         type: 'dspBlock',
         position: block.position,
         data: { instance: block },
         selected: selectedBlockIds.includes(block.id),
+        zIndex: 10,
         // Removed dragHandle restriction - blocks can be dragged by any part
-      })),
-    [blocks, selectedBlockIds]
+        })),
+      ] as FlowNode<BlockNodeData | PolyVoiceBlanketNodeData>[],
+    [blocks, polyVoiceBlankets, selectedBlockIds, selectedPolyVoiceBlanketIds]
   );
 
   // Convert connections to React Flow edges
@@ -131,79 +179,107 @@ const CanvasInner: React.FC = () => {
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
       // Handle position changes
+      const blanketIds = new Set(usePatchStore.getState().polyVoiceBlankets.map((blanket) => blanket.id));
       const positionChanges = changes.filter(
         (c) => c.type === 'position' && 'position' in c && c.position !== undefined
       );
-      if (positionChanges.length > 0) {
-        updateBlockPositions(
-          positionChanges.map((c) => {
+      if (positionChanges.length > 0 && !suppressDragPositionUpdatesRef.current) {
+        const blockPositionUpdates = positionChanges
+          .filter((c) => !blanketIds.has((c as { id: string }).id))
+          .map((c) => {
             // Type guard ensures c has id and position
             const change = c as { id: string; position: { x: number; y: number } };
             return {
               id: change.id,
               position: change.position,
             };
-          })
-        );
+          });
+
+        if (blockPositionUpdates.length > 0) {
+          updateBlockPositions(blockPositionUpdates);
+        }
+
+        positionChanges
+          .filter((c) => blanketIds.has((c as { id: string }).id))
+          .forEach((c) => {
+            const change = c as { id: string; position: { x: number; y: number } };
+            const currentBlanket = usePatchStore.getState().polyVoiceBlankets.find((blanket) => blanket.id === change.id);
+            if (hasPositionChanged(currentBlanket?.position, change.position)) {
+              updatePolyVoiceBlanket(change.id, { position: change.position }, { saveHistory: false });
+            }
+          });
       }
 
-      // Handle selection changes
-      const selectionChanges = changes.filter((c) => c.type === 'select');
-      if (selectionChanges.length > 0) {
-        // Use getState to avoid dependency on selectedBlockIds causing re-creation of callback
-        const currentSelected = new Set(usePatchStore.getState().selectedBlockIds);
-        let hasChanges = false;
-
-        selectionChanges.forEach((c) => {
-          if (c.type === 'select') {
-            if (c.selected) {
-              if (!currentSelected.has(c.id)) {
-                currentSelected.add(c.id);
-                hasChanges = true;
-              }
-            } else {
-              if (currentSelected.has(c.id)) {
-                currentSelected.delete(c.id);
-                hasChanges = true;
-              }
+      const dimensionChanges = changes.filter(
+        (c) => c.type === 'dimensions' && 'dimensions' in c && c.dimensions !== undefined
+      );
+      if (dimensionChanges.length > 0) {
+        dimensionChanges
+          .filter((c) => blanketIds.has((c as { id: string }).id))
+          .forEach((c) => {
+            const change = c as { id: string; dimensions: { width: number; height: number } };
+            const currentBlanket = usePatchStore.getState().polyVoiceBlankets.find((blanket) => blanket.id === change.id);
+            if (hasSizeChanged(currentBlanket?.size, change.dimensions)) {
+              updatePolyVoiceBlanket(change.id, { size: change.dimensions });
             }
-          }
-        });
-
-        if (hasChanges) {
-          selectBlocks(Array.from(currentSelected), true);
-        }
+          });
       }
 
       // Handle removal
       const removeChanges = changes.filter((c) => c.type === 'remove');
       if (removeChanges.length > 0) {
-        removeBlocks(removeChanges.map((c) => (c as { id: string }).id));
+        const removedIds = removeChanges.map((c) => (c as { id: string }).id);
+        const removedBlanketIds = removedIds.filter((id) => blanketIds.has(id));
+        const removedBlockIds = removedIds.filter((id) => !blanketIds.has(id));
+        if (removedBlockIds.length > 0) {
+          removeBlocks(removedBlockIds);
+        }
+        removedBlanketIds.forEach(removePolyVoiceBlanket);
       }
     },
-    [updateBlockPositions, selectBlocks, removeBlocks]
+    [updateBlockPositions, updatePolyVoiceBlanket, removeBlocks, removePolyVoiceBlanket]
   );
 
   // Handle edge changes
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
-      // Handle selection changes
-      const selectionChanges = changes.filter((c) => c.type === 'select');
-      if (selectionChanges.length > 0) {
-        selectionChanges.forEach((c) => {
-          if ('selected' in c && (c as { selected: boolean }).selected) {
-            selectConnection((c as { id: string }).id);
-          }
-        });
-      }
-
       // Handle removal
       const removeChanges = changes.filter((c) => c.type === 'remove');
       if (removeChanges.length > 0) {
         removeConnections(removeChanges.map((c) => c.id));
       }
     },
-    [removeConnections, selectConnection]
+    [removeConnections]
+  );
+
+  const onSelectionChange = useCallback(
+    ({ nodes: selectedNodes, edges: selectedEdges }: {
+      nodes: FlowNode<BlockNodeData | PolyVoiceBlanketNodeData>[];
+      edges: Edge<ConnectionEdgeData>[];
+    }) => {
+      const blanketIds = new Set(usePatchStore.getState().polyVoiceBlankets.map((blanket) => blanket.id));
+      const nextBlockIds: string[] = [];
+      const nextBlanketIds: string[] = [];
+
+      selectedNodes.forEach((node) => {
+        if (blanketIds.has(node.id)) {
+          nextBlanketIds.push(node.id);
+        } else {
+          nextBlockIds.push(node.id);
+        }
+      });
+
+      usePatchStore.setState({
+        selectedBlockIds: nextBlockIds,
+        selectedConnectionIds: selectedEdges.map((edge) => edge.id),
+        selectedPolyVoiceBlanketIds: nextBlanketIds,
+      });
+
+      if (nextBlockIds.length !== 1 || nextBlanketIds.length > 0 || selectedEdges.length > 0) {
+        inspectBlock(null);
+      }
+    },
+    [inspectBlock]
   );
 
   // Handle new connections
@@ -272,7 +348,11 @@ const CanvasInner: React.FC = () => {
 
   // Handle node double-click to open inspector
   const onNodeDoubleClick = useCallback(
-    (event: React.MouseEvent, node: FlowNode<BlockNodeData>) => {
+    (event: React.MouseEvent, node: FlowNode<BlockNodeData | PolyVoiceBlanketNodeData>) => {
+      if (node.type === 'polyVoiceBlanket') {
+        return;
+      }
+
       // Preserve existing behavior exactly: double-click always inspects block
       inspectBlock(node.id);
 
@@ -297,16 +377,19 @@ const CanvasInner: React.FC = () => {
   // Re-initialize React Flow node layout after patch load
   // (fixes Ctrl+Drag box select not working in loaded projects)
   useEffect(() => {
-    if (loadCount > 0) {
+    if (loadCount > 0 && nodes.length > 0 && nodesInitialized) {
       const timer = setTimeout(() => {
         fitView({ duration: 300, padding: 0.2, maxZoom: 1.5 });
-      }, 50);
+      }, 100);
       return () => clearTimeout(timer);
     }
-  }, [loadCount, fitView]);
+  }, [loadCount, nodes.length, nodesInitialized, fitView]);
 
   // Keyboard shortcuts
   useHotkeys('delete,backspace', () => deleteSelection(), [deleteSelection]);
+  useHotkeys('mod+c', () => copySelection(), [copySelection]);
+  useHotkeys('mod+x', () => cutSelection(), [cutSelection]);
+  useHotkeys('mod+v', () => pasteClipboard(), [pasteClipboard]);
   useHotkeys('mod+z', () => undo(), [undo]);
   useHotkeys('mod+shift+z,mod+y', () => redo(), [redo]);
   useHotkeys('mod+a', (e: KeyboardEvent) => {
@@ -314,10 +397,36 @@ const CanvasInner: React.FC = () => {
     selectBlocks(blocks.map((b) => b.id));
   }, [blocks, selectBlocks]);
   useHotkeys('escape', () => {
+    if (cancelMoveTransaction()) {
+      suppressDragPositionUpdatesRef.current = true;
+      return;
+    }
     clearSelection();
     inspectBlock(null);
-  }, [clearSelection, inspectBlock]);
+  }, [cancelMoveTransaction, clearSelection, inspectBlock]);
   useHotkeys('mod+0', () => fitView(), [fitView]);
+
+  const onNodeDragStart: OnNodeDrag<FlowNode<BlockNodeData | PolyVoiceBlanketNodeData>> = useCallback(
+    (_event, node, draggedNodes) => {
+      suppressDragPositionUpdatesRef.current = false;
+      const nodeIds = draggedNodes.length > 0 ? draggedNodes.map((item) => item.id) : [node.id];
+      beginMoveTransaction(nodeIds);
+    },
+    [beginMoveTransaction]
+  );
+
+  const onNodeDragStop: OnNodeDrag<FlowNode<BlockNodeData | PolyVoiceBlanketNodeData>> = useCallback(
+    () => {
+      if (suppressDragPositionUpdatesRef.current) {
+        window.setTimeout(() => {
+          suppressDragPositionUpdatesRef.current = false;
+        }, 0);
+        return;
+      }
+      commitMoveTransaction();
+    },
+    [commitMoveTransaction]
+  );
 
   // Handle Drag Over
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -340,8 +449,24 @@ const CanvasInner: React.FC = () => {
         position.y = Math.round(position.y / gridSize) * gridSize;
       }
 
+      const directiveId = event.dataTransfer.getData(DVPE_POLY_VOICE_BLANKET_DRAG_TYPE);
+      const isPolyVoiceBlanketDrop =
+        directiveId === DVPE_POLY_VOICE_BLANKET_PAYLOAD ||
+        draggingBlockId === DVPE_POLY_VOICE_BLANKET_PAYLOAD;
+
+      if (isPolyVoiceBlanketDrop) {
+        addPolyVoiceBlanket({
+          label: 'Poly Voice Blanket V1',
+          position,
+          size: { width: 560, height: 340 },
+          memberBlockIds: [],
+        });
+        setDraggingBlock(null);
+        return;
+      }
+
       // We prioritize the store ID as it's more reliable within the app
-      const blockId = draggingBlockId || event.dataTransfer.getData('application/dvpe-block');
+      const blockId = draggingBlockId || event.dataTransfer.getData(DVPE_BLOCK_DRAG_TYPE);
 
       if (blockId) {
         console.log('Canvas: Dropping block:', blockId, 'at', position);
@@ -349,7 +474,7 @@ const CanvasInner: React.FC = () => {
         setDraggingBlock(null); // Clear state immediately
       }
     },
-    [draggingBlockId, screenToFlowPosition, snapToGrid, gridSize, addBlock, setDraggingBlock]
+    [draggingBlockId, screenToFlowPosition, snapToGrid, gridSize, addBlock, addPolyVoiceBlanket, setDraggingBlock]
   );
 
   // Native Drag/Drop handled by DragOverlay component now
@@ -371,7 +496,7 @@ const CanvasInner: React.FC = () => {
     <div
       ref={reactFlowWrapper}
       className={cn("w-full h-full", layoutStyle === 'glass' ? "bg-black" : "bg-surface-primary")}
-      style={layoutStyle === 'glass' ? { background: 'linear-gradient(to right, #1e293b 0%, #000000 50%, #000000 100%)' } : {}}
+      style={layoutStyle === 'glass' ? getStitchNeonCanvasStyle(stitchNeonSettings) : {}}
     >
       <ReactFlow
         nodes={nodes}
@@ -380,8 +505,11 @@ const CanvasInner: React.FC = () => {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
+        onSelectionChange={onSelectionChange}
         onPaneClick={onPaneClick}
         onNodeDoubleClick={onNodeDoubleClick}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultViewport={viewport}
@@ -390,9 +518,9 @@ const CanvasInner: React.FC = () => {
         snapGrid={[gridSize, gridSize]}
         selectionMode={SelectionMode.Partial}
         selectionOnDrag={true}
-        selectionKeyCode="Control"
+        selectionKeyCode={['Control', 'Meta', 'Shift']}
         selectNodesOnDrag={false}
-        multiSelectionKeyCode="Control"
+        multiSelectionKeyCode={['Control', 'Meta', 'Shift']}
         deleteKeyCode={null} // We handle delete ourselves
         fitView
         fitViewOptions={{
@@ -470,13 +598,19 @@ const CanvasInner: React.FC = () => {
               <kbd className="px-1 py-0.5 bg-surface-primary rounded">Del</kbd> Delete
             </span>
             <span className="mr-3">
+              <kbd className="px-1 py-0.5 bg-surface-primary rounded">Ctrl/Cmd+C/X/V</kbd> Clipboard
+            </span>
+            <span className="mr-3">
               <kbd className="px-1 py-0.5 bg-surface-primary rounded">⌘Z</kbd> Undo
             </span>
             <span className="mr-3">
               <kbd className="px-1 py-0.5 bg-surface-primary rounded">Shift</kbd> Multi-select
             </span>
             <span className="mr-3">
-              <kbd className="px-1 py-0.5 bg-surface-primary rounded">Ctrl+Drag</kbd> Box select
+              <kbd className="px-1 py-0.5 bg-surface-primary rounded">Ctrl/Shift+Drag</kbd> Box select
+            </span>
+            <span className="mr-3">
+              <kbd className="px-1 py-0.5 bg-surface-primary rounded">Esc</kbd> Cancel drag
             </span>
             <span>
               <kbd className="px-1 py-0.5 bg-surface-primary rounded">Double-click</kbd> Inspect

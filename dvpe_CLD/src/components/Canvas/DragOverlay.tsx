@@ -1,9 +1,11 @@
 import React from 'react';
 import { useUIStore } from '@/stores';
+import { DVPE_POLY_VOICE_BLANKET_PAYLOAD } from './dragTypes';
 
 export const DragOverlay: React.FC = () => {
     const draggingBlockId = useUIStore((state) => state.draggingBlockId);
     const setDraggingBlock = useUIStore((state) => state.setDraggingBlock);
+    const isBlanket = draggingBlockId === DVPE_POLY_VOICE_BLANKET_PAYLOAD;
 
     // Debug logging
     React.useEffect(() => {
@@ -42,7 +44,9 @@ export const DragOverlay: React.FC = () => {
             <div className="absolute inset-0 bg-primary/5 backdrop-blur-[1px] border-2 border-primary/20 m-2 rounded-xl flex items-center justify-center">
                 <div className="bg-background/90 backdrop-blur-md px-6 py-3 rounded-full border border-primary/30 shadow-2xl flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    <p className="text-sm font-medium text-primary">Drop to Add Block</p>
+                    <p className="text-sm font-medium text-primary">
+                        {isBlanket ? 'Drop to Add Blanket' : 'Drop to Add Block'}
+                    </p>
                 </div>
             </div>
         </div>

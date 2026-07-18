@@ -149,6 +149,7 @@ import {
   OscillatorBankBlock,
   VariableSawOscillatorBlock,
   ZOscillatorBlock,
+  PolyGrainletVoiceBlock,
   // Remaining DaisySP Blocks
   PhasorBlock,
   SampleHoldBlock,
@@ -322,6 +323,7 @@ function registerAllBlocks(): void {
     OscillatorBankBlock,
     VariableSawOscillatorBlock,
     ZOscillatorBlock,
+    PolyGrainletVoiceBlock,
     // Remaining DaisySP Blocks
     PhasorBlock,
     SampleHoldBlock,
