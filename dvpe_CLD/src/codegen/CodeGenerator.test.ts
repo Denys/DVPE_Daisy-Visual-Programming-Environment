@@ -11,6 +11,8 @@ import { BlockInstance, Connection, BlockCategory, BlockColorScheme, ParameterTy
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 import { CustomBlockDefinition } from '@/types/customBlock';
 
+const CODEGEN_FIXTURES_DIR = path.resolve(__dirname, '../test/fixtures/codegen');
+
 const createCustomOscVcaDefinition = (): CustomBlockDefinition => ({
     id: 'custom_osc_vca_test',
     className: 'Custom_custom_osc_vca_test',
@@ -733,8 +735,7 @@ describe('CodeGenerator', () => {
 
     describe('GranularSynth DVPE patch', () => {
         it('should use one compact poly block without duplicated voice lanes or dangling knobs', () => {
-            const projectRoot = path.dirname(process.cwd());
-            const dvpePath = path.join(projectRoot, 'DaisyExamples', 'field', 'GranularSynth', 'GranularSynth.dvpe');
+            const dvpePath = path.join(CODEGEN_FIXTURES_DIR, 'GranularSynth.dvpe');
             const data = JSON.parse(fs.readFileSync(dvpePath, 'utf-8'));
             const patch = data.patch;
             const blocks = patch.blocks as BlockInstance[];
@@ -766,8 +767,7 @@ describe('CodeGenerator', () => {
         });
 
         it('should generate cloned voice code for the poly_voice_group dummy patch', () => {
-            const projectRoot = path.dirname(process.cwd());
-            const dvpePath = path.join(projectRoot, 'DaisyExamples', 'field', 'GranularSynth', 'GranularSynth_poly_voice_group_dummy.dvpe');
+            const dvpePath = path.join(CODEGEN_FIXTURES_DIR, 'GranularSynth_poly_voice_group_dummy.dvpe');
             const data = JSON.parse(fs.readFileSync(dvpePath, 'utf-8'));
             const customBlocks = data.customBlocks as CustomBlockDefinition[];
             const polyDef = customBlocks.find((customDef) => customDef.id === 'poly_voice_group')!;
@@ -927,8 +927,7 @@ describe('CodeGenerator', () => {
         });
 
         it('should parse and codegen the GranularSynth poly voice blanket sidecar patch', () => {
-            const projectRoot = path.dirname(process.cwd());
-            const dvpePath = path.join(projectRoot, 'DaisyExamples', 'field', 'GranularSynth', 'GranularSynth_poly_voice_blanket_v1.dvpe');
+            const dvpePath = path.join(CODEGEN_FIXTURES_DIR, 'GranularSynth_poly_voice_blanket_v1.dvpe');
             const data = JSON.parse(fs.readFileSync(dvpePath, 'utf-8'));
             const patch = data.patch;
             const blocks = patch.blocks as BlockInstance[];

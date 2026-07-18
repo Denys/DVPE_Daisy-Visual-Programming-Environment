@@ -4,9 +4,7 @@ import * as path from 'path';
 import { SerializedProject } from '@/types';
 import { BlockRegistry } from '@/core/blocks/BlockRegistry';
 
-// Define paths to the generated files
-// Note: We are running from dvpe_CLD, so we need to go up to _block_diagrams_code
-const PROMPT_GENERATED_DIR = path.resolve(__dirname, '../../../../_block_diagrams_code/prompt_generated');
+const CHATBOT_FIXTURES_DIR = path.resolve(__dirname, '../../test/fixtures/chatbot');
 
 const FILES_TO_TEST = [
     'pod_drum_machine__chat-gen_FIXED.dvpe',
@@ -17,7 +15,7 @@ const FILES_TO_TEST = [
 describe('Chatbot Generated Patch Validation', () => {
 
     FILES_TO_TEST.forEach(filename => {
-        const filePath = path.join(PROMPT_GENERATED_DIR, filename);
+        const filePath = path.join(CHATBOT_FIXTURES_DIR, filename);
 
         describe(`File: ${filename}`, () => {
             let fileContent: string;
