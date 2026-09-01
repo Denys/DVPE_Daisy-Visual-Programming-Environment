@@ -51,7 +51,7 @@ describe('BlockUIDesigner Layout', () => {
     };
 
     beforeEach(() => {
-        // @ts-ignore
+        // @ts-expect-error - mocked Zustand hook intentionally exposes Vitest helpers
         storeModule.useBlockDesignerStore.mockImplementation((selector) => {
             // If a selector is passed, apply it to mockState
             if (selector) return selector(mockState);

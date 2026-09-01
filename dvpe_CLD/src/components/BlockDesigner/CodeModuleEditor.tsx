@@ -184,7 +184,7 @@ export const CodeModuleEditor: React.FC<CodeModuleEditorProps> = ({
         suggestOnTriggerCharacters: true,
         wordBasedSuggestions: 'currentDocument' as const,
         parameterHints: { enabled: true },
-        hover: { enabled: true },
+        hover: { enabled: 'on' as const },
         formatOnType: true,
         formatOnPaste: true,
         renderWhitespace: 'selection' as const,

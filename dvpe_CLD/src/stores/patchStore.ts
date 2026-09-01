@@ -1210,7 +1210,6 @@ export const usePatchStore = create<PatchState & PatchActions>()(
 
             // Sync platform from metadata if missing in hardwareConfig (migration)
             if (!patch.hardwareConfig && patch.metadata.targetHardware) {
-              // @ts-ignore - casting string to PlatformType
               state.hardwareConfig.platform = patch.metadata.targetHardware as any;
             }
 
@@ -1269,7 +1268,6 @@ export const usePatchStore = create<PatchState & PatchActions>()(
 
             // Sync metadata for backward compatibility if platform changes
             if (config.platform) {
-              // @ts-ignore - Valid cast as PlatformType is compatible with targetHardware string union
               state.metadata.targetHardware = config.platform;
             }
 

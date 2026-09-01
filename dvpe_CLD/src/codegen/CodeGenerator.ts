@@ -921,8 +921,8 @@ private:
             // for compatibility with existing structure.
         }
 
-        /* 
-           Compatibility Note: 
+        /*
+           Compatibility Note:
            generateKnobCode currently emits `hw.knob[channel].Value()`.
            For Seed this is invalid.
            We MUST update generateKnobCode to be platform aware or use a common macro/variable.
@@ -1350,7 +1350,7 @@ private:
         if (waveCV) {
             const waveVar = this.getSourceVariable(waveCV);
             // Map 0..1 to 0..7
-            // Oscillator waveforms: WAVE_SIN, WAVE_TRI, WAVE_SAW, WAVE_RAMP, WAVE_SQUARE, 
+            // Oscillator waveforms: WAVE_SIN, WAVE_TRI, WAVE_SAW, WAVE_RAMP, WAVE_SQUARE,
             // WAVE_POLYBLEP_TRI, WAVE_POLYBLEP_SAW, WAVE_POLYBLEP_SQUARE (8 total)
             lines.push(`${name}.SetWaveform((uint8_t)(fminf(7.0f, fmaxf(0.0f, fabsf(${waveVar}) * 7.9f))));`);
         }
@@ -3451,8 +3451,8 @@ private:
     private generateStereoMixerCode(block: BlockInstance, name: string): string[] {
         // StereoMixer is inline multi-channel panning
         const channels = ['ch1', 'ch2', 'ch3', 'ch4'];
-        let leftTerms: string[] = [];
-        let rightTerms: string[] = [];
+        const leftTerms: string[] = [];
+        const rightTerms: string[] = [];
 
         channels.forEach(ch => {
             const conn = this.getInputConnection(block.id, ch);

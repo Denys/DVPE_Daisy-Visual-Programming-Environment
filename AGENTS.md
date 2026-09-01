@@ -60,7 +60,7 @@ When instructions conflict, resolve by descending priority:
 
 ## Repo Map
 
-- `dvpe_CLD/`: main React/Vite/Tauri DVPE application
+- `dvpe_CLD/`: main React/Vite browser application; no runnable Tauri project
 - `noderr/noderr/`: primary DVPE Noderr instance
 - `DaisyExamples/`: nested firmware workspace with its own
   `DaisyExamples/AGENTS.md`, `LATEST_PROJECTS.md`, and `noderr/`
@@ -121,7 +121,7 @@ Prefer targeted validation over repo-wide validation.
 From `dvpe_CLD/`:
 
 ```sh
-npm run test
+npm test -- --run
 npm run build
 ```
 

@@ -12,8 +12,9 @@ export default defineConfig({
   // Prevent Vite from clearing the terminal
   clearScreen: false,
 
-  // Tauri expects a fixed port, fail if that port is not available
+  // Keep the one-click launcher and browser health check on one loopback endpoint.
   server: {
+    host: '127.0.0.1',
     port: 1420,
     strictPort: true,
     proxy: {
@@ -93,4 +94,3 @@ export default defineConfig({
     },
   },
 });
-

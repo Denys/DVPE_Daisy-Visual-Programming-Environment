@@ -117,7 +117,7 @@ const getBlockSchemeStyles = (scheme: BlockColorScheme, selected: boolean, layou
     }
 
     const glassBase = cn('border-white/10 backdrop-blur-[9px] border');
-    
+
     switch (category) {
       case BlockCategory.SOURCES:
       case BlockCategory.PHYSICAL_MODELING:
@@ -714,6 +714,7 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
   const inspectBlock = useUIStore((state) => state.inspectBlock);
   const layoutStyle = useUIStore((state) => state.layoutStyle);
   const stitchNeonSettings = useUIStore((state) => state.stitchNeonSettings);
+  const designSettings = useUIStore((state) => state.designSettings);
   const connections = usePatchStore((state) => state.connections);
   const updateBlockParameter = usePatchStore((state) => state.updateBlockParameter);
 
@@ -820,16 +821,8 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
     inspectBlock(id as string);
   }, [id, inspectBlock]);
 
-  if (!definition) {
-    return (
-      <div className="bg-red-500/20 border border-red-500 rounded p-2 text-red-400 text-sm">
-        Unknown block: {instance.definitionId}
-      </div>
-    );
-  }
-  const designSettings = useUIStore((state) => state.designSettings);
   const baseNeonColor = definition ? getGlassNeonColor(definition.colorScheme, definition.category, definition.id) : "#00e5ff";
-  const neonColor = layoutStyle === 'glass'
+  const neonColor = layoutStyle === 'glass' && definition
     ? getStitchNeonCategoryColor(stitchNeonSettings, baseNeonColor, definition.category)
     : baseNeonColor;
 
@@ -840,7 +833,7 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
     if (layoutStyle === 'glass') {
       return getStitchNeonBlockStyle(stitchNeonSettings, neonColor, Boolean(selected));
     }
-    
+
     const s = designSettings;
 
     const tintHex = Math.round(s.glassTint * 255).toString(16).padStart(2, '0');
@@ -848,7 +841,7 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
     const isSelected = Boolean(selected);
     const selectedShadow = `0 0 0 2px rgba(255,255,255,0.9), 0 0 38px ${neonColor}99, 0 0 70px rgba(250,204,21,0.28)`;
     const normalShadow = `0 0 ${s.glowSpread}px -${s.glowSpread / 4}px ${neonColor}${Math.round(s.glowIntensity * 255).toString(16).padStart(2, '0')}, 0 0 40px -10px ${neonColor}33, inset 0 0 0 1px ${neonColor}1a`;
-    
+
     return {
       borderRadius: s.borderRadius,
       borderWidth: isSelected ? Math.max(2, s.borderWidth) : s.borderWidth,
@@ -857,6 +850,14 @@ const BlockNode: React.FC<BlockNodeProps> = ({ id, data, selected }) => {
       boxShadow: isSelected ? selectedShadow : normalShadow,
     };
   }, [layoutStyle, designSettings, neonColor, selected, stitchNeonSettings]);
+
+  if (!definition) {
+    return (
+      <div className="bg-red-500/20 border border-red-500 rounded p-2 text-red-400 text-sm">
+        Unknown block: {instance.definitionId}
+      </div>
+    );
+  }
 
   return (
     <motion.div

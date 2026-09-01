@@ -38,11 +38,12 @@ const applyParameterCurve = (
   max: number
 ): number => {
   switch (curve) {
-    case ParameterCurve.LOGARITHMIC:
+    case ParameterCurve.LOGARITHMIC: {
       // Logarithmic scaling (good for frequency)
       const minLog = Math.log(Math.max(min, 0.0001));
       const maxLog = Math.log(max);
       return Math.exp(minLog + normalizedValue * (maxLog - minLog));
+    }
 
     case ParameterCurve.EXPONENTIAL:
       // Exponential scaling (good for amplitude)
@@ -61,10 +62,11 @@ const invertParameterCurve = (
   max: number
 ): number => {
   switch (curve) {
-    case ParameterCurve.LOGARITHMIC:
+    case ParameterCurve.LOGARITHMIC: {
       const minLog = Math.log(Math.max(min, 0.0001));
       const maxLog = Math.log(max);
       return (Math.log(Math.max(value, 0.0001)) - minLog) / (maxLog - minLog);
+    }
 
     case ParameterCurve.EXPONENTIAL:
       return Math.sqrt((value - min) / (max - min));
