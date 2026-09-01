@@ -590,10 +590,13 @@ const App: React.FC = () => {
     const patchGraph = {
       blocks,
       connections,
+      polyVoiceBlankets,
+      hardwareConfig,
       metadata: {
         name: metadata.name,
         blockSize: metadata.blockSize || 48,
         sampleRate: metadata.sampleRate || 48000,
+        targetHardware: metadata.targetHardware,
       },
     };
     const result = previewCode(patchGraph);
@@ -612,10 +615,13 @@ const App: React.FC = () => {
       const patchGraph = {
         blocks,
         connections,
+        polyVoiceBlankets,
+        hardwareConfig,
         metadata: {
           name: metadata.name,
           blockSize: metadata.blockSize || 48,
           sampleRate: metadata.sampleRate || 48000,
+          targetHardware: metadata.targetHardware,
         },
       };
       const raw = previewCode(patchGraph);

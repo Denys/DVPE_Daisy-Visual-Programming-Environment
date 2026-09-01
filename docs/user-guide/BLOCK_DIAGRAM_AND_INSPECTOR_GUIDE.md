@@ -129,6 +129,8 @@ Custom blocks expose their configured public parameters and ports here. A Poly
 Voice Blanket exposes its group and voice settings rather than ordinary DSP
 parameters.
 
+![Reverb parameters and connectivity in Inspector](../images/tutorials/inspector-parameters-connectivity.png)
+
 ## 5. Use Inspector → Design
 
 DVPE has exactly three interface designs. Cycle through them with the design
@@ -152,7 +154,11 @@ Design changes affect the editor appearance, not the DSP graph or generated
 audio algorithm. Experimentator includes a lock that limits extreme glow
 ranges; keep it enabled for normal use.
 
-![Stitch Neon design with Inspector](../images/DVPE_Stitch_Neon_GUI.png)
+![Stitch Neon tuning controls in Inspector](../images/tutorials/stitch-neon-design-controls.png)
+
+The Experimentator panel exposes its wider glow, glass, and geometry range:
+
+![Experimentator tuning controls in Inspector](../images/tutorials/experimentator-design-controls.png)
 
 The retained earlier screenshot shows the calmer Original Style on a large
 Field Additive Synth graph:
@@ -160,11 +166,23 @@ Field Additive Synth graph:
 
 ## 6. Hardware mapping
 
-Select **Hardware** in the top bar to configure the target and map patch
-controls to the available hardware surface. Review pin and peripheral conflicts
-reported by the mapping tools. A valid editor mapping is still only a design
-input: confirm the target board, pin definitions, electrical connections, and
-firmware behavior in the external Daisy project.
+Select **Hardware** in the top bar to open **Architecture Configuration**.
+Changes are stored with the project automatically.
+
+![Hardware platform configuration](../images/tutorials/hardware-platform-configuration.png)
+
+- **Platform Selection** chooses Daisy Seed, Pod, or Field and synchronizes the
+  target used by export.
+- **Pin Mapping** assigns logical hardware roles to physical pins.
+- **Peripherals** configures the resources required by the patch.
+- **Field Mapping** assigns K1–K8 and A1–B8 to block parameters, including
+  held-switch layers, without adding control blocks to the audio graph.
+
+Review pin and peripheral conflicts reported by the mapping tools. A valid
+editor mapping is still only a design input: confirm the target board, pin
+definitions, electrical connections, and firmware behavior in the external
+Daisy project. For a complete Field workflow, use the
+[Daisy Field Mapping tutorial](../../dvpe_CLD/examples/field_mapping_subtractive_tutorial.md).
 
 ## 7. Export
 
@@ -172,22 +190,33 @@ firmware behavior in the external Daisy project.
 
 1. Save the `.dvpe` project with a meaningful name.
 2. Select **Export C++**.
-3. Review the generated preview and selected target information.
-4. Download the ZIP containing Daisy-oriented C++, headers, and Makefile
-   content.
+3. Review the generated preview, target header, platform comment, audio
+   callback, and initialization.
+4. Select **Download Files**. The browser build creates a ZIP containing
+   `<project-name>.cpp` and `Makefile`.
 5. Move the exported project into a compatible Daisy development environment.
 6. Compile, inspect warnings, run target tests, and validate audio and hardware.
+
+![Generated C++ preview](../images/tutorials/export-cpp-preview.png)
 
 The repository does not include a complete firmware compiler/flasher workflow.
 
 ### Advanced Export
 
-Advanced Export sends generated content to the configured external AI provider
-for an experimental correction pass. Configure the provider, model, and key in
-**Inspector → Design**. Keys are stored in browser storage, so use this only in
-a trusted local browser profile. Treat the returned files as proposed changes:
-diff them against standard export and validate them with the same compiler and
-hardware checks.
+Advanced Export sends the generated C++ and Makefile to the configured external
+AI provider for an experimental correction pass. Switch to **Experimentator**,
+then configure the provider, model, and key under **Inspector → Design → AI
+Export Settings**. Keys are stored in browser storage, so use this only in a
+trusted local browser profile.
+
+![Advanced Export settings with no stored API key](../images/tutorials/advanced-export-settings.png)
+
+Select **Advanced** only after configuration. On success, compare **Raw
+(DVPE)** with **AI Corrected** in the preview. Treat the returned files as
+proposed changes: external models can introduce invalid APIs or remove required
+behavior. Diff the result against standard export and validate it with the same
+compiler and hardware checks. See the step-by-step
+[Inspector, Hardware, and Export tutorial](../tutorials/INSPECTOR_HARDWARE_AND_EXPORT.md).
 
 ## 8. Keyboard shortcut reference
 
