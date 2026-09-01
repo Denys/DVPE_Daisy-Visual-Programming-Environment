@@ -107,7 +107,6 @@ execution/
 
 # === Deployment Artifacts (unblock for Phase 12) ===
 !docs/user-guide/
-!docs/user-guide/**
 !_block_diagrams_code/examples/
 !_block_diagrams_code/examples/**
 !CHANGELOG.md
