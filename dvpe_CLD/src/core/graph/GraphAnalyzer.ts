@@ -73,7 +73,7 @@ export class GraphAnalyzer {
 
         // Kahn's algorithm with cycle breaking strategy
         const result: string[] = [];
-        let remainingBlocks = new Set(blocks.map(b => b.id));
+        const remainingBlocks = new Set(blocks.map(b => b.id));
 
         while (remainingBlocks.size > 0) {
             let zeroInDegree = getZeroInDegreeNodes().filter(id => remainingBlocks.has(id));
@@ -81,7 +81,7 @@ export class GraphAnalyzer {
             if (zeroInDegree.length === 0) {
                 // Cycle detected!
                 console.warn('Cycle detected in audio graph. Breaking cycle arbitrarily to proceed.');
-                // Strategy: Pick the remaining node with the highest out-degree (most dependencies) 
+                // Strategy: Pick the remaining node with the highest out-degree (most dependencies)
                 // or just the first one, and pretend its dependencies are satisfied.
                 // This effectively treats the back-edge as a 1-sample delay.
                 const firstRemaining = Array.from(remainingBlocks)[0];

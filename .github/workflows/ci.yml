@@ -26,7 +26,11 @@ jobs:
 
       - name: Run tests
         working-directory: dvpe_CLD
-        run: npm test
+        run: npm test -- --run
+
+      - name: Lint
+        working-directory: dvpe_CLD
+        run: npm run lint
 
       - name: Build
         working-directory: dvpe_CLD

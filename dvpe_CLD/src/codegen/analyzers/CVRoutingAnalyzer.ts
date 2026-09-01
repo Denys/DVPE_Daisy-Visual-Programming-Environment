@@ -97,7 +97,7 @@ export class CVRoutingAnalyzer {
         blockDefs: Map<string, BlockDefinition>
     ): string {
         // Remove common CV suffixes
-        let paramId = portId
+        const paramId = portId
             .replace(/_cv$/i, '')
             .replace(/_mod$/i, '')
             .replace(/_in$/i, '');

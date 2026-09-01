@@ -82,7 +82,7 @@ describe('Mapping Functions', () => {
         it('handles edge cases', () => {
             const table = [{ input: 0.5, output: 100 }];
             expect(mapTable(0.5, table)).toBe(100);
-            expect(mapTable([], [])).toBeUndefined; // empty returns input
+            expect(mapTable(0.25, [])).toBe(0.25); // empty table returns input
         });
     });
 });

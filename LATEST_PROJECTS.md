@@ -1,40 +1,34 @@
 # LATEST_PROJECTS.md
 
-Volatile companion to `AGENTS.md`.
+Volatile companion to `AGENTS.md`. Treat source, manifests, tests, and current
+command output as stronger evidence than historical planning files.
 
-Refresh this file when a new subtree becomes an active work area or when the
-recommended entrypoints for an existing root change materially.
+## Last refreshed
 
-## Last Refreshed
+- 2026-09-01
 
-- 2026-04-20
+## Active work areas
 
-## How To Use This File
+| Project | Current state | Start here |
+| --- | --- | --- |
+| `dvpe_CLD/` | Primary React/Vite browser editor. The verified snapshot contains 174 runtime blocks; 883 tests pass, lint has no errors, and production build succeeds. | `README.md`, `START_DVPE_SESSION.md`, `dvpe_CLD/package.json` |
+| Root launcher | Supported Windows one-click start. It checks Node.js 20+, installs the lockfile exactly, binds to `127.0.0.1:1420`, and opens the browser. | `START_DVPE.cmd`, `START_DVPE.ps1` |
+| `docs/user-guide/` | Current end-user instructions for the block diagram, Inspector, the three designs, persistence, hardware mapping, and export. | `docs/user-guide/README.md` |
+| `dvpe_CLD/examples/` | Runnable patch examples and the Daisy Field Mapping tutorial. | `dvpe_CLD/examples/field_mapping_subtractive_tutorial.md` |
+| `dvpe_DESIGN/` | Design studies and visual references. They are context, not proof of implemented application behavior. | `dvpe_DESIGN/dvpe_glassmorphism_ai_guide.md` |
+| `dashboard/` and `dashboard-server/` | Development dashboard surfaces, separate from the DVPE product runtime. | nearest README and manifests |
+| `.agent/`, `.claude/`, `_agentic_promts/` | Agent support, history, and mode-routing assets. Keep them separate from end-user product instructions. | root `AGENTS.md` and nearest local instructions |
+| `directives/` and `execution/` | Intended SOP and deterministic-execution layers. The public branch does not currently track `execution/dvpe_cli.py`; claims that depend on it are unavailable until the file exists. | `directives/README.md`, `execution/README.md` |
+| `noderr/noderr/` | Optional ignored local planning/specification instance; absent from a normal public clone. | `INSTANCE_IDENTITY.md` when present |
+| `DaisyExamples/` | Optional ignored firmware workspace with a separate contract; absent from a normal public clone. | `DaisyExamples/AGENTS.md` when present |
 
-1. Find the target subtree here if the workspace is ambiguous.
-2. Start from the listed local docs and entrypoints before relying on older
-   repo-wide instructions.
-3. Treat `docs/plans/` and `PLANNING/` as design context, not implementation
-   proof.
-4. If the target is not listed here, fall back to `AGENTS.md` plus the nearest
-   local docs.
+## Routing notes
 
-## Active Work Areas
-
-| Project | Latest Activity | Key Local Docs | Agent Notes |
-|---------|-----------------|----------------|-------------|
-| `dvpe_CLD/` | 2026-04-20 | `START_DVPE_SESSION.md`, `README.md`, `noderr/noderr/INSTANCE_IDENTITY.md`, `noderr/noderr/environment_context.md` | Main React/Vite/Tauri application. Run npm commands from `dvpe_CLD/`. If the task is UI, stores, codegen, or patch editing, this is usually the primary root. |
-| `noderr/noderr/` | 2026-04-20 | `INSTANCE_IDENTITY.md`, `noderr_project.md`, `noderr_architecture.md`, `noderr_tracker.md` | Primary DVPE memory and specification surface. Use for `UI_`, `SVC_`, `STORE_`, `CONFIG_`, and `UTIL_` work. |
-| `DaisyExamples/` | 2026-04-20 | `DaisyExamples/AGENTS.md`, `DaisyExamples/LATEST_PROJECTS.md`, `DaisyExamples/README.md`, `START_FIRMWARE_SESSION.md`, `DaisyExamples/noderr/INSTANCE_IDENTITY.md` | Nested firmware workspace with its own contract. If the task mentions `.cpp`, `make`, `libDaisy`, `DaisySP`, or firmware Noderr, switch to this local authority. |
-| `.agent/` | 2026-04-20 | `.agent/workflows/agent.md`, `.agent/daisy_memory/decisions.md`, `.agent/daisy_memory/patterns.md` | Legacy memory, workflow, and helper assets. Keep these connected, but treat them as strategic memory and support tooling rather than primary source of truth. |
-| `directives/` | 2026-04-20 | `directives/README.md`, `directives/build_firmware.md`, `directives/launch_dev_servers.md` | Repo-level SOP layer describing what to do. Relevant when the task is about orchestration, automation, or agent framework behavior. |
-| `execution/` | 2026-04-20 | `execution/README.md` | Deterministic execution layer. Use or extend this when a repeated workflow should become a script instead of prompt-only logic. |
-
-## Additional Notes
-
-- `.claude/` and `_agentic_promts/` remain active instruction assets and should
-  stay wired into the root contract rather than being replaced wholesale.
-- `docs/plans/` contains the most recent design and implementation context for
-  larger feature work.
-- `PLANNING/` still contains older planning artifacts and discrepancy reports;
-  use it as context only.
+- UI, state, code generation, patch editing, and browser behavior normally
+  belong to `dvpe_CLD/`.
+- Firmware compilation, flashing, and hardware acceptance belong to a specific
+  external Daisy project and require their own evidence.
+- `docs/plans/`, `PLANNING/`, design mockups, and agent memory are context, not
+  implementation proof.
+- The supported application runtime is the browser. There is no current Tauri
+  project in the public repository.

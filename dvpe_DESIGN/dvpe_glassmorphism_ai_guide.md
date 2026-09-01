@@ -1,5 +1,18 @@
 # DVPE Glassmorphism: Precision AI Communication Guide
 
+> Design-study status: this tutorial explains the visual principles behind
+> DVPE's glass and neon experiments. In the current application, start with
+> **Stitch Neon** or **Experimentator**, then fine-tune the live design in
+> **Inspector → Design**. The stable, lower-decoration alternative is
+> **Original Style**.
+
+![Current DVPE Stitch Neon interface with the Design-capable Inspector](../docs/images/DVPE_Stitch_Neon_GUI.png)
+
+*Stitch Neon in the current editor. The Inspector is shown on Parameters; use
+its **Design** tab to tune background, blocks, block-type colors, wires, glass,
+and saved presets. See the [complete GUI guide](../docs/user-guide/BLOCK_DIAGRAM_AND_INSPECTOR_GUIDE.md#5-use-inspector--design)
+for the supported controls.*
+
 ## Your Visual Target (Decoded)
 
 What you're asking for is a **specific layering architecture** that most AI tools get wrong because the instruction "make it glassy" is too vague. Here's the precise decomposition of what your four reference images demand:
@@ -229,7 +242,7 @@ Adjust the .module-block class:
 Do NOT change border-radius, padding, or content layout.
 ```
 
-### Template C: v0.dev / Lovable Scaffold Prompt
+### Template C: v0.dev / Lovable Starting Prompt
 
 ```markdown
 Create a React component for a visual programming node editor with glassmorphic design.
@@ -282,7 +295,7 @@ Category color mapping:
 ### Step-by-Step Process
 
 ```
-PHASE 1: SCAFFOLD (v0.dev or Lovable)
+PHASE 1: INITIAL LAYOUT (v0.dev or Lovable)
 ├─ Use Template C to generate initial node editor layout
 ├─ Accept: layout structure, component hierarchy, drag logic
 ├─ Reject: default styling (will be wrong)

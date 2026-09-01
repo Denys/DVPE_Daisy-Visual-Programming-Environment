@@ -24,6 +24,12 @@ Directives define **what to do** using natural language instructions. They speci
 
 ### CLI Spine
 
+> **Availability:** the current public branch does not track
+> `execution/dvpe_cli.py`. The table below documents an intended or local-only
+> interface, not a command that works from a normal public clone. Verify the
+> literal file path before use; if it is absent, record the workflow as
+> unavailable rather than inventing a substitute.
+
 Use `py -3 execution\dvpe_cli.py <command>` for deterministic DVPE helper
 workflows:
 

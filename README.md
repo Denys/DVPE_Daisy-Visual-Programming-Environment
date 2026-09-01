@@ -1,216 +1,131 @@
-# DVPE - Daisy Visual Programming Environment
+# DVPE — Daisy Visual Programming Environment
 
-DVPE is a visual block-based programming environment for building audio
-patches for [Electro-Smith Daisy](https://www.electro-smith.com/) hardware.
-It lets you design a synth or effect as a node graph, configure blocks in an
-inspector, and export Daisy-oriented C++ and Makefile output.
+DVPE is a desktop-oriented visual editor for designing audio graphs and
+exporting Daisy-oriented C++ project files. Build a patch from DSP, control,
+math, and hardware blocks; edit it in the Inspector; save it as a `.dvpe`
+project; then review the generated source in your normal Daisy toolchain.
 
-![DVPE patch canvas](dvpe_DESIGN/Field_Additive_Synthesizer_DVPE_FULLscr.png)
+> Current status: the React/Vite web editor is operational and tested. DVPE is
+> not a firmware compiler, hardware flasher, or packaged desktop release.
 
-## What It Does
+![DVPE Stitch Neon interface](docs/images/DVPE_Stitch_Neon_GUI.png)
 
-- Visual patch canvas for connecting audio, CV, trigger, and UI/control blocks.
-- 173 built-in blocks across 9 categories, generated from the current
-  `BlockRegistry`.
-- Patch save, load, import, and export workflows for `.dvpe` projects and
-  reusable custom blocks.
-- Daisy-oriented C++ and Makefile generation for firmware projects.
-- Custom and nested block workflows for reusable higher-level patch modules.
-- Visual design modes, including original, glass, and experiment layouts.
-- Experimental Advanced Export pass that can send generated code through an
-  AI correction workflow before download.
+The earlier Original Style design is retained for comparison:
+[view the Field Additive Synth screenshot](docs/images/DVPE_Original_Field_Additive_Synth.png).
 
-For the full built-in block catalog, see
-[DVPE Diagram Block Reference](dvpe_CLD/noderr/specs/DVPE_Diagram_Block_Reference.md).
-That generated reference includes block descriptions, parameters, ranges,
-defaults, and CV-controllable fields.
+## Start on Windows
 
-## How DVPE Fits Together
+Prerequisite: [Node.js](https://nodejs.org/) 20 or newer.
 
-```mermaid
-graph TD
-    classDef ui fill:#1f2937,stroke:#38bdf8,color:#f8fafc;
-    classDef state fill:#111827,stroke:#a78bfa,color:#f8fafc;
-    classDef export fill:#172554,stroke:#60a5fa,color:#dbeafe;
-    classDef firmware fill:#064e3b,stroke:#34d399,color:#d1fae5;
+1. Clone or download this repository.
+2. Double-click **`START_DVPE.cmd`**.
 
-    subgraph App["DVPE React/Vite App"]
-        Canvas["Patch Canvas"]:::ui
-        Inspector["Inspector and Design Panels"]:::ui
-        Library["Module Library"]:::ui
-    end
+On the first run, the launcher installs the exact locked dependencies. It then
+starts DVPE at `http://127.0.0.1:1420/` and opens the browser. It does not need
+administrator rights and installs nothing globally.
 
-    subgraph Stores["Application State"]
-        PatchStore["Patch Store"]:::state
-        UIStore["UI Store"]:::state
-        BlockRegistry["Block Registry"]:::state
-    end
-
-    subgraph Output["Export Pipeline"]
-        Codegen["C++ / Makefile Generator"]:::export
-        Advanced["Optional Advanced AI Correction"]:::export
-    end
-
-    subgraph Daisy["Daisy Firmware Project"]
-        DaisySP["DaisySP / libDaisy"]:::firmware
-        Hardware["Daisy Seed / Pod / Field"]:::firmware
-    end
-
-    Library --> Canvas
-    Inspector --> PatchStore
-    Canvas --> PatchStore
-    BlockRegistry --> Library
-    PatchStore --> Codegen
-    Codegen --> Advanced
-    Codegen --> DaisySP
-    Advanced --> DaisySP
-    DaisySP --> Hardware
-```
-
-## Quick Start
-
-The web development version is the simplest way to run DVPE.
-
-### Prerequisites
-
-- Node.js 20+ recommended
-- npm, included with Node.js
-
-### Run In Browser
+Manual start on Windows, macOS, or Linux:
 
 ```bash
 git clone https://github.com/Denys/DVPE_Daisy-Visual-Programming-Environment.git
 cd DVPE_Daisy-Visual-Programming-Environment/dvpe_CLD
-npm install
+npm ci
+npm run dev -- --open
+```
+
+## What works now
+
+- A catalog of 174 runtime blocks in 9 categories, with 329 parameters and
+  227 CV-controllable parameters.
+- Drag-and-drop patch authoring, validated connections, graph analysis,
+  alignment tools, comments, and a Poly Voice Blanket canvas directive.
+- Parameter editing, CV enablement, connectivity tracing, and design controls
+  in the Inspector.
+- Custom block creation, import/export, nested internals, reusable code
+  modules, and port binding.
+- `.dvpe` save/load, autosave recovery, recent projects, and embedded custom
+  block definitions.
+- Daisy-oriented C++, headers, and Makefile generation, downloaded as a ZIP.
+- Hardware/Field mapping, conflict checks, polyphonic code paths, and an
+  optional Advanced Export pass using a user-supplied AI API key.
+
+Generated code is a starting point. Compile, inspect, test, and validate it on
+the intended hardware before use.
+
+## Three interface designs
+
+DVPE currently provides exactly three selectable interface designs. Cycle
+between them with the design button in the top bar.
+
+| Design | Best suited to |
+| --- | --- |
+| **Original Style** | Dense patch editing and debugging, where restrained contrast and low visual complexity matter most. |
+| **Stitch Neon** | Demos, presentations, and visually tracing signal flow through color-coded blocks and brighter connections. |
+| **Experimentator** | Exploratory visual work and building a personal appearance with stronger glow, glass, and geometry controls. |
+
+Stitch Neon and Experimentator are fine-tunable in **Inspector → Design**.
+Changes are applied live, and both modes support saved presets. See the
+[complete Block Diagram and Inspector guide](docs/user-guide/BLOCK_DIAGRAM_AND_INSPECTOR_GUIDE.md)
+for the full workflow, controls, shortcuts, export steps, and troubleshooting.
+
+## Current state
+
+This snapshot was verified on **2026-09-01**:
+
+| Area | Verified state |
+| --- | --- |
+| Automated tests | 883 tests pass across 46 files. |
+| Static analysis | ESLint completes with no errors; 146 warnings remain as typed-cleanup and hook-dependency maintenance work. |
+| Production build | TypeScript and Vite build complete successfully; Vite reports a large bundle chunk as open performance work. |
+| Browser runtime | Module Library, Canvas, Inspector, design switching, save/load, Hardware, and export surfaces render at the fixed local URL. |
+| Desktop packaging | Not included. The supported runtime is the browser application. |
+| Firmware build/flash | Not included. Use an external Daisy firmware workspace after export. |
+| Releases | No packaged installer or tagged release yet. |
+| Dependency audit | `npm audit` reports 2 remaining advisories (1 low, 1 moderate), through Monaco/DOMPurify. Dependency maintenance remains open work. |
+
+## Short history
+
+The project began in January 2026 as a 76-block editor with a canvas,
+Inspector, registry, state stores, and Daisy code generation. February added
+custom blocks and nested internals. May added Field hardware mapping,
+polyphonic generation, persistence, Neon design work, and a compact polyphonic
+Grainlet workflow. July added reproducible dependency locking, tracked codegen
+fixtures, and CI coverage. In September 2026 the public product description,
+block catalog, GUI documentation, dependency lock, lint contract, and Windows
+startup path were reconciled against the running application.
+
+## Tutorials and documentation
+
+| Start here | What it covers |
+| --- | --- |
+| [Block Diagram and Inspector guide](docs/user-guide/BLOCK_DIAGRAM_AND_INSPECTOR_GUIDE.md) | Complete GUI workflow: add, connect, edit, design, map hardware, save, and export. |
+| [Daisy Field Mapping tutorial](dvpe_CLD/examples/field_mapping_subtractive_tutorial.md) | A guided subtractive-synth patch with knobs, keys, shift layers, conflicts, and C++ export. |
+| [Glassmorphism design tutorial](dvpe_DESIGN/dvpe_glassmorphism_ai_guide.md) | A visual design study for tuning transparent blocks, wire glow, and readable UI chrome. |
+| [Block catalog reference](docs/reference/DVPE_Diagram_Block_Reference.md) | The generated 174-block inventory, categories, parameters, ports, and intended uses. |
+| [User guide index](docs/user-guide/README.md) | A compact entry point to all end-user documentation. |
+
+## Development
+
+Run from `dvpe_CLD/`:
+
+```bash
+npm ci
 npm run dev
+npm test -- --run
+npm run build
+npm run lint
 ```
 
-Open:
+The fixed development URL is `http://127.0.0.1:1420/`. If that port is already
+used by another application, stop that application before launching DVPE.
 
-```text
-http://localhost:1420
-```
+## Repository scope
 
-If port `1420` is already in use, stop the other process first. The Vite config
-uses a fixed port because the optional Tauri desktop path expects it.
-
-### Optional Desktop Mode
-
-Desktop mode uses Tauri and is optional. Install Rust and the Tauri toolchain,
-then run:
-
-```bash
-cd dvpe_CLD
-npm run tauri:dev
-```
-
-The browser version is the recommended first run path.
-
-## Patch-To-Firmware Export
-
-DVPE exports a patch graph into Daisy-oriented source files. The generated
-output should be reviewed before it is flashed to real hardware.
-
-```mermaid
-flowchart LR
-    Patch["DVPE patch graph"] --> Preview["Generate raw C++ and Makefile"]
-    Preview --> Download["Download source files"]
-    Preview --> AI["Optional Advanced Export correction"]
-    AI --> Download
-    Download --> Project["Copy into Daisy project folder"]
-    Project --> Build["make clean && make"]
-    Build --> Flash["make program-dfu"]
-```
-
-Advanced Export is experimental. It requires a user-provided API key in the
-browser and can call external AI providers. Treat its output as a review aid,
-not as an automatic guarantee that firmware is ready for hardware.
-
-## Example Patch
-
-This is the basic signal shape of a simple synth patch: a note or key trigger
-drives an envelope, the oscillator feeds a filter, and the filtered signal goes
-to stereo output.
-
-```mermaid
-graph LR
-    classDef source fill:#0f766e,stroke:#5eead4,color:#ecfeff;
-    classDef filter fill:#1d4ed8,stroke:#93c5fd,color:#eff6ff;
-    classDef mod fill:#92400e,stroke:#fbbf24,color:#fff7ed;
-    classDef io fill:#166534,stroke:#86efac,color:#f0fdf4;
-
-    Key["KEY or MIDI NOTE"]:::io -- Gate --> ADSR["ADSR ENVELOPE"]:::mod
-    Osc["OSCILLATOR"]:::source -- Audio --> Filter["MOOG LADDER or SVF"]:::filter
-    ADSR -- "CV modulation" --> Filter
-    Filter -- Audio --> Out["AUDIO OUTPUT"]:::io
-```
-
-Typical workflow:
-
-1. Drag blocks from the module library onto the canvas.
-2. Connect audio, CV, trigger, and control ports.
-3. Edit block parameters in the Inspector.
-4. Save the patch as a `.dvpe` file.
-5. Export generated C++ and Makefile output.
-6. Review, build, and flash in a Daisy firmware project.
-
-## Block Reference
-
-The current generated block reference reports:
-
-| Area | Count |
-| --- | ---: |
-| Built-in blocks | 173 |
-| Categories | 9 |
-| Parameters | 320 |
-| CV-controllable parameters | 221 |
-
-Use the generated
-[DVPE Diagram Block Reference](dvpe_CLD/noderr/specs/DVPE_Diagram_Block_Reference.md)
-for the authoritative block list. It is better than a static README table
-because it is generated from `dvpe_CLD/src/core/blocks/BlockRegistry.ts` and
-the block definition files.
-
-## Development Commands
-
-Run these from `dvpe_CLD/`.
-
-```bash
-npm run dev            # Start Vite on http://localhost:1420
-npm run build          # TypeScript check and production build
-npm test               # Run Vitest
-npm run test:coverage  # Run Vitest with coverage
-npm run lint           # Lint source files
-npm run tauri:dev      # Optional desktop development mode
-npm run tauri:build    # Optional desktop build
-```
-
-## Repository Map
-
-```text
-DVPE_Daisy-Visual-Programming-Environment/
-  dvpe_CLD/          Main React/Vite/Tauri DVPE application
-  DaisyExamples/     Daisy firmware workspace and examples
-  dvpe_DESIGN/       Design studies, screenshots, and visual prototypes
-  docs/plans/        Planning and design documents
-  noderr/            Primary project specification and memory surface
-  .agent/            Legacy agent workflows and support assets
-  LICENSE            Project license
-```
-
-For application work, start in `dvpe_CLD/`. For firmware work, use
-`DaisyExamples/` and its local documentation.
-
-## Current Caveats
-
-- The generated firmware path is intended for Daisy-oriented projects and
-  should be reviewed before flashing hardware.
-- Advanced Export is experimental, requires API keys, and may call external AI
-  providers.
-- The web app is the most direct launch target. Desktop/Tauri mode is optional
-  and requires additional setup.
-- Some design assets and planning files are included because this repository is
-  also used as an active development workspace.
+This repository is the original development base and retains its public
+history, design studies, planning material, dashboards, and agent-support
+files. Ignored local-only copies of `DaisyExamples/` and `noderr/` are not part
+of a normal public clone. For a smaller product-only checkout without those
+development layers, use the curated [DVPE sharing repository](https://github.com/Denys/DVPE).
 
 ## License
 

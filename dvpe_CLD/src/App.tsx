@@ -82,6 +82,7 @@ const TitleBar: React.FC<TitleBarProps> = ({
   handleOpenRecentFolder,
 }) => {
   const openModal = useUIStore((state) => state.openModal);
+  const layoutStyle = useUIStore((state) => state.layoutStyle);
   const [recentOpen, setRecentOpen] = React.useState(false);
 
   return (
@@ -212,17 +213,16 @@ const TitleBar: React.FC<TitleBarProps> = ({
         className={cn(
           'mr-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
           'bg-surface-tertiary text-text-secondary hover:bg-surface-tertiary/80',
-          useUIStore((state) => state.layoutStyle) === 'experiment' && 'ring-1 ring-cv-primary/50 text-cv-primary bg-cv-primary/10',
+          layoutStyle === 'experiment' && 'ring-1 ring-cv-primary/50 text-cv-primary bg-cv-primary/10',
           'flex items-center gap-2'
         )}
       >
         <Palette className="w-4 h-4" />
-        {(() => {
-          const style = useUIStore((state) => state.layoutStyle);
-          if (style === 'original') return 'Original Style';
-          if (style === 'glass') return 'Stitch Neon';
-          return 'Experimentator';
-        })()}
+        {layoutStyle === 'original'
+          ? 'Original Style'
+          : layoutStyle === 'glass'
+            ? 'Stitch Neon'
+            : 'Experimentator'}
       </button>
 
       {/* Hardware button */}
@@ -997,9 +997,9 @@ const App: React.FC = () => {
       }
 
       if ((e.ctrlKey || e.metaKey) && ['z', 'y'].includes(e.key.toLowerCase())) {
-        // These are likely handled by the store or canvas, 
+        // These are likely handled by the store or canvas,
         // but we prevent default just in case
-        // e.preventDefault(); 
+        // e.preventDefault();
       }
     };
 
@@ -1038,7 +1038,7 @@ const App: React.FC = () => {
         )}
 
         {/* Canvas (Center) */}
-        <Panel defaultSize={55} minSize={30}>
+        <Panel defaultSize={65} minSize={30}>
           <main className="w-full h-full relative overflow-hidden">
             <Canvas />
           </main>

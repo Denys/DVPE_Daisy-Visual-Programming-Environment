@@ -10,6 +10,12 @@
 
 ---
 
+![A larger Daisy Field-oriented patch in DVPE Original Style](../../docs/images/DVPE_Original_Field_Additive_Synth.png)
+
+*The screenshot shows a larger Field-oriented patch in Original Style. The
+tutorial patch below is deliberately smaller, but uses the same canvas,
+Inspector, and hardware-mapping workflow.*
+
 ## What This Teaches
 
 The Field Mapping panel maps the fixed Daisy Field surface directly to patch parameters:
@@ -47,6 +53,11 @@ npm run dev
 3. Load `dvpe_CLD/examples/field_mapping_subtractive.dvpe`.
 4. Open **Architecture**.
 5. Select **Field Mapping**.
+
+If this is your first time using the editor, read the
+[Block Diagram and Inspector guide](../../docs/user-guide/BLOCK_DIAGRAM_AND_INSPECTOR_GUIDE.md)
+for connection rules, parameter editing, design controls, save/load, and
+export before continuing.
 
 Open **Surface** for the visual Field layout, or **Matrix** for the full layer table. The matrix shows rows for `K1-K8` and `A1-B8`, with columns for **Normal**, **SW1**, **SW2**, and **SW1+SW2**.
 

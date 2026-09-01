@@ -47,21 +47,21 @@ export const useParameterShortcuts = ({
   stepSize = 0.01,
   fineStepSize = 0.001,
 }: UseParameterShortcutsProps) => {
-  
+
   // Handle keyboard events
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (disabled) return;
-    
+
     const { key, shiftKey, ctrlKey, metaKey, altKey } = e;
     const isModifierPressed = ctrlKey || metaKey || altKey;
-    
+
     // Prevent default for our shortcuts
     const preventDefault = () => {
       if (!isModifierPressed) {
         e.preventDefault();
       }
     };
-    
+
     switch (key) {
       case 'ArrowUp':
         preventDefault();
@@ -71,7 +71,7 @@ export const useParameterShortcuts = ({
           onIncrement();
         }
         break;
-        
+
       case 'ArrowDown':
         preventDefault();
         if (shiftKey && onFineDecrement) {
@@ -80,27 +80,27 @@ export const useParameterShortcuts = ({
           onDecrement();
         }
         break;
-        
+
       case 'PageUp':
         preventDefault();
         if (onIncrement) onIncrement(stepSize * 10);
         break;
-        
+
       case 'PageDown':
         preventDefault();
         if (onDecrement) onDecrement(stepSize * 10);
         break;
-        
+
       case 'Home':
         preventDefault();
         if (onDecrement) onDecrement(Number.MAX_SAFE_INTEGER);
         break;
-        
+
       case 'End':
         preventDefault();
         if (onIncrement) onIncrement(Number.MAX_SAFE_INTEGER);
         break;
-        
+
       case ' ':
       case 'Enter':
         preventDefault();
@@ -110,11 +110,11 @@ export const useParameterShortcuts = ({
           onEdit();
         }
         break;
-        
+
       case 'Escape':
         if (onCancel) onCancel();
         break;
-        
+
       case 'r':
       case 'R':
         if (!isModifierPressed && onReset) {
@@ -122,7 +122,7 @@ export const useParameterShortcuts = ({
           onReset();
         }
         break;
-        
+
       default:
         break;
     }
@@ -140,11 +140,11 @@ export const useParameterShortcuts = ({
     stepSize,
     fineStepSize,
   ]);
-  
+
   // Attach/detach event listener
   // This would typically be done in useEffect, but we'll expose the handler
   // for components to use as needed
-  
+
   return {
     handleKeyDown,
   };
@@ -224,16 +224,17 @@ export const applyParameterCurve = (
   curve: 'linear' | 'logarithmic' | 'exponential' = 'linear'
 ): number => {
   const normalizedValue = (value - min) / (max - min);
-  
+
   switch (curve) {
-    case 'logarithmic':
+    case 'logarithmic': {
       const minLog = Math.log(Math.max(min, 0.0001));
       const maxLog = Math.log(max);
       return Math.exp(minLog + normalizedValue * (maxLog - minLog));
-      
+    }
+
     case 'exponential':
       return min + Math.pow(normalizedValue, 2) * (max - min);
-      
+
     case 'linear':
     default:
       return min + normalizedValue * (max - min);
