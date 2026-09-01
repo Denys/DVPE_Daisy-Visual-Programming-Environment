@@ -33,6 +33,44 @@ npm ci
 npm run dev -- --open
 ```
 
+## Learn DVPE by building
+
+The tutorials form a short path from first launch through Inspector review,
+hardware mapping, export, reusable blocks, and visual customization. Each one
+uses the current interface and can be completed independently.
+
+| Tutorial | Time | You will finish with |
+| --- | ---: | --- |
+| [Build your first patch](docs/tutorials/GETTING_STARTED_FIRST_PATCH.md) | 10 min | A saved source-to-output graph and a clear export boundary. |
+| [Inspect, map hardware, and export](docs/tutorials/INSPECTOR_HARDWARE_AND_EXPORT.md) | 15–20 min | A reviewed graph, stored Daisy target, and C++/Makefile package. |
+| [Map a patch to Daisy Field](dvpe_CLD/examples/field_mapping_subtractive_tutorial.md) | 10–15 min | A working four-layer Field control map based on the included example. |
+| [Create and reuse a custom block](docs/tutorials/CUSTOM_BLOCKS_AND_REUSE.md) | 15–20 min | A reusable block with chosen public ports and parameters. |
+| [Choose and tune an interface design](docs/tutorials/DESIGN_MODES_AND_VISUAL_TUNING.md) | 10 min | A readable Stitch Neon or Experimentator preset. |
+
+[Open the full tutorial index](docs/tutorials/README.md), or begin with the
+first patch tutorial. The completed Field example below shows the same basic
+source → processing → output flow used throughout the series.
+
+![Completed Field Mapping tutorial patch](docs/images/tutorials/field-mapping-patch.png)
+
+## Inspect, target, and export
+
+The normal handoff is **Inspector → Hardware → Export C++**. **Advanced** is an
+optional external-AI review pass, not a replacement for compilation or hardware
+validation. Follow the complete
+[Inspector, Hardware, and Export tutorial](docs/tutorials/INSPECTOR_HARDWARE_AND_EXPORT.md)
+for the step-by-step workflow.
+
+| Inspector | Hardware |
+| --- | --- |
+| Edit the selected block's identity and parameters, enable CV inputs, and trace every accepted connection. | Select Daisy Seed, Pod, or Field; then review pin, peripheral, and Field-surface mappings stored with the project. |
+| ![Inspector parameters and connectivity](docs/images/tutorials/inspector-parameters-connectivity.png) | ![Hardware platform configuration](docs/images/tutorials/hardware-platform-configuration.png) |
+
+| Export C++ | Advanced |
+| --- | --- |
+| Review the target header and generated callback before downloading the C++ source and Makefile ZIP. | In Experimentator, configure provider, model, and browser-only API key under **Inspector → Design → AI Export Settings**, then compare the raw and corrected previews. |
+| ![Generated C++ preview for Daisy Field](docs/images/tutorials/export-cpp-preview.png) | ![Advanced Export settings with no API key stored](docs/images/tutorials/advanced-export-settings.png) |
+
 ## What works now
 
 - A catalog of 174 runtime blocks in 9 categories, with 329 parameters and
@@ -45,7 +83,7 @@ npm run dev -- --open
   modules, and port binding.
 - `.dvpe` save/load, autosave recovery, recent projects, and embedded custom
   block definitions.
-- Daisy-oriented C++, headers, and Makefile generation, downloaded as a ZIP.
+- Daisy-oriented C++ source and Makefile generation, downloaded as a ZIP.
 - Hardware/Field mapping, conflict checks, polyphonic code paths, and an
   optional Advanced Export pass using a user-supplied AI API key.
 
@@ -65,7 +103,8 @@ between them with the design button in the top bar.
 
 Stitch Neon and Experimentator are fine-tunable in **Inspector → Design**.
 Changes are applied live, and both modes support saved presets. See the
-[complete Block Diagram and Inspector guide](docs/user-guide/BLOCK_DIAGRAM_AND_INSPECTOR_GUIDE.md)
+[design tuning tutorial](docs/tutorials/DESIGN_MODES_AND_VISUAL_TUNING.md) or
+the [complete Block Diagram and Inspector guide](docs/user-guide/BLOCK_DIAGRAM_AND_INSPECTOR_GUIDE.md)
 for the full workflow, controls, shortcuts, export steps, and troubleshooting.
 
 ## Current state
@@ -91,18 +130,20 @@ custom blocks and nested internals. May added Field hardware mapping,
 polyphonic generation, persistence, Neon design work, and a compact polyphonic
 Grainlet workflow. July added reproducible dependency locking, tracked codegen
 fixtures, and CI coverage. In September 2026 the public product description,
-block catalog, GUI documentation, dependency lock, lint contract, and Windows
-startup path were reconciled against the running application.
+block catalog, guided tutorials, GUI documentation, locked startup path, and
+export-to-hardware handoff were reconciled against the running application.
 
-## Tutorials and documentation
+## Documentation
 
-| Start here | What it covers |
-| --- | --- |
-| [Block Diagram and Inspector guide](docs/user-guide/BLOCK_DIAGRAM_AND_INSPECTOR_GUIDE.md) | Complete GUI workflow: add, connect, edit, design, map hardware, save, and export. |
-| [Daisy Field Mapping tutorial](dvpe_CLD/examples/field_mapping_subtractive_tutorial.md) | A guided subtractive-synth patch with knobs, keys, shift layers, conflicts, and C++ export. |
-| [Glassmorphism design tutorial](dvpe_DESIGN/dvpe_glassmorphism_ai_guide.md) | A visual design study for tuning transparent blocks, wire glow, and readable UI chrome. |
-| [Block catalog reference](docs/reference/DVPE_Diagram_Block_Reference.md) | The generated 174-block inventory, categories, parameters, ports, and intended uses. |
-| [User guide index](docs/user-guide/README.md) | A compact entry point to all end-user documentation. |
+- [Tutorial index](docs/tutorials/README.md)
+- [Build your first patch](docs/tutorials/GETTING_STARTED_FIRST_PATCH.md)
+- [Inspect, map hardware, and export](docs/tutorials/INSPECTOR_HARDWARE_AND_EXPORT.md)
+- [Create and reuse custom blocks](docs/tutorials/CUSTOM_BLOCKS_AND_REUSE.md)
+- [Tune the three interface designs](docs/tutorials/DESIGN_MODES_AND_VISUAL_TUNING.md)
+- [User guide index](docs/user-guide/README.md)
+- [Block Diagram and Inspector guide](docs/user-guide/BLOCK_DIAGRAM_AND_INSPECTOR_GUIDE.md)
+- [Block catalog reference](docs/reference/DVPE_Diagram_Block_Reference.md)
+- [Daisy Field Mapping example tutorial](dvpe_CLD/examples/field_mapping_subtractive_tutorial.md)
 
 ## Development
 
@@ -119,13 +160,15 @@ npm run lint
 The fixed development URL is `http://127.0.0.1:1420/`. If that port is already
 used by another application, stop that application before launching DVPE.
 
-## Repository scope
+## Repository scope and privacy
 
-This repository is the original development base and retains its public
-history, design studies, planning material, dashboards, and agent-support
-files. Ignored local-only copies of `DaisyExamples/` and `noderr/` are not part
-of a normal public clone. For a smaller product-only checkout without those
-development layers, use the curated [DVPE sharing repository](https://github.com/Denys/DVPE).
+This is the original development base. It retains its public history, design
+studies, planning material, dashboards, and agent-support files. Ignored
+local-only copies of `DaisyExamples/` and `noderr/` are not part of a normal
+public clone. Curated user documentation and screenshots are explicitly
+allowlisted; credentials, local settings, and other ignored development data
+remain excluded. For a smaller product-only checkout with a fresh history, use
+the curated [DVPE sharing repository](https://github.com/Denys/DVPE).
 
 ## License
 
