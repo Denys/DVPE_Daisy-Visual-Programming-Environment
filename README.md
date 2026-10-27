@@ -1,5 +1,8 @@
 # DVPE — Daisy Visual Programming Environment
 
+> **Ideas for later:** [PC audio preview and firmware compilation from the interface](TODO.md).
+> These are future enhancements; DVPE is not the current priority.
+
 DVPE is a desktop-oriented visual editor for designing audio graphs and
 exporting Daisy-oriented C++ project files. Build a patch from DSP, control,
 math, and hardware blocks; edit it in the Inspector; save it as a `.dvpe`
